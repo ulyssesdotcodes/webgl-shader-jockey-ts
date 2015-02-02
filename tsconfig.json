@@ -4,7 +4,9 @@
         "module": "commonjs",
         "declaration": false,
         "noimplicitany": false,
-        "removecomments": true
+        "removecomments": true,
+        "out": "app.js",
+        "sourceMap": true
     },
     "filesGlob": [
         "./**/*.ts"
