@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "declaration": false,
+        "noimplicitany": false,
+        "removecomments": true
+    },
+    "filesGlob": [
+        "./**/*.ts"
+    ],
+    "files": [
+        "./Views/AppView.ts",
+        "./Views/IControllerView.ts",
+        "./Views/PlayerView.ts",
+        "./main.ts",
+        "./typed/jquery.d.ts"
+    ]
+}
