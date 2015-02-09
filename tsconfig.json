@@ -12,10 +12,16 @@
         "./**/*.ts"
     ],
     "files": [
+        "./Controllers/PlayerController.ts",
+        "./Models/Microphone.ts",
         "./Views/AppView.ts",
         "./Views/IControllerView.ts",
         "./Views/PlayerView.ts",
         "./main.ts",
-        "./typed/jquery.d.ts"
+        "./typed/MediaStream.d.ts",
+        "./typed/jquery.d.ts",
+        "./typed/rx-lite.d.ts",
+        "./typed/rx.d.ts",
+        "./typed/waa.d.ts"
     ]
 }

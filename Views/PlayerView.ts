@@ -1,11 +1,15 @@
+/// <reference path="../Controllers/PlayerController.ts"/>
+
 class PlayerView implements IControllerView {
   private content: JQuery;
-  constructor() {
+  private playerController: PlayerController;
+
+  constructor(playerController: PlayerController) {
     this.content = $("<div>", { class:"controls" });
+    this.playerController = playerController;
   }
 
   render(el: HTMLElement): void {
-
     var mic: JQuery = $("<a>", {
       href: "#",
       class: "mic"
@@ -19,7 +23,7 @@ class PlayerView implements IControllerView {
 
     mic.click(function(e: JQueryEventObject): void {
       e.preventDefault();
-      console.log("Start mic");
+      this.playerController.onMicClick();
     });
 
     var soundcloud =

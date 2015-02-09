@@ -1,6 +1,7 @@
 var PlayerView = (function () {
-    function PlayerView() {
+    function PlayerView(playerController) {
         this.content = $("<div>", { class: "controls" });
+        this.playerController = playerController;
     }
     PlayerView.prototype.render = function (el) {
         var mic = $("<a>", {
@@ -13,7 +14,7 @@ var PlayerView = (function () {
         mic.append(micIcon);
         mic.click(function (e) {
             e.preventDefault();
-            console.log("Start mic");
+            this.playerController.onMicClick();
         });
         var soundcloud = $('<div>', { class: 'soundcloud', text: 'Soundcloud URL:' });
         var input = $("<input>", { class: 'soundcloud-input', type: 'text' });
