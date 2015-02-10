@@ -4,25 +4,27 @@ var Microphone = (function () {
         this.nodeSubject = new Rx.Subject();
     }
     Microphone.prototype.emitNode = function (audioContext) {
+        var _this = this;
         if (this.created) {
             this.nodeSubject.onNext(this.node);
             return;
         }
         var gotStream = function (stream) {
-            this.node = audioContext.createMediaStreamSource(stream);
-            this.nodeSubject.onNext(node);
+            _this.node = audioContext.createMediaStreamSource(stream);
+            _this.nodeSubject.onNext(_this.node);
         };
         if (navigator.getUserMedia)
-            navigator.getUserMedia({ audio: true }, gotStream, function (err) { return console.log(err); });
+            navigator.getUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
         else if (navigator.webkitGetUserMedia)
-            navigator.webkitGetUserMedia({ audio: true }, gotStream, function (err) { return console.log(err); });
+            navigator.webkitGetUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
         else if (navigator.mozGetUserMedia)
-            navigator.mozGetUserMedia({ audio: true }, gotStream, function (err) { return console.log(err); });
+            navigator.mozGetUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
         else
             return (alert("Error: getUserMedia not supported!"));
+        this.created = true;
     };
-    Microphone.prototype.getNode = function () {
-        return this.node;
+    Microphone.prototype.getNodeObservable = function () {
+        return this.nodeSubject;
     };
     return Microphone;
 })();

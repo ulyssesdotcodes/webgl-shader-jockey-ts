@@ -12,7 +12,10 @@
         "./**/*.ts"
     ],
     "files": [
+        "./Controllers/AudioController.ts",
         "./Controllers/PlayerController.ts",
+        "./Controllers/SpeakerController.ts",
+        "./Models/AudioManager.ts",
         "./Models/Microphone.ts",
         "./Views/AppView.ts",
         "./Views/IControllerView.ts",

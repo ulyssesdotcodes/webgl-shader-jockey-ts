@@ -21,7 +21,7 @@ class PlayerView implements IControllerView {
 
     mic.append(micIcon);
 
-    mic.click(function(e: JQueryEventObject): void {
+    mic.click((e) => {
       e.preventDefault();
       this.playerController.onMicClick();
     });
