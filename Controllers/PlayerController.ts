@@ -6,9 +6,8 @@ class PlayerController {
   private audioContext: AudioContext;
 
   private manager: AudioManager;
-
-  private micActive: Boolean;
   private microphone: Microphone;
+  private soundCloudLoader: SoundCloudLoader;
 
   private nodeSubject: Rx.Subject<AudioSourceNode>;
 
@@ -20,13 +19,23 @@ class PlayerController {
     this.microphone = new Microphone();
     this.microphone.getNodeObservable().subscribe(node =>
       this.manager.updateSourceNode(node));
+
+    this.soundCloudLoader = new SoundCloudLoader();
   }
 
   onMicClick(): void {
     this.microphone.emitNode(this.audioContext);
   }
 
+  onUrl(url: string): void {
+    this.soundCloudLoader.loadStream(url);
+  }
+
   getSourceObservable(): Rx.Observable<AudioSourceNode> {
     return this.nodeSubject.asObservable();
+  }
+
+  getUrlObservable(): Rx.Observable<string> {
+    return this.soundCloudLoader.getUrlObservable();
   }
 }

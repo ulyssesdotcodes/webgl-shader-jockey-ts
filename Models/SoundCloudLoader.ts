@@ -2,20 +2,20 @@
 
 class SoundCloudLoader {
   private static CLIENT_ID = "384835fc6e109a2533f83591ae3713e9";
-  private urlSubject: Rx.Subject<String>;
+  private urlSubject: Rx.Subject<string>;
 
   constructor() {
-    this.urlSubject = new Rx.Subject<String>();
+    this.urlSubject = new Rx.Subject<string>();
     SC.initialize({
       client_id: SoundCloudLoader.CLIENT_ID
     });
   }
 
-  getUrlObservable(): Rx.Observable<String>{
+  getUrlObservable(): Rx.Observable<string>{
     return this.urlSubject.asObservable();
   }
 
-  loadStream(url: String): void {
+  loadStream(url: string): void {
     if (!SC) {
       return; // No internet
     }

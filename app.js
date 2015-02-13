@@ -79,12 +79,19 @@ var PlayerController = (function () {
         this.manager = manager;
         this.microphone = new Microphone();
         this.microphone.getNodeObservable().subscribe(function (node) { return _this.manager.updateSourceNode(node); });
+        this.soundCloudLoader = new SoundCloudLoader();
     }
     PlayerController.prototype.onMicClick = function () {
         this.microphone.emitNode(this.audioContext);
     };
+    PlayerController.prototype.onUrl = function (url) {
+        this.soundCloudLoader.loadStream(url);
+    };
     PlayerController.prototype.getSourceObservable = function () {
         return this.nodeSubject.asObservable();
+    };
+    PlayerController.prototype.getUrlObservable = function () {
+        return this.soundCloudLoader.getUrlObservable();
     };
     return PlayerController;
 })();
@@ -109,15 +116,14 @@ var PlayerView = (function () {
             _this.playerController.onMicClick();
         });
         var soundcloud = $('<div>', { class: 'soundcloud', text: 'Soundcloud URL:' });
-        var input = $("<input>", { class: 'soundcloud-input', type: 'text' });
-        input.change(function () {
-            console.log(input.val());
-        });
-        soundcloud.append(input);
-        var audioPlayer = $("<audio />", { class: 'audio-player', controls: true });
+        this.input = $("<input>", { class: 'soundcloud-input', type: 'text' });
+        this.input.change(function () { return _this.playerController.onUrl(_this.input.val()); });
+        soundcloud.append(this.input);
+        this.audioPlayer = $("<audio />", { class: 'audio-player', controls: true });
+        this.playerController.getUrlObservable().subscribe(function (url) { return _this.audioPlayer.attr("src", url); });
         this.content.append(mic);
         this.content.append(soundcloud);
-        this.content.append(audioPlayer);
+        this.content.append(this.audioPlayer);
         $(el).append(this.content);
     };
     return PlayerView;

@@ -3,6 +3,8 @@
 class PlayerView implements IControllerView {
   private content: JQuery;
   private playerController: PlayerController;
+  private audioPlayer: JQuery;
+  private input: JQuery;
 
   constructor(playerController: PlayerController) {
     this.content = $("<div>", { class:"controls" });
@@ -29,19 +31,19 @@ class PlayerView implements IControllerView {
     var soundcloud =
       $('<div>', { class: 'soundcloud', text: 'Soundcloud URL:' });
 
-    var input = $("<input>", { class: 'soundcloud-input', type: 'text' });
+    this.input = $("<input>", { class: 'soundcloud-input', type: 'text' });
 
-    input.change(function() {
-      console.log(input.val())
-    });
+    this.input.change(() => this.playerController.onUrl(this.input.val()));
 
-    soundcloud.append(input);
+    soundcloud.append(this.input);
 
-    var audioPlayer = $("<audio />", {class: 'audio-player', controls: true});
+    this.audioPlayer = $("<audio />", {class: 'audio-player', controls: true});
+
+    this.playerController.getUrlObservable().subscribe((url) => this.audioPlayer.attr("src", url));
 
     this.content.append(mic);
     this.content.append(soundcloud);
-    this.content.append(audioPlayer);
+    this.content.append(this.audioPlayer);
 
     $(el).append(this.content);
   }
