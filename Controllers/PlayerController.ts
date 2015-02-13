@@ -1,5 +1,6 @@
 /// <reference path="../Models/AudioManager.ts"/>
 /// <reference path="../Models/Microphone.ts"/>
+/// <reference path="../Models/SoundCloudLoader.ts"/>
 
 class PlayerController {
   private audioContext: AudioContext;

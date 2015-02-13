@@ -16,7 +16,9 @@
         "./Controllers/PlayerController.ts",
         "./Controllers/SpeakerController.ts",
         "./Models/AudioManager.ts",
+        "./Models/Config.ts",
         "./Models/Microphone.ts",
+        "./Models/SoundCloudLoader.ts",
         "./Views/AppView.ts",
         "./Views/IControllerView.ts",
         "./Views/PlayerView.ts",
@@ -25,6 +27,7 @@
         "./typed/jquery.d.ts",
         "./typed/rx-lite.d.ts",
         "./typed/rx.d.ts",
+        "./typed/soundcloud.d.ts",
         "./typed/waa.d.ts"
     ]
 }
