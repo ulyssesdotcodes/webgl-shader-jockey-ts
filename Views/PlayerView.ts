@@ -3,7 +3,7 @@
 class PlayerView implements IControllerView {
   private content: JQuery;
   private playerController: PlayerController;
-  private audioPlayer: JQuery;
+  private audioPlayer: HTMLMediaElement;
   private input: JQuery;
 
   constructor(playerController: PlayerController) {
@@ -37,9 +37,15 @@ class PlayerView implements IControllerView {
 
     soundcloud.append(this.input);
 
-    this.audioPlayer = $("<audio />", {class: 'audio-player', controls: true});
+    this.audioPlayer = document.createElement("audio");
+    this.audioPlayer.setAttribute('class', 'audio-player');
+    this.audioPlayer.controls = true;
 
-    this.playerController.getUrlObservable().subscribe((url) => this.audioPlayer.attr("src", url));
+    this.playerController.getUrlObservable().subscribe((url) => {
+      this.audioPlayer.setAttribute("src", url);
+      this.audioPlayer.play();
+    });
+    this.playerController.setPlayerSource(this.audioPlayer);
 
     this.content.append(mic);
     this.content.append(soundcloud);

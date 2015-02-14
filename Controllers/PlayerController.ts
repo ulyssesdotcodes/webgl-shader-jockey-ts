@@ -5,11 +5,11 @@
 class PlayerController {
   private audioContext: AudioContext;
 
+  private playerSource: MediaElementAudioSourceNode;
+
   private manager: AudioManager;
   private microphone: Microphone;
   private soundCloudLoader: SoundCloudLoader;
-
-  private nodeSubject: Rx.Subject<AudioSourceNode>;
 
   constructor(manager: AudioManager, audioContext: AudioContext) {
     this.audioContext = audioContext;
@@ -29,10 +29,11 @@ class PlayerController {
 
   onUrl(url: string): void {
     this.soundCloudLoader.loadStream(url);
+    this.manager.updateSourceNode(this.playerSource);
   }
 
-  getSourceObservable(): Rx.Observable<AudioSourceNode> {
-    return this.nodeSubject.asObservable();
+  setPlayerSource(source: HTMLMediaElement) {
+    this.playerSource = this.audioContext.createMediaElementSource(source);
   }
 
   getUrlObservable(): Rx.Observable<string> {

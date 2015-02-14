@@ -16,7 +16,6 @@
         "./Controllers/PlayerController.ts",
         "./Controllers/SpeakerController.ts",
         "./Models/AudioManager.ts",
-        "./Models/Config.ts",
         "./Models/Microphone.ts",
         "./Models/SoundCloudLoader.ts",
         "./Views/AppView.ts",

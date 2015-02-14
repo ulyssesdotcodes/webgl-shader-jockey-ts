@@ -86,9 +86,10 @@ var PlayerController = (function () {
     };
     PlayerController.prototype.onUrl = function (url) {
         this.soundCloudLoader.loadStream(url);
+        this.manager.updateSourceNode(this.playerSource);
     };
-    PlayerController.prototype.getSourceObservable = function () {
-        return this.nodeSubject.asObservable();
+    PlayerController.prototype.setPlayerSource = function (source) {
+        this.playerSource = this.audioContext.createMediaElementSource(source);
     };
     PlayerController.prototype.getUrlObservable = function () {
         return this.soundCloudLoader.getUrlObservable();
@@ -119,8 +120,14 @@ var PlayerView = (function () {
         this.input = $("<input>", { class: 'soundcloud-input', type: 'text' });
         this.input.change(function () { return _this.playerController.onUrl(_this.input.val()); });
         soundcloud.append(this.input);
-        this.audioPlayer = $("<audio />", { class: 'audio-player', controls: true });
-        this.playerController.getUrlObservable().subscribe(function (url) { return _this.audioPlayer.attr("src", url); });
+        this.audioPlayer = document.createElement("audio");
+        this.audioPlayer.setAttribute('class', 'audio-player');
+        this.audioPlayer.controls = true;
+        this.playerController.getUrlObservable().subscribe(function (url) {
+            _this.audioPlayer.setAttribute("src", url);
+            _this.audioPlayer.play();
+        });
+        this.playerController.setPlayerSource(this.audioPlayer);
         this.content.append(mic);
         this.content.append(soundcloud);
         this.content.append(this.audioPlayer);
