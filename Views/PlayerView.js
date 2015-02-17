@@ -1,3 +1,4 @@
+/// <reference path="../Controllers/PlayerController.ts"/>
 var PlayerView = (function () {
     function PlayerView(playerController) {
         this.content = $("<div>", { class: "controls" });
@@ -18,16 +19,22 @@ var PlayerView = (function () {
             _this.playerController.onMicClick();
         });
         var soundcloud = $('<div>', { class: 'soundcloud', text: 'Soundcloud URL:' });
-        var input = $("<input>", { class: 'soundcloud-input', type: 'text' });
-        input.change(function () {
-            console.log(input.val());
+        this.input = $("<input>", { class: 'soundcloud-input', type: 'text' });
+        this.input.change(function () { return _this.playerController.onUrl(_this.input.val()); });
+        soundcloud.append(this.input);
+        this.audioPlayer = document.createElement("audio");
+        this.audioPlayer.setAttribute('class', 'audio-player');
+        this.audioPlayer.controls = true;
+        this.playerController.getUrlObservable().subscribe(function (url) {
+            _this.audioPlayer.setAttribute("src", url);
+            _this.audioPlayer.play();
         });
-        soundcloud.append(input);
-        var audioPlayer = $("<audio />", { class: 'audio-player', controls: true });
+        this.playerController.setPlayerSource(this.audioPlayer);
         this.content.append(mic);
         this.content.append(soundcloud);
-        this.content.append(audioPlayer);
+        this.content.append(this.audioPlayer);
         $(el).append(this.content);
     };
     return PlayerView;
 })();
+//# sourceMappingURL=PlayerView.js.map

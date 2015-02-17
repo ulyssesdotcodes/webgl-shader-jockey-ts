@@ -1,6 +1,10 @@
 var AudioManager = (function () {
-    function AudioManager() {
+    function AudioManager(audioContext) {
+        var _this = this;
         this.audioNodeSubject = new Rx.Subject();
+        this.audioContext = audioContext;
+        this.audioNodeSubject.subscribe(function (node) { return _this.audioAnalyser = new AudioAnalyser(node, AudioManager.FFT_SIZE); });
+        this.renderTimeObservable = new Rx.Subject();
     }
     AudioManager.prototype.updateSourceNode = function (sourceNode) {
         this.audioNodeSubject.onNext(sourceNode);
@@ -8,6 +12,21 @@ var AudioManager = (function () {
     AudioManager.prototype.getAudioNodeObservable = function () {
         return this.audioNodeSubject.asObservable();
     };
+    AudioManager.prototype.getContext = function () {
+        return this.audioContext;
+    };
+    AudioManager.prototype.getGLPropertiesObservable = function () {
+        return this.renderTimeObservable.map(function (time) { return new TimeProperty(time); }).map(this.arrayFromIGLProperties);
+    };
+    AudioManager.prototype.arrayFromIGLProperties = function (timeProperty) {
+        var props = new Array();
+        props.push(timeProperty);
+        return props;
+    };
+    AudioManager.prototype.sampleAudio = function () {
+        this.renderTimeObservable.onNext(this.audioContext.currentTime);
+    };
+    AudioManager.FFT_SIZE = 512;
     return AudioManager;
 })();
 var Microphone = (function () {
@@ -40,7 +59,6 @@ var Microphone = (function () {
     };
     return Microphone;
 })();
-/// <reference path="../typed/soundcloud.d.ts" />
 var SoundCloudLoader = (function () {
     function SoundCloudLoader() {
         this.urlSubject = new Rx.Subject();
@@ -54,7 +72,7 @@ var SoundCloudLoader = (function () {
     SoundCloudLoader.prototype.loadStream = function (url) {
         var _this = this;
         if (!SC) {
-            return; // No internet
+            return;
         }
         SC.get('/resolve', { url: url, test: "two" }, function (sound) {
             if (sound.errors) {
@@ -69,34 +87,58 @@ var SoundCloudLoader = (function () {
     SoundCloudLoader.CLIENT_ID = "384835fc6e109a2533f83591ae3713e9";
     return SoundCloudLoader;
 })();
-/// <reference path="../Models/AudioManager.ts"/>
-/// <reference path="../Models/Microphone.ts"/>
-/// <reference path="../Models/SoundCloudLoader.ts"/>
 var PlayerController = (function () {
-    function PlayerController(manager, audioContext) {
+    function PlayerController(manager) {
         var _this = this;
-        this.audioContext = audioContext;
         this.manager = manager;
         this.microphone = new Microphone();
         this.microphone.getNodeObservable().subscribe(function (node) { return _this.manager.updateSourceNode(node); });
         this.soundCloudLoader = new SoundCloudLoader();
     }
     PlayerController.prototype.onMicClick = function () {
-        this.microphone.emitNode(this.audioContext);
+        this.microphone.emitNode(this.manager.getContext());
     };
     PlayerController.prototype.onUrl = function (url) {
         this.soundCloudLoader.loadStream(url);
         this.manager.updateSourceNode(this.playerSource);
     };
     PlayerController.prototype.setPlayerSource = function (source) {
-        this.playerSource = this.audioContext.createMediaElementSource(source);
+        this.playerSource = this.manager.getContext().createMediaElementSource(source);
     };
     PlayerController.prototype.getUrlObservable = function () {
         return this.soundCloudLoader.getUrlObservable();
     };
     return PlayerController;
 })();
-/// <reference path="../Controllers/PlayerController.ts"/>
+var SpeakerController = (function () {
+    function SpeakerController(manager) {
+        var _this = this;
+        this.manager = manager;
+        manager.getAudioNodeObservable().subscribe(function (node) { return _this.connectToSpeakers(node); });
+    }
+    SpeakerController.prototype.connectToSpeakers = function (node) {
+        node.connect(this.manager.getContext().destination);
+    };
+    return SpeakerController;
+})();
+var AudioController = (function () {
+    function AudioController() {
+        window['AudioContext'] = window['AudioContext'] || window['webkitAudioContext'];
+        this.manager = new AudioManager(new AudioContext());
+        this.playerController = new PlayerController(this.manager);
+        this.speakerController = new SpeakerController(this.manager);
+    }
+    AudioController.prototype.getPlayerController = function () {
+        return this.playerController;
+    };
+    AudioController.prototype.getGLPropertiesObservable = function () {
+        return this.manager.getGLPropertiesObservable();
+    };
+    AudioController.prototype.sampleAudio = function () {
+        this.manager.sampleAudio();
+    };
+    return AudioController;
+})();
 var PlayerView = (function () {
     function PlayerView(playerController) {
         this.content = $("<div>", { class: "controls" });
@@ -115,6 +157,7 @@ var PlayerView = (function () {
         mic.click(function (e) {
             e.preventDefault();
             _this.playerController.onMicClick();
+            _this.audioPlayer.pause();
         });
         var soundcloud = $('<div>', { class: 'soundcloud', text: 'Soundcloud URL:' });
         this.input = $("<input>", { class: 'soundcloud-input', type: 'text' });
@@ -135,55 +178,27 @@ var PlayerView = (function () {
     };
     return PlayerView;
 })();
-/// <reference path="../Models/AudioManager.ts"/>
-var SpeakerController = (function () {
-    function SpeakerController(manager, audioContext) {
-        var _this = this;
-        this.audioContext = audioContext;
-        this.manager = manager;
-        manager.getAudioNodeObservable().subscribe(function (node) { return _this.connectToSpeakers(node); });
-    }
-    SpeakerController.prototype.connectToSpeakers = function (node) {
-        node.connect(this.audioContext.destination);
-    };
-    return SpeakerController;
-})();
-/// <reference path="./PlayerController.ts"/>
-/// <reference path="./SpeakerController.ts"/>
-/// <reference path="../Models/AudioManager.ts"/>
-var AudioController = (function () {
-    function AudioController() {
-        window['AudioContext'] = window['AudioContext'] || window['webkitAudioContext'];
-        this.audioContext = new AudioContext();
-        this.manager = new AudioManager();
-        this.playerController = new PlayerController(this.manager, this.audioContext);
-        this.speakerController = new SpeakerController(this.manager, this.audioContext);
-    }
-    AudioController.prototype.getPlayerController = function () {
-        return this.playerController;
-    };
-    return AudioController;
-})();
-/// <reference path="PlayerView.ts"/>
-/// <reference path="../Controllers/AudioController.ts"/>
 var AppView = (function () {
     function AppView() {
         this.content = $("<div>", { text: "Hello, world!" });
         this.audioController = new AudioController();
         this.playerView = new PlayerView(this.audioController.getPlayerController());
+        this.audioController.getGLPropertiesObservable().subscribe(function (glProperties) {
+        });
     }
     AppView.prototype.render = function (el) {
+        var _this = this;
         this.playerView.render(this.content[0]);
         $(el).append(this.content);
+        requestAnimationFrame(function () { return _this.animate(); });
+    };
+    AppView.prototype.animate = function () {
+        var _this = this;
+        requestAnimationFrame(function () { return _this.animate(); });
+        this.audioController.sampleAudio();
     };
     return AppView;
 })();
-/// <reference path="./typed/jquery.d.ts"/>
-/// <reference path="./typed/rx.d.ts"/>
-/// <reference path="./typed/waa.d.ts"/>
-/// <reference path="./typed/soundcloud.d.ts"/>
-/// <reference path="Views/IControllerView.ts"/>
-/// <reference path="Views/AppView.ts"/>
 function exec() {
     "use strict";
     var app = new AppView();
@@ -192,3 +207,32 @@ function exec() {
 $(document).ready(function () {
     exec();
 });
+var AudioAnalyser = (function () {
+    function AudioAnalyser(audioNode, fftSize) {
+        this.analyser = audioNode.context.createAnalyser();
+        this.fftSize = fftSize;
+        audioNode.connect(this.analyser);
+        this.frequencyBuffer = new Uint8Array(this.fftSize);
+    }
+    AudioAnalyser.prototype.update = function (time) {
+        this.analyser.getByteFrequencyData(this.frequencyBuffer);
+    };
+    return AudioAnalyser;
+})();
+var TimeProperty = (function () {
+    function TimeProperty(time) {
+        this.name = "time";
+        this.time = time;
+    }
+    TimeProperty.prototype.getName = function () {
+        return this.name;
+    };
+    TimeProperty.prototype.addToGL = function (uniforms) {
+        uniforms.time = {
+            type: 'f',
+            value: this.time
+        };
+        return uniforms;
+    };
+    return TimeProperty;
+})();

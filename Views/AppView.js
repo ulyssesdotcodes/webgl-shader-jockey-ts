@@ -1,3 +1,5 @@
+/// <reference path="PlayerView.ts"/>
+/// <reference path="../Controllers/AudioController.ts"/>
 var AppView = (function () {
     function AppView() {
         this.content = $("<div>", { text: "Hello, world!" });
@@ -10,3 +12,4 @@ var AppView = (function () {
     };
     return AppView;
 })();
+//# sourceMappingURL=AppView.js.map

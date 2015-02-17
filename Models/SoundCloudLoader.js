@@ -1,3 +1,4 @@
+/// <reference path="../typed/soundcloud.d.ts" />
 var SoundCloudLoader = (function () {
     function SoundCloudLoader() {
         this.urlSubject = new Rx.Subject();
@@ -11,7 +12,7 @@ var SoundCloudLoader = (function () {
     SoundCloudLoader.prototype.loadStream = function (url) {
         var _this = this;
         if (!SC) {
-            return;
+            return; // No internet
         }
         SC.get('/resolve', { url: url, test: "two" }, function (sound) {
             if (sound.errors) {
@@ -26,3 +27,4 @@ var SoundCloudLoader = (function () {
     SoundCloudLoader.CLIENT_ID = "384835fc6e109a2533f83591ae3713e9";
     return SoundCloudLoader;
 })();
+//# sourceMappingURL=SoundCloudLoader.js.map

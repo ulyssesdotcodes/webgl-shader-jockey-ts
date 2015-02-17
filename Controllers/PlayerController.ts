@@ -3,17 +3,13 @@
 /// <reference path="../Models/SoundCloudLoader.ts"/>
 
 class PlayerController {
-  private audioContext: AudioContext;
-
   private playerSource: MediaElementAudioSourceNode;
 
   private manager: AudioManager;
   private microphone: Microphone;
   private soundCloudLoader: SoundCloudLoader;
 
-  constructor(manager: AudioManager, audioContext: AudioContext) {
-    this.audioContext = audioContext;
-
+  constructor(manager: AudioManager) {
     this.manager = manager;
 
     this.microphone = new Microphone();
@@ -24,7 +20,7 @@ class PlayerController {
   }
 
   onMicClick(): void {
-    this.microphone.emitNode(this.audioContext);
+    this.microphone.emitNode(this.manager.getContext());
   }
 
   onUrl(url: string): void {
@@ -33,7 +29,7 @@ class PlayerController {
   }
 
   setPlayerSource(source: HTMLMediaElement) {
-    this.playerSource = this.audioContext.createMediaElementSource(source);
+    this.playerSource = this.manager.getContext().createMediaElementSource(source);
   }
 
   getUrlObservable(): Rx.Observable<string> {

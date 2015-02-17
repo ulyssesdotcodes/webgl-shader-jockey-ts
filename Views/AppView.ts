@@ -12,10 +12,21 @@ class AppView implements IControllerView {
     this.audioController = new AudioController();
 
     this.playerView = new PlayerView(this.audioController.getPlayerController());
+
+    this.audioController.getGLPropertiesObservable().subscribe((glProperties) => {
+
+    });
   }
 
   render(el: HTMLElement): void {
     this.playerView.render(this.content[0]);
     $(el).append(this.content);
+
+    requestAnimationFrame(() => this.animate());
+  }
+
+  animate(): void {
+    requestAnimationFrame(() => this.animate());
+    this.audioController.sampleAudio();
   }
 }

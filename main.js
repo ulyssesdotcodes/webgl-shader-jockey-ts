@@ -1,3 +1,9 @@
+/// <reference path="./typed/jquery.d.ts"/>
+/// <reference path="./typed/rx.d.ts"/>
+/// <reference path="./typed/waa.d.ts"/>
+/// <reference path="./typed/soundcloud.d.ts"/>
+/// <reference path="Views/IControllerView.ts"/>
+/// <reference path="Views/AppView.ts"/>
 function exec() {
     "use strict";
     var app = new AppView();
@@ -6,3 +12,4 @@ function exec() {
 $(document).ready(function () {
     exec();
 });
+//# sourceMappingURL=main.js.map

@@ -26,6 +26,7 @@ class PlayerView implements IControllerView {
     mic.click((e) => {
       e.preventDefault();
       this.playerController.onMicClick();
+      this.audioPlayer.pause();
     });
 
     var soundcloud =

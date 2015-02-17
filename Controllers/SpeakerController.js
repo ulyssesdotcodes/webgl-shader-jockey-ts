@@ -1,3 +1,4 @@
+/// <reference path="../Models/AudioManager.ts"/>
 var SpeakerController = (function () {
     function SpeakerController(manager, audioContext) {
         var _this = this;
@@ -10,3 +11,4 @@ var SpeakerController = (function () {
     };
     return SpeakerController;
 })();
+//# sourceMappingURL=SpeakerController.js.map

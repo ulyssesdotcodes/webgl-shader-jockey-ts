@@ -1,3 +1,6 @@
+/// <reference path="./PlayerController.ts"/>
+/// <reference path="./SpeakerController.ts"/>
+/// <reference path="../Models/AudioManager.ts"/>
 var AudioController = (function () {
     function AudioController() {
         window['AudioContext'] = window['AudioContext'] || window['webkitAudioContext'];
@@ -11,3 +14,4 @@ var AudioController = (function () {
     };
     return AudioController;
 })();
+//# sourceMappingURL=AudioController.js.map
