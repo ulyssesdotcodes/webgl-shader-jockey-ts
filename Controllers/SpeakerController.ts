@@ -5,10 +5,10 @@ class SpeakerController {
 
   constructor(manager: AudioManager) {
     this.manager = manager;
-    manager.getAudioNodeObservable().subscribe(node => this.connectToSpeakers(node));
+    manager.getAudioNodeObservable().subscribe((node: AudioNode) => this.connectToSpeakers(node));
   }
 
   connectToSpeakers(node: AudioNode) {
-    node.connect(this.manager.getContext().destination);
+    node.connect(this.manager.context.destination);
   }
 }

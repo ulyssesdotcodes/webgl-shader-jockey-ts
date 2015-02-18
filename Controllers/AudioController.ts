@@ -3,26 +3,26 @@
 /// <reference path="../Models/AudioManager.ts"/>
 
 class AudioController {
-  private playerController: PlayerController;
-  private speakerController: SpeakerController;
-  private manager: AudioManager;
+  private _playerController: PlayerController;
+  private _speakerController: SpeakerController;
+  private _manager: AudioManager;
 
   constructor() {
-    window['AudioContext'] = window['AudioContext'] || window['webkitAudioContext']
-    this.manager = new AudioManager(new AudioContext());
-    this.playerController = new PlayerController(this.manager);
-    this.speakerController = new SpeakerController(this.manager);
+    window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
+    this._manager = new AudioManager(new AudioContext());
+    this._playerController = new PlayerController(this._manager);
+    this._speakerController = new SpeakerController(this._manager);
   }
 
-  getPlayerController() {
-    return this.playerController;
+  get playerController() {
+    return this._playerController;
   }
 
-  getGLPropertiesObservable(): Rx.Observable<Array<IGLProperty>> {
-    return this.manager.getGLPropertiesObservable();
+  get manager() {
+    return this._manager;
   }
 
   sampleAudio(): void {
-    this.manager.sampleAudio();
+    this._manager.sampleAudio();
   }
 }

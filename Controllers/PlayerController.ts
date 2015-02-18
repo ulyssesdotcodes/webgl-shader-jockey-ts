@@ -13,14 +13,14 @@ class PlayerController {
     this.manager = manager;
 
     this.microphone = new Microphone();
-    this.microphone.getNodeObservable().subscribe(node =>
+    this.microphone.getNodeObservable().subscribe((node: AudioNode) =>
       this.manager.updateSourceNode(node));
 
     this.soundCloudLoader = new SoundCloudLoader();
   }
 
   onMicClick(): void {
-    this.microphone.emitNode(this.manager.getContext());
+    this.microphone.emitNode(this.manager.context);
   }
 
   onUrl(url: string): void {
@@ -29,7 +29,7 @@ class PlayerController {
   }
 
   setPlayerSource(source: HTMLMediaElement) {
-    this.playerSource = this.manager.getContext().createMediaElementSource(source);
+    this.playerSource = this.manager.context.createMediaElementSource(source);
   }
 
   getUrlObservable(): Rx.Observable<string> {

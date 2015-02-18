@@ -11,11 +11,7 @@ class AppView implements IControllerView {
 
     this.audioController = new AudioController();
 
-    this.playerView = new PlayerView(this.audioController.getPlayerController());
-
-    this.audioController.getGLPropertiesObservable().subscribe((glProperties) => {
-
-    });
+    this.playerView = new PlayerView(this.audioController.playerController);
   }
 
   render(el: HTMLElement): void {
