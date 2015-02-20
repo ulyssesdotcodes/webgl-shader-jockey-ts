@@ -1,13 +1,39 @@
+/// <reference path="../typed/rx.d.ts" />
+/// <reference path="../typed/waa.d.ts" />
+/// <reference path="./IGLProperty.ts" />
+/// <reference path="./TimeProperty.ts" />
+// Input: an audio context and a render time observable.
+// Output: an IGLProperty Array observable containing sampled audio data.
 var AudioManager = (function () {
-    function AudioManager() {
-        this.audioNodeSubject = new Rx.Subject();
+    function AudioManager(audioContext) {
+        this._audioContext = audioContext;
+        this.renderTimeObservable = new Rx.Subject();
     }
     AudioManager.prototype.updateSourceNode = function (sourceNode) {
-        this.audioNodeSubject.onNext(sourceNode);
+        sourceNode.connect(this.context.destination);
     };
-    AudioManager.prototype.getAudioNodeObservable = function () {
-        return this.audioNodeSubject.asObservable();
+    Object.defineProperty(AudioManager.prototype, "context", {
+        get: function () {
+            return this._audioContext;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AudioManager.prototype, "audioGLPropertiesObservable", {
+        get: function () {
+            return this.renderTimeObservable.map(function (time) { return new TimeProperty(time); }).map(function (timeProperty) {
+                var props = new Array();
+                props.push(timeProperty);
+                return props;
+            });
+        },
+        enumerable: true,
+        configurable: true
+    });
+    AudioManager.prototype.sampleAudio = function () {
+        this.renderTimeObservable.onNext(this._audioContext.currentTime);
     };
+    AudioManager.FFT_SIZE = 512;
     return AudioManager;
 })();
 //# sourceMappingURL=AudioManager.js.map

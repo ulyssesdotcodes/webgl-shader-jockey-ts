@@ -1,31 +1,24 @@
+/// <reference path="../typed/rx.d.ts" />
+/// <reference path="../typed/waa.d.ts" />
+/// <reference path="./IGLProperty.ts" />
+/// <reference path="./TimeProperty.ts" />
+
 // Input: an audio context and a render time observable.
 // Output: an IGLProperty Array observable containing sampled audio data.
 class AudioManager {
   static FFT_SIZE = 512;
   private _audioContext: AudioContext;
 
-  private audioNodeSubject: Rx.Subject<AudioNode>;
-
-  private audioAnalyser: AudioAnalyser;
-
   private renderTimeObservable: Rx.Subject<number>;
 
   constructor(audioContext: AudioContext) {
-    this.audioNodeSubject = new Rx.Subject<AudioNode>();
     this._audioContext = audioContext;
-
-    this.audioNodeSubject.subscribe((node: AudioNode) =>
-      this.audioAnalyser = new AudioAnalyser(node, AudioManager.FFT_SIZE));
 
     this.renderTimeObservable = new Rx.Subject<number>();
   }
 
   updateSourceNode(sourceNode: AudioSourceNode) {
-    this.audioNodeSubject.onNext(sourceNode);
-  }
-
-  getAudioNodeObservable(): Rx.Observable<AudioNode> {
-    return this.audioNodeSubject.asObservable();
+    sourceNode.connect(this.context.destination);
   }
 
   get context(): AudioContext {

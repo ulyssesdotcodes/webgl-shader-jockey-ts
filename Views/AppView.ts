@@ -1,17 +1,17 @@
 /// <reference path="PlayerView.ts"/>
-/// <reference path="../Controllers/AudioController.ts"/>
+/// <reference path="../Controllers/PlayerController.ts"/>
 
 class AppView implements IControllerView {
-  private audioController: AudioController;
+  private _playerController: PlayerController;
   playerView: PlayerView;
   content: JQuery;
 
   constructor() {
     this.content = $("<div>", { text: "Hello, world!" });
 
-    this.audioController = new AudioController();
+    this._playerController = new PlayerController();
 
-    this.playerView = new PlayerView(this.audioController.playerController);
+    this.playerView = new PlayerView(this._playerController);
   }
 
   render(el: HTMLElement): void {
@@ -23,6 +23,6 @@ class AppView implements IControllerView {
 
   animate(): void {
     requestAnimationFrame(() => this.animate());
-    this.audioController.sampleAudio();
+    this._playerController.sampleAudio();
   }
 }

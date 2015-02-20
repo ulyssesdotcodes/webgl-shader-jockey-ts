@@ -17,6 +17,7 @@ var PlayerView = (function () {
         mic.click(function (e) {
             e.preventDefault();
             _this.playerController.onMicClick();
+            _this.audioPlayer.pause();
         });
         var soundcloud = $('<div>', { class: 'soundcloud', text: 'Soundcloud URL:' });
         this.input = $("<input>", { class: 'soundcloud-input', type: 'text' });

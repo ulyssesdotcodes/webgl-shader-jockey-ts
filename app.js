@@ -1,16 +1,27 @@
+var TimeProperty = (function () {
+    function TimeProperty(time) {
+        this.name = "time";
+        this.time = time;
+    }
+    TimeProperty.prototype.getName = function () {
+        return this.name;
+    };
+    TimeProperty.prototype.addToGL = function (uniforms) {
+        uniforms.time = {
+            type: "f",
+            value: this.time
+        };
+        return uniforms;
+    };
+    return TimeProperty;
+})();
 var AudioManager = (function () {
     function AudioManager(audioContext) {
-        var _this = this;
-        this.audioNodeSubject = new Rx.Subject();
         this._audioContext = audioContext;
-        this.audioNodeSubject.subscribe(function (node) { return _this.audioAnalyser = new AudioAnalyser(node, AudioManager.FFT_SIZE); });
         this.renderTimeObservable = new Rx.Subject();
     }
     AudioManager.prototype.updateSourceNode = function (sourceNode) {
-        this.audioNodeSubject.onNext(sourceNode);
-    };
-    AudioManager.prototype.getAudioNodeObservable = function () {
-        return this.audioNodeSubject.asObservable();
+        sourceNode.connect(this.context.destination);
     };
     Object.defineProperty(AudioManager.prototype, "context", {
         get: function () {
@@ -95,9 +106,10 @@ var SoundCloudLoader = (function () {
     return SoundCloudLoader;
 })();
 var PlayerController = (function () {
-    function PlayerController(manager) {
+    function PlayerController() {
         var _this = this;
-        this.manager = manager;
+        window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
+        this.manager = new AudioManager(new AudioContext());
         this.microphone = new Microphone();
         this.microphone.getNodeObservable().subscribe(function (node) { return _this.manager.updateSourceNode(node); });
         this.soundCloudLoader = new SoundCloudLoader();
@@ -112,47 +124,13 @@ var PlayerController = (function () {
     PlayerController.prototype.setPlayerSource = function (source) {
         this.playerSource = this.manager.context.createMediaElementSource(source);
     };
+    PlayerController.prototype.sampleAudio = function () {
+        this.manager.sampleAudio();
+    };
     PlayerController.prototype.getUrlObservable = function () {
         return this.soundCloudLoader.getUrlObservable();
     };
     return PlayerController;
-})();
-var SpeakerController = (function () {
-    function SpeakerController(manager) {
-        var _this = this;
-        this.manager = manager;
-        manager.getAudioNodeObservable().subscribe(function (node) { return _this.connectToSpeakers(node); });
-    }
-    SpeakerController.prototype.connectToSpeakers = function (node) {
-        node.connect(this.manager.context.destination);
-    };
-    return SpeakerController;
-})();
-var AudioController = (function () {
-    function AudioController() {
-        window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
-        this._manager = new AudioManager(new AudioContext());
-        this._playerController = new PlayerController(this._manager);
-        this._speakerController = new SpeakerController(this._manager);
-    }
-    Object.defineProperty(AudioController.prototype, "playerController", {
-        get: function () {
-            return this._playerController;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(AudioController.prototype, "manager", {
-        get: function () {
-            return this._manager;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    AudioController.prototype.sampleAudio = function () {
-        this._manager.sampleAudio();
-    };
-    return AudioController;
 })();
 var PlayerView = (function () {
     function PlayerView(playerController) {
@@ -196,8 +174,8 @@ var PlayerView = (function () {
 var AppView = (function () {
     function AppView() {
         this.content = $("<div>", { text: "Hello, world!" });
-        this.audioController = new AudioController();
-        this.playerView = new PlayerView(this.audioController.playerController);
+        this._playerController = new PlayerController();
+        this.playerView = new PlayerView(this._playerController);
     }
     AppView.prototype.render = function (el) {
         var _this = this;
@@ -208,7 +186,7 @@ var AppView = (function () {
     AppView.prototype.animate = function () {
         var _this = this;
         requestAnimationFrame(function () { return _this.animate(); });
-        this.audioController.sampleAudio();
+        this._playerController.sampleAudio();
     };
     return AppView;
 })();
@@ -232,20 +210,17 @@ var AudioAnalyser = (function () {
     };
     return AudioAnalyser;
 })();
-var TimeProperty = (function () {
-    function TimeProperty(time) {
-        this.name = "time";
-        this.time = time;
+QUnit.module("audioManger");
+test("Update source node", function () {
+    console.log("Test");
+    window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
+    var audioManager = new AudioManager(new AudioContext());
+    var source = audioManager.context.createOscillator();
+    audioManager.updateSourceNode(source);
+    equal(1, audioManager.context.destination.numberOfInputs, "destination should have input");
+});
+var GLView = (function () {
+    function GLView() {
     }
-    TimeProperty.prototype.getName = function () {
-        return this.name;
-    };
-    TimeProperty.prototype.addToGL = function (uniforms) {
-        uniforms.time = {
-            type: "f",
-            value: this.time
-        };
-        return uniforms;
-    };
-    return TimeProperty;
+    return GLView;
 })();

@@ -1,0 +1,13 @@
+﻿{
+    "Compile": {
+        "Extensions": [ ".ts" ],
+        "ExtensionsWithNoOutput": [ ".d.ts" ],
+        "Executable": "compile.bat"
+    },
+    "References": [
+        { "Path": "lib", "Include": "*.js"}
+    ],
+    "Tests": [
+        { "Include": "*/*.tests.ts" }
+    ]
+}
