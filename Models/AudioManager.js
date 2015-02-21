@@ -19,17 +19,13 @@ var AudioManager = (function () {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(AudioManager.prototype, "audioGLPropertiesObservable", {
-        get: function () {
-            return this.renderTimeObservable.map(function (time) { return new TimeProperty(time); }).map(function (timeProperty) {
-                var props = new Array();
-                props.push(timeProperty);
-                return props;
-            });
-        },
-        enumerable: true,
-        configurable: true
-    });
+    AudioManager.prototype.glProperties = function () {
+        return this.renderTimeObservable.map(function (time) { return new TimeProperty(time); }).map(function (timeProperty) {
+            var props = new Array();
+            props.push(timeProperty);
+            return props;
+        });
+    };
     AudioManager.prototype.sampleAudio = function () {
         this.renderTimeObservable.onNext(this._audioContext.currentTime);
     };

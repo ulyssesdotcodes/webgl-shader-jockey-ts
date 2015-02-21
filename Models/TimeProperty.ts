@@ -1,5 +1,7 @@
-﻿class TimeProperty implements IGLProperty {
-  name = "time";
+﻿/// <reference path="./IGLProperty.ts"/>
+
+class TimeProperty implements IGLProperty {
+  private _name = "time";
   private time: number;
 
   constructor(time: number) {
@@ -7,7 +9,7 @@
   }
 
   getName(): string {
-    return this.name;
+    return this._name;
   }
 
   addToGL(uniforms: any): any {

@@ -2,10 +2,11 @@
 /// <reference path="../typed/waa.d.ts" />
 /// <reference path="./IGLProperty.ts" />
 /// <reference path="./TimeProperty.ts" />
+/// <reference path="./IPropertiesProvider.ts" />
 
 // Input: an audio context and a render time observable.
 // Output: an IGLProperty Array observable containing sampled audio data.
-class AudioManager {
+class AudioManager implements IPropertiesProvider {
   static FFT_SIZE = 512;
   private _audioContext: AudioContext;
 
@@ -25,7 +26,7 @@ class AudioManager {
     return this._audioContext;
   }
 
-  get audioGLPropertiesObservable(): Rx.Observable<Array<IGLProperty>> {
+  glProperties(): Rx.Observable<Array<IGLProperty>> {
     return this.renderTimeObservable.map((time: number) => new TimeProperty(time))
       .map((timeProperty: TimeProperty) => {
         var props: Array<IGLProperty> = new Array<IGLProperty>();

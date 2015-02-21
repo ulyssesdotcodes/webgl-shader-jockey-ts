@@ -2,10 +2,12 @@
     "Compile": {
         "Extensions": [ ".ts" ],
         "ExtensionsWithNoOutput": [ ".d.ts" ],
-        "Executable": "compile.bat"
+        "OutDirectory": "out",
+        "Executable": "%powershellexe%",
+        "Arguments": "-NoProfile %chutzpahsettingsdir%\\compile.ps1 -ExecutionPolicy ByPass"
     },
     "References": [
-        { "Path": "lib", "Include": "*.js"}
+        { "Path": "lib", "Include": "*.js", "Exclude": "*.min.js"}
     ],
     "Tests": [
         { "Include": "*/*.tests.ts" }

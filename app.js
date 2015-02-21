@@ -1,10 +1,10 @@
 var TimeProperty = (function () {
     function TimeProperty(time) {
-        this.name = "time";
+        this._name = "time";
         this.time = time;
     }
     TimeProperty.prototype.getName = function () {
-        return this.name;
+        return this._name;
     };
     TimeProperty.prototype.addToGL = function (uniforms) {
         uniforms.time = {
@@ -30,17 +30,13 @@ var AudioManager = (function () {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(AudioManager.prototype, "audioGLPropertiesObservable", {
-        get: function () {
-            return this.renderTimeObservable.map(function (time) { return new TimeProperty(time); }).map(function (timeProperty) {
-                var props = new Array();
-                props.push(timeProperty);
-                return props;
-            });
-        },
-        enumerable: true,
-        configurable: true
-    });
+    AudioManager.prototype.glProperties = function () {
+        return this.renderTimeObservable.map(function (time) { return new TimeProperty(time); }).map(function (timeProperty) {
+            var props = new Array();
+            props.push(timeProperty);
+            return props;
+        });
+    };
     AudioManager.prototype.sampleAudio = function () {
         this.renderTimeObservable.onNext(this._audioContext.currentTime);
     };
@@ -210,14 +206,67 @@ var AudioAnalyser = (function () {
     };
     return AudioAnalyser;
 })();
+var ShaderManager = (function () {
+    function ShaderManager(propertiesProviders, shaderProvider) {
+        var _this = this;
+        this._shaderProvider = shaderProvider;
+        this._uniforms = {};
+        Rx.Observable.merge(Rx.Observable.from(propertiesProviders).flatMap(function (provider) {
+            return provider.glProperties();
+        }).flatMap(function (properties) { return Rx.Observable.from(properties); })).subscribe(function (property) {
+            property.addToGL(_this._uniforms);
+        });
+    }
+    ShaderManager.prototype.updatingShaderObservable = function () {
+        var _this = this;
+        return this._shaderProvider.shaderObservable().doOnNext(function (shaderMaterial) { return shaderMaterial.uniforms = _this._uniforms; });
+    };
+    return ShaderManager;
+})();
 QUnit.module("audioManger");
+window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
+var audioManager = new AudioManager(new AudioContext());
 test("Update source node", function () {
-    console.log("Test");
-    window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
-    var audioManager = new AudioManager(new AudioContext());
     var source = audioManager.context.createOscillator();
     audioManager.updateSourceNode(source);
     equal(1, audioManager.context.destination.numberOfInputs, "destination should have input");
+});
+test("Time property", function () {
+    var scheduler = new Rx.TestScheduler();
+    var mockObserver = scheduler.createObserver();
+    audioManager.glProperties().subscribe(mockObserver);
+    var time = audioManager.context.currentTime;
+    audioManager.sampleAudio();
+    notEqual(0, mockObserver.messages.length);
+    equal(mockObserver.messages[0].value.value[0].getName(), "time", "A property named time");
+    equal(mockObserver.messages[0].value.value[0].addToGL(new Object()).time.value, time, "Corrent time value");
+});
+QUnit.module("shaderCreator");
+window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
+var audioManager = new AudioManager(new AudioContext());
+var shaderMaterial = new THREE.ShaderMaterial();
+var shaderProvider = {
+    shaderObservable: function () {
+        return Rx.Observable.just(shaderMaterial);
+    }
+};
+var shaderCreator = new ShaderManager([audioManager], shaderProvider);
+test("Time property", function () {
+    var scheduler = new Rx.TestScheduler();
+    var observer = scheduler.createObserver();
+    shaderCreator.updatingShaderObservable().subscribe(observer);
+    audioManager.sampleAudio();
+    var time = audioManager.context.currentTime;
+    equal(observer.messages[0].value.value.uniforms.time.type, "f");
+    equal(observer.messages[0].value.value.uniforms.time.value, time);
+});
+test("Shader creation", function () {
+    var scheduler = new Rx.TestScheduler();
+    var observer = scheduler.createObserver();
+    shaderCreator.updatingShaderObservable().subscribe(observer);
+    audioManager.sampleAudio();
+    var time = audioManager.context.currentTime;
+    equal(observer.messages[0].value.value, shaderMaterial, "Outputs shader material");
 });
 var GLView = (function () {
     function GLView() {

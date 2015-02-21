@@ -1,4 +1,5 @@
-declare class TimeProperty implements IGLProperty {
+
+class TimeProperty implements IGLProperty {
     name: string;
     private time;
     constructor(time: number);
