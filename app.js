@@ -1,20 +1,33 @@
+/// <reference path="./IGLProperty.ts"/>
 var TimeProperty = (function () {
     function TimeProperty(time) {
         this._name = "time";
-        this.time = time;
+        this._type = "f";
+        this._time = time;
     }
-    TimeProperty.prototype.getName = function () {
+    TimeProperty.prototype.name = function () {
         return this._name;
     };
-    TimeProperty.prototype.addToGL = function (uniforms) {
-        uniforms.time = {
-            type: "f",
-            value: this.time
-        };
-        return uniforms;
+    TimeProperty.prototype.type = function () {
+        return this._type;
+    };
+    TimeProperty.prototype.value = function () {
+        return this._time;
+    };
+    TimeProperty.prototype.uniform = function () {
+        return { type: this.type(), value: this.value() };
     };
     return TimeProperty;
 })();
+/// <reference path="../typed/rx.d.ts"/>
+/// <reference path="./IGLProperty.ts"/>
+/// <reference path="../typed/rx.d.ts" />
+/// <reference path="../typed/waa.d.ts" />
+/// <reference path="./IGLProperty.ts" />
+/// <reference path="./TimeProperty.ts" />
+/// <reference path="./IPropertiesProvider.ts" />
+// Input: an audio context and a render time observable.
+// Output: an IGLProperty Array observable containing sampled audio data.
 var AudioManager = (function () {
     function AudioManager(audioContext) {
         this._audioContext = audioContext;
@@ -73,6 +86,7 @@ var Microphone = (function () {
     };
     return Microphone;
 })();
+/// <reference path="../typed/soundcloud.d.ts" />
 var SoundCloudLoader = (function () {
     function SoundCloudLoader() {
         this.urlSubject = new Rx.Subject();
@@ -86,7 +100,7 @@ var SoundCloudLoader = (function () {
     SoundCloudLoader.prototype.loadStream = function (url) {
         var _this = this;
         if (!SC) {
-            return;
+            return; // No internet
         }
         SC.get('/resolve', { url: url, test: "two" }, function (sound) {
             if (sound.errors) {
@@ -101,15 +115,25 @@ var SoundCloudLoader = (function () {
     SoundCloudLoader.CLIENT_ID = "384835fc6e109a2533f83591ae3713e9";
     return SoundCloudLoader;
 })();
+/// <reference path="../Models/AudioManager.ts"/>
+/// <reference path="../Models/Microphone.ts"/>
+/// <reference path="../Models/SoundCloudLoader.ts"/>
 var PlayerController = (function () {
     function PlayerController() {
         var _this = this;
         window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
-        this.manager = new AudioManager(new AudioContext());
+        this._manager = new AudioManager(new AudioContext());
         this.microphone = new Microphone();
         this.microphone.getNodeObservable().subscribe(function (node) { return _this.manager.updateSourceNode(node); });
         this.soundCloudLoader = new SoundCloudLoader();
     }
+    Object.defineProperty(PlayerController.prototype, "manager", {
+        get: function () {
+            return this._manager;
+        },
+        enumerable: true,
+        configurable: true
+    });
     PlayerController.prototype.onMicClick = function () {
         this.microphone.emitNode(this.manager.context);
     };
@@ -128,6 +152,7 @@ var PlayerController = (function () {
     };
     return PlayerController;
 })();
+/// <reference path="../Controllers/PlayerController.ts"/>
 var PlayerView = (function () {
     function PlayerView(playerController) {
         this.content = $("<div>", { class: "controls" });
@@ -167,15 +192,71 @@ var PlayerView = (function () {
     };
     return PlayerView;
 })();
+var GLView = (function () {
+    function GLView(audioManager) {
+        this._glController = new GLController(audioManager);
+    }
+    GLView.prototype.render = function (el) {
+        var _this = this;
+        this._camera = new THREE.Camera();
+        this._scene = new THREE.Scene();
+        this._renderer = new THREE.WebGLRenderer();
+        this._camera.position.z = 1;
+        this._renderer.setPixelRatio(window.devicePixelRatio);
+        var sceneContainer = new THREE.Object3D();
+        this._scene.add(sceneContainer);
+        this._glController.MeshObservable.scan(new THREE.Object3D(), function (obj, meshes) {
+            obj = new THREE.Object3D();
+            for (var mesh in meshes) {
+                obj.add(mesh);
+            }
+            return obj;
+        }).subscribe(function (obj) {
+            _this._scene.add(sceneContainer);
+        });
+        el.appendChild(this._renderer.domElement);
+        this.onWindowResize();
+        window.addEventListener('resize', function (__) { return _this.onWindowResize(); }, false);
+    };
+    GLView.prototype.onWindowResize = function () {
+        this._renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+    GLView.prototype.animate = function () {
+        this._renderer.render(this._scene, this._camera);
+    };
+    return GLView;
+})();
+var GLController = (function () {
+    function GLController(audioManager) {
+        this._uniformsManager = UniformsManager.fromPropertyProviders([audioManager]);
+        this._meshSubject = new Rx.Subject();
+        this.MeshObservable = this._meshSubject.asObservable();
+    }
+    GLController.prototype.onNewMeshes = function (meshes) {
+        this._meshSubject.onNext(meshes);
+    };
+    GLController.prototype.fromAudioManager = function (audioManager) {
+        var controller = new GLController(audioManager);
+        var audioShaderPlane = new AudioShaderPlane(audioManager);
+        audioShaderPlane.MeshObservable.subscribe(function (mesh) { return controller.onNewMeshes([mesh]); });
+    };
+    return GLController;
+})();
+/// <reference path="PlayerView.ts"/>
+/// <reference path="../Controllers/PlayerController.ts"/>
+/// <reference path="GLView.ts"/>
+/// <reference path="../Controllers/GLController.ts"/>
 var AppView = (function () {
     function AppView() {
         this.content = $("<div>", { text: "Hello, world!" });
         this._playerController = new PlayerController();
         this.playerView = new PlayerView(this._playerController);
+        this._glView = new GLView(this._playerController.manager);
     }
     AppView.prototype.render = function (el) {
         var _this = this;
         this.playerView.render(this.content[0]);
+        this._glView.render(this.content[0]);
         $(el).append(this.content);
         requestAnimationFrame(function () { return _this.animate(); });
     };
@@ -183,9 +264,15 @@ var AppView = (function () {
         var _this = this;
         requestAnimationFrame(function () { return _this.animate(); });
         this._playerController.sampleAudio();
+        this._glView.animate();
     };
     return AppView;
 })();
+/// <reference path="./typed/jquery.d.ts"/>
+/// <reference path="./typed/rx.d.ts"/>
+/// <reference path="./typed/waa.d.ts"/>
+/// <reference path="./typed/soundcloud.d.ts"/>
+/// <reference path="Views/AppView.ts"/>
 function exec() {
     "use strict";
     var app = new AppView();
@@ -194,82 +281,3 @@ function exec() {
 $(document).ready(function () {
     exec();
 });
-var AudioAnalyser = (function () {
-    function AudioAnalyser(audioNode, fftSize) {
-        this.analyser = audioNode.context.createAnalyser();
-        this.fftSize = fftSize;
-        audioNode.connect(this.analyser);
-        this.frequencyBuffer = new Uint8Array(this.fftSize);
-    }
-    AudioAnalyser.prototype.update = function (time) {
-        this.analyser.getByteFrequencyData(this.frequencyBuffer);
-    };
-    return AudioAnalyser;
-})();
-var ShaderManager = (function () {
-    function ShaderManager(propertiesProviders, shaderProvider) {
-        var _this = this;
-        this._shaderProvider = shaderProvider;
-        this._uniforms = {};
-        Rx.Observable.merge(Rx.Observable.from(propertiesProviders).flatMap(function (provider) {
-            return provider.glProperties();
-        }).flatMap(function (properties) { return Rx.Observable.from(properties); })).subscribe(function (property) {
-            property.addToGL(_this._uniforms);
-        });
-    }
-    ShaderManager.prototype.updatingShaderObservable = function () {
-        var _this = this;
-        return this._shaderProvider.shaderObservable().doOnNext(function (shaderMaterial) { return shaderMaterial.uniforms = _this._uniforms; });
-    };
-    return ShaderManager;
-})();
-QUnit.module("audioManger");
-window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
-var audioManager = new AudioManager(new AudioContext());
-test("Update source node", function () {
-    var source = audioManager.context.createOscillator();
-    audioManager.updateSourceNode(source);
-    equal(1, audioManager.context.destination.numberOfInputs, "destination should have input");
-});
-test("Time property", function () {
-    var scheduler = new Rx.TestScheduler();
-    var mockObserver = scheduler.createObserver();
-    audioManager.glProperties().subscribe(mockObserver);
-    var time = audioManager.context.currentTime;
-    audioManager.sampleAudio();
-    notEqual(0, mockObserver.messages.length);
-    equal(mockObserver.messages[0].value.value[0].getName(), "time", "A property named time");
-    equal(mockObserver.messages[0].value.value[0].addToGL(new Object()).time.value, time, "Corrent time value");
-});
-QUnit.module("shaderCreator");
-window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
-var audioManager = new AudioManager(new AudioContext());
-var shaderMaterial = new THREE.ShaderMaterial();
-var shaderProvider = {
-    shaderObservable: function () {
-        return Rx.Observable.just(shaderMaterial);
-    }
-};
-var shaderCreator = new ShaderManager([audioManager], shaderProvider);
-test("Time property", function () {
-    var scheduler = new Rx.TestScheduler();
-    var observer = scheduler.createObserver();
-    shaderCreator.updatingShaderObservable().subscribe(observer);
-    audioManager.sampleAudio();
-    var time = audioManager.context.currentTime;
-    equal(observer.messages[0].value.value.uniforms.time.type, "f");
-    equal(observer.messages[0].value.value.uniforms.time.value, time);
-});
-test("Shader creation", function () {
-    var scheduler = new Rx.TestScheduler();
-    var observer = scheduler.createObserver();
-    shaderCreator.updatingShaderObservable().subscribe(observer);
-    audioManager.sampleAudio();
-    var time = audioManager.context.currentTime;
-    equal(observer.messages[0].value.value, shaderMaterial, "Outputs shader material");
-});
-var GLView = (function () {
-    function GLView() {
-    }
-    return GLView;
-})();

@@ -1,4 +1,6 @@
 ﻿interface IGLProperty {
-  addToGL(uniforms: any);
-  getName(): string;
+  name(): string;
+  type(): string;
+  value(): any;
+  uniform(): any;
 } 

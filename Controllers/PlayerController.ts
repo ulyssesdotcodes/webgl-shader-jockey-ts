@@ -5,13 +5,14 @@
 class PlayerController {
   private playerSource: MediaElementAudioSourceNode;
 
-  private manager: AudioManager;
+  private _manager: AudioManager;
+  get manager(): AudioManager { return this._manager; }
   private microphone: Microphone;
   private soundCloudLoader: SoundCloudLoader;
 
   constructor() {
     window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
-    this.manager = new AudioManager(new AudioContext());
+    this._manager = new AudioManager(new AudioContext());
 
     this.microphone = new Microphone();
     this.microphone.getNodeObservable().subscribe((node: AudioNode) =>

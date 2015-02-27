@@ -2,21 +2,27 @@
 
 class TimeProperty implements IGLProperty {
   private _name = "time";
-  private time: number;
+  private _type = "f";
+  private _time: number;
+  
 
   constructor(time: number) {
-    this.time = time;
+    this._time = time;
   }
 
-  getName(): string {
+  name(): string {
     return this._name;
   }
 
-  addToGL(uniforms: any): any {
-    uniforms.time = {
-      type: "f",
-      value: this.time
-    };
-    return uniforms;
+  type(): string {
+    return this._type;
+  }
+
+  value(): number {
+    return this._time;
+  }
+
+  uniform(): any {
+    return { type: this.type(), value: this.value() };
   }
 } 
