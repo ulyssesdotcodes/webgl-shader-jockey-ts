@@ -28,4 +28,3 @@ var Microphone = (function () {
     };
     return Microphone;
 })();
-//# sourceMappingURL=Microphone.js.map

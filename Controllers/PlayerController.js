@@ -1,15 +1,19 @@
-/// <reference path="../Models/AudioManager.ts"/>
-/// <reference path="../Models/Microphone.ts"/>
-/// <reference path="../Models/SoundCloudLoader.ts"/>
 var PlayerController = (function () {
     function PlayerController() {
         var _this = this;
         window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
-        this.manager = new AudioManager(new AudioContext());
+        this._manager = new AudioManager(new AudioContext());
         this.microphone = new Microphone();
         this.microphone.getNodeObservable().subscribe(function (node) { return _this.manager.updateSourceNode(node); });
         this.soundCloudLoader = new SoundCloudLoader();
     }
+    Object.defineProperty(PlayerController.prototype, "manager", {
+        get: function () {
+            return this._manager;
+        },
+        enumerable: true,
+        configurable: true
+    });
     PlayerController.prototype.onMicClick = function () {
         this.microphone.emitNode(this.manager.context);
     };
@@ -28,4 +32,3 @@ var PlayerController = (function () {
     };
     return PlayerController;
 })();
-//# sourceMappingURL=PlayerController.js.map

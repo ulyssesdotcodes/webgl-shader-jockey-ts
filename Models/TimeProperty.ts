@@ -4,7 +4,7 @@ class TimeProperty implements IGLProperty {
   private _name = "time";
   private _type = "f";
   private _time: number;
-  
+
 
   constructor(time: number) {
     this._time = time;
@@ -25,4 +25,4 @@ class TimeProperty implements IGLProperty {
   uniform(): any {
     return { type: this.type(), value: this.value() };
   }
-} 
+}

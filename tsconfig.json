@@ -1,0 +1,53 @@
+{
+    "compilerOptions": {
+        "target": "es5",
+        "module": "commonjs",
+        "declaration": false,
+        "noImplicitAny": false,
+        "removeComments": true,
+        "noLib": false
+    },
+    "filesGlob": [
+        "./**/*.ts",
+        "!Tests/*.ts"
+    ],
+    "files": [
+        "./Controllers/GLController.ts",
+        "./Controllers/PlayerController.ts",
+        "./Models/AudioAnalyser.ts",
+        "./Models/AudioManager.ts",
+        "./Models/AudioShaderPlane.ts",
+        "./Models/ConstPropertiesProvider.ts",
+        "./Models/IGLProperty.ts",
+        "./Models/IPropertiesProvider.ts",
+        "./Models/IShaderProvider.ts",
+        "./Models/Microphone.ts",
+        "./Models/ShaderLoader.ts",
+        "./Models/ShaderPlane.ts",
+        "./Models/SoundCloudLoader.ts",
+        "./Models/TimeProperty.ts",
+        "./Models/UniformsManager.ts",
+        "./Tests/TestUtils.ts",
+        "./Tests/audiomanager.tests.ts",
+        "./Tests/audioshaderplane.tests.ts",
+        "./Tests/connected.tests.ts",
+        "./Tests/uniformsmanager.tests.ts",
+        "./Views/AppView.ts",
+        "./Views/GLView.ts",
+        "./Views/IControllerView.ts",
+        "./Views/PlayerView.ts",
+        "./main.d.ts",
+        "./main.ts",
+        "./typed/MediaStream.d.ts",
+        "./typed/jquery.d.ts",
+        "./typed/qunit.d.ts",
+        "./typed/rx-lite.d.ts",
+        "./typed/rx.d.ts",
+        "./typed/rx.jquery.d.ts",
+        "./typed/rx.testing.d.ts",
+        "./typed/rx.virtualtime.d.ts",
+        "./typed/soundcloud.d.ts",
+        "./typed/three.d.ts",
+        "./typed/waa.d.ts"
+    ]
+}

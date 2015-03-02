@@ -1,5 +1,3 @@
-/// <reference path="../Controllers/PlayerController.ts"/>
-
 class PlayerView implements IControllerView {
   private content: JQuery;
   private playerController: PlayerController;

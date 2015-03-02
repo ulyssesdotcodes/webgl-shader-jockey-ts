@@ -1,18 +1,20 @@
 var TimeProperty = (function () {
     function TimeProperty(time) {
         this._name = "time";
-        this.time = time;
+        this._type = "f";
+        this._time = time;
     }
-    TimeProperty.prototype.getName = function () {
+    TimeProperty.prototype.name = function () {
         return this._name;
     };
-    TimeProperty.prototype.addToGL = function (uniforms) {
-        uniforms.time = {
-            type: "f",
-            value: this.time
-        };
-        return uniforms;
+    TimeProperty.prototype.type = function () {
+        return this._type;
+    };
+    TimeProperty.prototype.value = function () {
+        return this._time;
+    };
+    TimeProperty.prototype.uniform = function () {
+        return { type: this.type(), value: this.value() };
     };
     return TimeProperty;
 })();
-//# sourceMappingURL=TimeProperty.js.map

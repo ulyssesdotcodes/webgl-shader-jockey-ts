@@ -3,4 +3,4 @@
   type(): string;
   value(): any;
   uniform(): any;
-} 
+}

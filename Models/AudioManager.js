@@ -1,9 +1,3 @@
-/// <reference path="../typed/rx.d.ts" />
-/// <reference path="../typed/waa.d.ts" />
-/// <reference path="./IGLProperty.ts" />
-/// <reference path="./TimeProperty.ts" />
-// Input: an audio context and a render time observable.
-// Output: an IGLProperty Array observable containing sampled audio data.
 var AudioManager = (function () {
     function AudioManager(audioContext) {
         this._audioContext = audioContext;
@@ -32,4 +26,3 @@ var AudioManager = (function () {
     AudioManager.FFT_SIZE = 512;
     return AudioManager;
 })();
-//# sourceMappingURL=AudioManager.js.map

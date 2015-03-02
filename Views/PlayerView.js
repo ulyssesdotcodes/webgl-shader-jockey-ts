@@ -1,4 +1,3 @@
-/// <reference path="../Controllers/PlayerController.ts"/>
 var PlayerView = (function () {
     function PlayerView(playerController) {
         this.content = $("<div>", { class: "controls" });
@@ -38,4 +37,3 @@ var PlayerView = (function () {
     };
     return PlayerView;
 })();
-//# sourceMappingURL=PlayerView.js.map
