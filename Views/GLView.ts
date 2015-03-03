@@ -1,4 +1,6 @@
-﻿class GLView {
+/// <reference path='../Models/ConstPropertiesProvider.ts'/>
+
+class GLView implements IControllerView{
   private _glController: GLController;
   private _currentPlaneMesh: THREE.Mesh;
   private _renderer: THREE.WebGLRenderer;

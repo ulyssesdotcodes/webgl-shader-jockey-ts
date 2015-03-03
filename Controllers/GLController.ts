@@ -1,3 +1,8 @@
+/// <reference path='../typed/three.d.ts'/>
+/// <reference path='../Models/IPropertiesProvider.ts'/>
+/// <reference path='../Models/UniformsManager.ts'/>
+/// <reference path='../Models/AudioShaderPlane.ts'/>
+
 class GLController {
   private _uniformsManager: UniformsManager;
   private _meshSubject: Rx.Subject<Array<THREE.Mesh>>;

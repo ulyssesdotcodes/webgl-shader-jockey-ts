@@ -8,7 +8,6 @@
     this.analyser = audioNode.context.createAnalyser();
 
     this.fftSize = fftSize;
-
     audioNode.connect(this.analyser);
 
     this.frequencyBuffer = new Uint8Array(this.fftSize);
@@ -17,4 +16,4 @@
   update(time: number) {
     this.analyser.getByteFrequencyData(this.frequencyBuffer);
   }
-} 
+}

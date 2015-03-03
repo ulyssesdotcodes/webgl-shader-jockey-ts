@@ -1,7 +1,8 @@
-/// <reference path="PlayerView.ts"/>
+/// <reference path="./PlayerView.ts"/>
 /// <reference path="../Controllers/PlayerController.ts"/>
-/// <reference path="GLView.ts"/>
+/// <reference path="./GLView.ts"/>
 /// <reference path="../Controllers/GLController.ts"/>
+/// <reference path='./IControllerView.ts' />
 
 class AppView implements IControllerView {
   private _playerController: PlayerController;
