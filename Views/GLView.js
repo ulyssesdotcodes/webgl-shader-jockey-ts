@@ -13,19 +13,21 @@ var GLView = (function () {
         this._scene.add(sceneContainer);
         this._glController.MeshObservable.scan(new THREE.Object3D(), function (obj, meshes) {
             obj = new THREE.Object3D();
-            for (var mesh in meshes) {
-                obj.add(mesh);
-            }
+            meshes.forEach(function (mesh) { return obj.add(mesh); });
             return obj;
         }).subscribe(function (obj) {
+            _this._scene.remove(sceneContainer);
+            sceneContainer = obj;
             _this._scene.add(sceneContainer);
         });
         el.appendChild(this._renderer.domElement);
         this.onWindowResize();
         window.addEventListener('resize', function (__) { return _this.onWindowResize(); }, false);
+        this._glController.onShaderName("vertical_wav");
     };
     GLView.prototype.onWindowResize = function () {
         this._renderer.setSize(window.innerWidth, window.innerHeight);
+        this._glController.onNewResolution({ width: window.innerWidth, height: window.innerHeight });
     };
     GLView.prototype.animate = function () {
         this._renderer.render(this._scene, this._camera);

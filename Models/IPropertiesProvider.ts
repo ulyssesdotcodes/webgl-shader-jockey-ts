@@ -3,4 +3,4 @@
 
 interface IPropertiesProvider{
   glProperties(): Rx.Observable<Array<IGLProperty>>;
-}
+} 

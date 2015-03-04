@@ -1,21 +1,14 @@
 var ShaderLoader = (function () {
     function ShaderLoader() {
     }
-    ShaderLoader.getShaderFromServer = function (name) {
-        return Rx.Observable.combineLatest(ShaderLoader.getVertex(name), ShaderLoader.getFragment(name), function (frag, vert) { return new THREE.ShaderMaterial({
-            vertexShader: vert,
-            fragmentShader: frag
-        }); });
+    ShaderLoader.prototype.getShaderFromServer = function (name) {
+        return Rx.Observable.combineLatest(this.getFragment(name), this.getVertex(name), function (frag, vert) { return new ShaderText(frag, vert); });
     };
-    ShaderLoader.getVertex = function (name) {
-        return $.ajaxAsObservable({
-            url: '/shaders/' + name
-        }).map(function (shader) { return shader.responseText; });
+    ShaderLoader.prototype.getVertex = function (name) {
+        return $.getAsObservable('/shaders/' + name + ".vert").map(function (shader) { return shader.data; });
     };
-    ShaderLoader.getFragment = function (name) {
-        return $.ajaxAsObservable({
-            url: '/shaders/' + name + '.frag'
-        }).map(function (shader) { return shader.responseText; });
+    ShaderLoader.prototype.getFragment = function (name) {
+        return $.getAsObservable('/shaders/' + name + '.frag').map(function (shader) { return shader.data; });
     };
     return ShaderLoader;
 })();

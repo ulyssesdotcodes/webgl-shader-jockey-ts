@@ -26,12 +26,12 @@ class GLView implements IControllerView{
       .scan(new THREE.Object3D(),
       (obj, meshes) => {
         obj = new THREE.Object3D()
-        for (var mesh in meshes) {
-          obj.add(mesh);
-        }
+        meshes.forEach((mesh) => obj.add(mesh));
         return obj;
       })
       .subscribe((obj) => {
+      this._scene.remove(sceneContainer);
+      sceneContainer = obj;
       this._scene.add(sceneContainer);
     });
 
@@ -40,10 +40,13 @@ class GLView implements IControllerView{
     this.onWindowResize();
 
     window.addEventListener('resize',(__) => this.onWindowResize(), false);
+
+    this._glController.onShaderName("vertical_wav");
   }
 
   onWindowResize() {
     this._renderer.setSize(window.innerWidth, window.innerHeight);
+    this._glController.onNewResolution({width: window.innerWidth, height: window.innerHeight})
   }
 
   animate() {

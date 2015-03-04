@@ -3,28 +3,32 @@
 /// <reference path="./UniformsManager.ts"/>
 
 class AudioShaderPlane {
-  private _shaderSubject: Rx.Subject<THREE.ShaderMaterial>;
+  private _shaderSubject: Rx.Subject<ShaderText>;
   private _meshSubject: Rx.Subject<THREE.Mesh>;
   MeshObservable: Rx.Observable<THREE.Mesh>;
 
-  constructor(audioManager: AudioManager) {
-    this._shaderSubject = new Rx.Subject<THREE.ShaderMaterial>();
+  constructor(audioManager: AudioManager, additionalProperties: Array<IPropertiesProvider>) {
+    this._shaderSubject = new Rx.Subject<ShaderText>();
     this._meshSubject = new Rx.Subject<THREE.Mesh>();
     this.MeshObservable = this._meshSubject.asObservable();
 
-    var uniformsManager = UniformsManager.fromPropertyProviders([audioManager]);
+    var uniformsManager = UniformsManager.fromPropertyProviders(
+      additionalProperties.concat([audioManager]));
 
     this._shaderSubject
       .map(
-      (shader) => {
-        shader.uniforms = uniformsManager.uniforms;
-        return shader;
+      (shaderText) => {
+        return new THREE.ShaderMaterial({
+            uniforms: uniformsManager.uniforms,
+            fragmentShader: shaderText.fragmentShader,
+            vertexShader: shaderText.vertextShader
+          });
       })
       .map((shader) => new ShaderPlane(shader).mesh)
       .subscribe(this._meshSubject);
   }
 
-  onShader(shader: THREE.ShaderMaterial) {
+  onShaderText(shader: ShaderText) {
     this._shaderSubject.onNext(shader);
   }
-} 
+}

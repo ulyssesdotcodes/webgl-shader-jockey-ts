@@ -219,19 +219,21 @@ var GLView = (function () {
         this._scene.add(sceneContainer);
         this._glController.MeshObservable.scan(new THREE.Object3D(), function (obj, meshes) {
             obj = new THREE.Object3D();
-            for (var mesh in meshes) {
-                obj.add(mesh);
-            }
+            meshes.forEach(function (mesh) { return obj.add(mesh); });
             return obj;
         }).subscribe(function (obj) {
+            _this._scene.remove(sceneContainer);
+            sceneContainer = obj;
             _this._scene.add(sceneContainer);
         });
         el.appendChild(this._renderer.domElement);
         this.onWindowResize();
         window.addEventListener('resize', function (__) { return _this.onWindowResize(); }, false);
+        this._glController.onShaderName("vertical_wav");
     };
     GLView.prototype.onWindowResize = function () {
         this._renderer.setSize(window.innerWidth, window.innerHeight);
+        this._glController.onNewResolution({ width: window.innerWidth, height: window.innerHeight });
     };
     GLView.prototype.animate = function () {
         this._renderer.render(this._scene, this._camera);
@@ -279,38 +281,101 @@ var ShaderPlane = (function () {
 /// <reference path="./ShaderPlane.ts"/>
 /// <reference path="./UniformsManager.ts"/>
 var AudioShaderPlane = (function () {
-    function AudioShaderPlane(audioManager) {
+    function AudioShaderPlane(audioManager, additionalProperties) {
         this._shaderSubject = new Rx.Subject();
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
-        var uniformsManager = UniformsManager.fromPropertyProviders([audioManager]);
-        this._shaderSubject.map(function (shader) {
-            shader.uniforms = uniformsManager.uniforms;
-            return shader;
+        var uniformsManager = UniformsManager.fromPropertyProviders(additionalProperties.concat([audioManager]));
+        this._shaderSubject.map(function (shaderText) {
+            return new THREE.ShaderMaterial({
+                uniforms: uniformsManager.uniforms,
+                fragmentShader: shaderText.fragmentShader,
+                vertexShader: shaderText.vertextShader
+            });
         }).map(function (shader) { return new ShaderPlane(shader).mesh; }).subscribe(this._meshSubject);
     }
-    AudioShaderPlane.prototype.onShader = function (shader) {
+    AudioShaderPlane.prototype.onShaderText = function (shader) {
         this._shaderSubject.onNext(shader);
     };
     return AudioShaderPlane;
+})();
+var ShaderText = (function () {
+    function ShaderText(fragment, vertex) {
+        this.fragmentShader = fragment;
+        this.vertextShader = vertex;
+    }
+    return ShaderText;
+})();
+/// <reference path="../typed/rx.jquery.d.ts"/>
+/// <reference path='./ShaderText.ts'/>
+var ShaderLoader = (function () {
+    function ShaderLoader() {
+    }
+    ShaderLoader.prototype.getShaderFromServer = function (name) {
+        return Rx.Observable.combineLatest(this.getFragment(name), this.getVertex(name), function (frag, vert) { return new ShaderText(frag, vert); });
+    };
+    ShaderLoader.prototype.getVertex = function (name) {
+        return $.getAsObservable('/shaders/' + name + ".vert").map(function (shader) { return shader.data; });
+    };
+    ShaderLoader.prototype.getFragment = function (name) {
+        return $.getAsObservable('/shaders/' + name + '.frag').map(function (shader) { return shader.data; });
+    };
+    return ShaderLoader;
+})();
+var ResolutionProvider = (function () {
+    function ResolutionProvider() {
+        this._resolutionSubject = new Rx.Subject();
+    }
+    ResolutionProvider.prototype.glProperties = function () {
+        return this._resolutionSubject.asObservable().map(function (resolution) { return [resolution]; });
+    };
+    ResolutionProvider.prototype.updateResolution = function (resolution) {
+        this._resolutionSubject.onNext({
+            name: function () {
+                return "resolution";
+            },
+            type: function () {
+                return "v2";
+            },
+            value: function () {
+                return resolution;
+            },
+            uniform: function () {
+                return { type: "v2", value: resolution };
+            }
+        });
+    };
+    return ResolutionProvider;
 })();
 /// <reference path='../typed/three.d.ts'/>
 /// <reference path='../Models/IPropertiesProvider.ts'/>
 /// <reference path='../Models/UniformsManager.ts'/>
 /// <reference path='../Models/AudioShaderPlane.ts'/>
+/// <reference path='../Models/ShaderLoader.ts'/>
+/// <reference path='../Models/ResolutionProvider.ts'/>
 var GLController = (function () {
     function GLController(audioManager) {
+        var _this = this;
         this._uniformsManager = UniformsManager.fromPropertyProviders([audioManager]);
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
+        this._resolutionProvider = new ResolutionProvider();
+        this._shaderLoader = new ShaderLoader();
+        this._audioShaderPlane = new AudioShaderPlane(audioManager, [this._resolutionProvider]);
+        this._audioShaderPlane.MeshObservable.subscribe(function (mesh) { return _this.onNewMeshes([mesh]); });
     }
+    GLController.fromAudioManager = function (audioManager) {
+        var controller = new GLController(audioManager);
+    };
+    GLController.prototype.onNewResolution = function (resolution) {
+        this._resolutionProvider.updateResolution(new THREE.Vector2(resolution.width, resolution.height));
+    };
     GLController.prototype.onNewMeshes = function (meshes) {
         this._meshSubject.onNext(meshes);
     };
-    GLController.prototype.fromAudioManager = function (audioManager) {
-        var controller = new GLController(audioManager);
-        var audioShaderPlane = new AudioShaderPlane(audioManager);
-        audioShaderPlane.MeshObservable.subscribe(function (mesh) { return controller.onNewMeshes([mesh]); });
+    GLController.prototype.onShaderName = function (name) {
+        var _this = this;
+        this._shaderLoader.getShaderFromServer("time_test").subscribe(function (shader) { return _this._audioShaderPlane.onShaderText(shader); });
     };
     return GLController;
 })();
