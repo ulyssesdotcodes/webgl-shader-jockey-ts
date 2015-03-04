@@ -1,7 +1,7 @@
 var GLController = (function () {
     function GLController(audioManager) {
         var _this = this;
-        this._uniformsManager = UniformsManager.fromPropertyProviders([audioManager]);
+        this._uniformsManager = new UniformsManager([audioManager]);
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
         this._resolutionProvider = new ResolutionProvider();

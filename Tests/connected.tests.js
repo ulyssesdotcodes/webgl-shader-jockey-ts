@@ -1,9 +1,9 @@
 QUnit.module("connectedTests");
 test("Applied uniforms", function () {
     var audioManager = new AudioManager(new AudioContext());
-    var uniformsManager = UniformsManager.fromPropertyProviders([audioManager]);
+    var uniformsManager = new UniformsManager([audioManager]);
     var observer = new Rx.TestScheduler().createObserver();
-    Rx.Observable.combineLatest(Rx.Observable.just(new THREE.ShaderMaterial), uniformsManager.uniforms, function (shader, uniforms) {
+    Rx.Observable.combineLatest(Rx.Observable.just(new THREE.ShaderMaterial), uniformsManager.UniformsObservable, function (shader, uniforms) {
         shader.uniforms = uniforms;
         return shader;
     }).map(function (shader) { return new ShaderPlane(shader); }).map(function (shaderPlane) { return shaderPlane.mesh; }).subscribe(observer);
@@ -15,11 +15,11 @@ test("Applied uniforms", function () {
 });
 test("Updated uniforms", function () {
     var audioManager = new AudioManager(new AudioContext());
-    var uniformsManager = UniformsManager.fromPropertyProviders([audioManager]);
+    var uniformsManager = new UniformsManager([audioManager]);
     audioManager.sampleAudio();
     var time = audioManager.context.currentTime;
     var observer = new Rx.TestScheduler().createObserver();
-    Rx.Observable.combineLatest(Rx.Observable.just(new THREE.ShaderMaterial), uniformsManager.uniforms, function (shader, uniforms) {
+    Rx.Observable.combineLatest(Rx.Observable.just(new THREE.ShaderMaterial), uniformsManager.UniformsObservable, function (shader, uniforms) {
         shader.uniforms = uniforms;
         return shader;
     }).map(function (shader) { return new ShaderPlane(shader).mesh; }).subscribe(observer);

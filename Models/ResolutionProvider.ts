@@ -1,23 +1,19 @@
 class ResolutionProvider implements IPropertiesProvider {
-  private _resolutionSubject: Rx.Subject<IGLProperty> = new Rx.Subject<IGLProperty>();
+  private _resolutionProperty: IUniform;
+
+  constructor() {
+    this._resolutionProperty = {
+      name: "resolution",
+      type: "v2",
+      value: new THREE.Vector2(0, 0)
+    }
+  }
+
   glProperties() {
-    return this._resolutionSubject.asObservable().map(resolution => [resolution]);
+    return Rx.Observable.just([this._resolutionProperty]);
   }
 
   updateResolution(resolution: THREE.Vector2) {
-    this._resolutionSubject.onNext({
-      name() {
-        return "resolution";
-      },
-      type() {
-        return "v2";
-      },
-      value() {
-        return resolution;
-      },
-      uniform() {
-        return { type: "v2", value: resolution };
-      }
-    })
+    this._resolutionProperty.value = resolution;
   }
 }

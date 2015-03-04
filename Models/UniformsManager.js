@@ -1,21 +1,15 @@
 var UniformsManager = (function () {
-    function UniformsManager() {
-        this._uniforms = {};
+    function UniformsManager(propertiesProviders) {
+        this._uniformsSubject = new Rx.Subject();
+        this.UniformsObservable = this._uniformsSubject.asObservable();
+        this._propertiesProviders = propertiesProviders;
     }
-    Object.defineProperty(UniformsManager.prototype, "uniforms", {
-        get: function () {
-            return this._uniforms;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    UniformsManager.fromPropertyProviders = function (propertiesProviders) {
-        var uniformsManager = new UniformsManager();
-        Rx.Observable.merge(Rx.Observable.from(propertiesProviders).flatMap(function (provider) { return provider.glProperties(); }).flatMap(function (properties) { return Rx.Observable.from(properties); })).subscribe(function (property) { return uniformsManager.createOrUpdateUniform(property); });
-        return uniformsManager;
-    };
-    UniformsManager.prototype.createOrUpdateUniform = function (property) {
-        this._uniforms[property.name()] = property.uniform();
+    UniformsManager.prototype.calculateUniforms = function () {
+        var _this = this;
+        Rx.Observable.from(this._propertiesProviders).flatMap(function (provider) { return provider.glProperties(); }).scan({}, function (acc, properties) {
+            properties.forEach(function (property) { return acc[property.name] = property; });
+            return acc;
+        }).subscribe(function (properties) { return _this._uniformsSubject.onNext(properties); });
     };
     return UniformsManager;
 })();

@@ -1,7 +1,11 @@
 var AudioManager = (function () {
     function AudioManager(audioContext) {
         this._audioContext = audioContext;
-        this.renderTimeObservable = new Rx.Subject();
+        this._timeUniform = {
+            name: "time",
+            type: "f",
+            value: 0.0
+        };
     }
     AudioManager.prototype.updateSourceNode = function (sourceNode) {
         sourceNode.connect(this.context.destination);
@@ -14,14 +18,10 @@ var AudioManager = (function () {
         configurable: true
     });
     AudioManager.prototype.glProperties = function () {
-        return this.renderTimeObservable.map(function (time) { return new TimeProperty(time); }).map(function (timeProperty) {
-            var props = new Array();
-            props.push(timeProperty);
-            return props;
-        });
+        return Rx.Observable.just([this._timeUniform]);
     };
     AudioManager.prototype.sampleAudio = function () {
-        this.renderTimeObservable.onNext(this._audioContext.currentTime);
+        this._timeUniform.value = this._audioContext.currentTime;
     };
     AudioManager.FFT_SIZE = 512;
     return AudioManager;

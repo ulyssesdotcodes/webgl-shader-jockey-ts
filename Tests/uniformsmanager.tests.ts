@@ -15,7 +15,7 @@ var shaderProvider: IShaderProvider = {
     return Rx.Observable.just(shaderMaterial);
   }
 }
-var uniformsManager = UniformsManager.fromPropertyProviders([audioManager]);
+var uniformsManager = new UniformsManager([audioManager]);
 
 test("Apply uniforms", function () {
   var scheduler = new Rx.TestScheduler();
@@ -24,8 +24,9 @@ test("Apply uniforms", function () {
   audioManager.sampleAudio();
   var time = audioManager.context.currentTime;
 
-  shaderProvider.shaderObservable()
-    .map((shader) => shader.uniforms = uniformsManager.uniforms).subscribe(observer);
+  Rx.Observable.combineLatest(
+  shaderProvider.shaderObservable(), uniformsManager.UniformsObservable,
+    (shader, uniforms) => shader.uniforms = uniforms);
 
   equal(TestUtils.getMessageValue(observer, 0).uniforms.time.type, "f", "Time is float value");
   equal(TestUtils.getMessageValue(observer, 0).uniforms.time.value, time, "Time is correct");

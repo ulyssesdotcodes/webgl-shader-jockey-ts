@@ -37,40 +37,21 @@ var PlayerView = (function () {
     };
     return PlayerView;
 })();
-/// <reference path="../typed/rx.d.ts"/>
-/// <reference path="./IGLProperty.ts"/>
-/// <reference path="./IGLProperty.ts"/>
-var TimeProperty = (function () {
-    function TimeProperty(time) {
-        this._name = "time";
-        this._type = "f";
-        this._time = time;
-    }
-    TimeProperty.prototype.name = function () {
-        return this._name;
-    };
-    TimeProperty.prototype.type = function () {
-        return this._type;
-    };
-    TimeProperty.prototype.value = function () {
-        return this._time;
-    };
-    TimeProperty.prototype.uniform = function () {
-        return { type: this.type(), value: this.value() };
-    };
-    return TimeProperty;
-})();
+/// <reference path="./IUniform.ts"/>
 /// <reference path="../typed/rx.d.ts" />
 /// <reference path="../typed/waa.d.ts" />
-/// <reference path="./IGLProperty.ts" />
+/// <reference path='./IUniform.ts'/>
 /// <reference path="./IPropertiesProvider.ts" />
-/// <reference path='./TimeProperty.ts'/>
 // Input: an audio context and a render time observable.
 // Output: an IGLProperty Array observable containing sampled audio data.
 var AudioManager = (function () {
     function AudioManager(audioContext) {
         this._audioContext = audioContext;
-        this.renderTimeObservable = new Rx.Subject();
+        this._timeUniform = {
+            name: "time",
+            type: "f",
+            value: 0.0
+        };
     }
     AudioManager.prototype.updateSourceNode = function (sourceNode) {
         sourceNode.connect(this.context.destination);
@@ -83,14 +64,10 @@ var AudioManager = (function () {
         configurable: true
     });
     AudioManager.prototype.glProperties = function () {
-        return this.renderTimeObservable.map(function (time) { return new TimeProperty(time); }).map(function (timeProperty) {
-            var props = new Array();
-            props.push(timeProperty);
-            return props;
-        });
+        return Rx.Observable.just([this._timeUniform]);
     };
     AudioManager.prototype.sampleAudio = function () {
-        this.renderTimeObservable.onNext(this._audioContext.currentTime);
+        this._timeUniform.value = this._audioContext.currentTime;
     };
     AudioManager.FFT_SIZE = 512;
     return AudioManager;
@@ -243,23 +220,17 @@ var GLView = (function () {
 /// <reference path="../typed/rx.d.ts"/>
 /// <reference path="../typed/three.d.ts"/>
 var UniformsManager = (function () {
-    function UniformsManager() {
-        this._uniforms = {};
+    function UniformsManager(propertiesProviders) {
+        this._uniformsSubject = new Rx.Subject();
+        this.UniformsObservable = this._uniformsSubject.asObservable();
+        this._propertiesProviders = propertiesProviders;
     }
-    Object.defineProperty(UniformsManager.prototype, "uniforms", {
-        get: function () {
-            return this._uniforms;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    UniformsManager.fromPropertyProviders = function (propertiesProviders) {
-        var uniformsManager = new UniformsManager();
-        Rx.Observable.merge(Rx.Observable.from(propertiesProviders).flatMap(function (provider) { return provider.glProperties(); }).flatMap(function (properties) { return Rx.Observable.from(properties); })).subscribe(function (property) { return uniformsManager.createOrUpdateUniform(property); });
-        return uniformsManager;
-    };
-    UniformsManager.prototype.createOrUpdateUniform = function (property) {
-        this._uniforms[property.name()] = property.uniform();
+    UniformsManager.prototype.calculateUniforms = function () {
+        var _this = this;
+        Rx.Observable.from(this._propertiesProviders).flatMap(function (provider) { return provider.glProperties(); }).scan({}, function (acc, properties) {
+            properties.forEach(function (property) { return acc[property.name] = property; });
+            return acc;
+        }).subscribe(function (properties) { return _this._uniformsSubject.onNext(properties); });
     };
     return UniformsManager;
 })();
@@ -285,16 +256,16 @@ var AudioShaderPlane = (function () {
         this._shaderSubject = new Rx.Subject();
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
-        var uniformsManager = UniformsManager.fromPropertyProviders(additionalProperties.concat([audioManager]));
-        this._shaderSubject.map(function (shaderText) {
-            return new THREE.ShaderMaterial({
-                uniforms: uniformsManager.uniforms,
-                fragmentShader: shaderText.fragmentShader,
-                vertexShader: shaderText.vertextShader
-            });
-        }).map(function (shader) { return new ShaderPlane(shader).mesh; }).subscribe(this._meshSubject);
+        this._uniformsManager = new UniformsManager(additionalProperties.concat([audioManager]));
+        Rx.Observable.combineLatest(this._shaderSubject, this._uniformsManager.UniformsObservable, function (shaderText, uniforms) { return new THREE.ShaderMaterial({
+            uniforms: uniforms,
+            fragmentShader: shaderText.fragmentShader,
+            vertexShader: shaderText.vertextShader
+        }); }).map(function (shader) { return new ShaderPlane(shader).mesh; }).subscribe(this._meshSubject);
     }
     AudioShaderPlane.prototype.onShaderText = function (shader) {
+        /* Calculate the uniforms after it's subscribed to*/
+        this._uniformsManager.calculateUniforms();
         this._shaderSubject.onNext(shader);
     };
     return AudioShaderPlane;
@@ -324,26 +295,17 @@ var ShaderLoader = (function () {
 })();
 var ResolutionProvider = (function () {
     function ResolutionProvider() {
-        this._resolutionSubject = new Rx.Subject();
+        this._resolutionProperty = {
+            name: "resolution",
+            type: "v2",
+            value: new THREE.Vector2(0, 0)
+        };
     }
     ResolutionProvider.prototype.glProperties = function () {
-        return this._resolutionSubject.asObservable().map(function (resolution) { return [resolution]; });
+        return Rx.Observable.just([this._resolutionProperty]);
     };
     ResolutionProvider.prototype.updateResolution = function (resolution) {
-        this._resolutionSubject.onNext({
-            name: function () {
-                return "resolution";
-            },
-            type: function () {
-                return "v2";
-            },
-            value: function () {
-                return resolution;
-            },
-            uniform: function () {
-                return { type: "v2", value: resolution };
-            }
-        });
+        this._resolutionProperty.value = resolution;
     };
     return ResolutionProvider;
 })();
@@ -356,7 +318,7 @@ var ResolutionProvider = (function () {
 var GLController = (function () {
     function GLController(audioManager) {
         var _this = this;
-        this._uniformsManager = UniformsManager.fromPropertyProviders([audioManager]);
+        this._uniformsManager = new UniformsManager([audioManager]);
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
         this._resolutionProvider = new ResolutionProvider();

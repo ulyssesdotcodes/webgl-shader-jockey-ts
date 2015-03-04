@@ -7,13 +7,13 @@
 /// <reference path="../Models/UniformsManager.ts"/>
 
 QUnit.module("connectedTests");
- 
+
 test("Applied uniforms", function () {
   var audioManager = new AudioManager(new AudioContext());
-  var uniformsManager = UniformsManager.fromPropertyProviders([audioManager]);
+  var uniformsManager = new UniformsManager([audioManager]);
 
   var observer: Rx.MockObserver<THREE.Mesh> = new Rx.TestScheduler().createObserver();
-  Rx.Observable.combineLatest(Rx.Observable.just(new THREE.ShaderMaterial), uniformsManager.uniforms, 
+  Rx.Observable.combineLatest(Rx.Observable.just(new THREE.ShaderMaterial), uniformsManager.UniformsObservable,
     (shader, uniforms) => {
       shader.uniforms = uniforms;
       return shader;
@@ -32,13 +32,13 @@ test("Applied uniforms", function () {
 
 test("Updated uniforms", function () {
   var audioManager = new AudioManager(new AudioContext());
-  var uniformsManager = UniformsManager.fromPropertyProviders([audioManager]);
+  var uniformsManager = new UniformsManager([audioManager]);
 
   audioManager.sampleAudio();
   var time = audioManager.context.currentTime;
 
   var observer: Rx.MockObserver<THREE.Mesh> = new Rx.TestScheduler().createObserver();
-  Rx.Observable.combineLatest(Rx.Observable.just(new THREE.ShaderMaterial), uniformsManager.uniforms, 
+  Rx.Observable.combineLatest(Rx.Observable.just(new THREE.ShaderMaterial), uniformsManager.UniformsObservable,
     (shader, uniforms) => {
       shader.uniforms = uniforms;
       return shader;

@@ -1,25 +1,16 @@
 var ResolutionProvider = (function () {
     function ResolutionProvider() {
-        this._resolutionSubject = new Rx.Subject();
+        this._resolutionProperty = {
+            name: "resolution",
+            type: "v2",
+            value: new THREE.Vector2(0, 0)
+        };
     }
     ResolutionProvider.prototype.glProperties = function () {
-        return this._resolutionSubject.asObservable().map(function (resolution) { return [resolution]; });
+        return Rx.Observable.just([this._resolutionProperty]);
     };
     ResolutionProvider.prototype.updateResolution = function (resolution) {
-        this._resolutionSubject.onNext({
-            name: function () {
-                return "resolution";
-            },
-            type: function () {
-                return "v2";
-            },
-            value: function () {
-                return resolution;
-            },
-            uniform: function () {
-                return { type: "v2", value: resolution };
-            }
-        });
+        this._resolutionProperty.value = resolution;
     };
     return ResolutionProvider;
 })();

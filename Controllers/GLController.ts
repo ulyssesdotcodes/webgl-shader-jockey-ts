@@ -14,7 +14,7 @@ class GLController {
   private _resolutionProvider: ResolutionProvider;
 
   constructor(audioManager: AudioManager) {
-    this._uniformsManager = UniformsManager.fromPropertyProviders([<IPropertiesProvider>audioManager]);
+    this._uniformsManager = new UniformsManager([<IPropertiesProvider>audioManager]);
 
     this._meshSubject = new Rx.Subject<Array<THREE.Mesh>>();
     this.MeshObservable = this._meshSubject.asObservable();
