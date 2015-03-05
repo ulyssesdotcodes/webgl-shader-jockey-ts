@@ -1,12 +1,13 @@
 var AudioAnalyser = (function () {
     function AudioAnalyser(audioNode, fftSize) {
-        this.analyser = audioNode.context.createAnalyser();
+        this._analyser = audioNode.context.createAnalyser();
         this.fftSize = fftSize;
-        audioNode.connect(this.analyser);
+        audioNode.connect(this._analyser);
         this.frequencyBuffer = new Uint8Array(this.fftSize);
     }
-    AudioAnalyser.prototype.update = function (time) {
-        this.analyser.getByteFrequencyData(this.frequencyBuffer);
+    AudioAnalyser.prototype.getFrequencyData = function () {
+        this._analyser.getByteFrequencyData(this.frequencyBuffer);
+        return this.frequencyBuffer;
     };
     return AudioAnalyser;
 })();

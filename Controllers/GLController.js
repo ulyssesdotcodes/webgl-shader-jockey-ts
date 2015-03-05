@@ -20,7 +20,7 @@ var GLController = (function () {
     };
     GLController.prototype.onShaderName = function (name) {
         var _this = this;
-        this._shaderLoader.getShaderFromServer("time_test").subscribe(function (shader) { return _this._audioShaderPlane.onShaderText(shader); });
+        this._shaderLoader.getShaderFromServer("simple").subscribe(function (shader) { return _this._audioShaderPlane.onShaderText(shader); });
     };
     return GLController;
 })();

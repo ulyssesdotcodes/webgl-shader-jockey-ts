@@ -40,7 +40,7 @@ class GLController {
   }
 
   onShaderName(name: string) {
-    this._shaderLoader.getShaderFromServer("time_test")
+    this._shaderLoader.getShaderFromServer("simple")
       .subscribe(shader => this._audioShaderPlane.onShaderText(shader))
   }
 }
