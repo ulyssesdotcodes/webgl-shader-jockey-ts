@@ -3,6 +3,7 @@
 /// <reference path="./GLView.ts"/>
 /// <reference path="../Controllers/GLController.ts"/>
 /// <reference path="./ShadersView.ts"/>
+/// <reference path="./VideoView.ts"/>
 /// <reference path='./IControllerView.ts' />
 
 class AppView implements IControllerView {
@@ -11,6 +12,7 @@ class AppView implements IControllerView {
   private _glController: GLController;
   private _glView: GLView;
   private _shadersView: ShadersView;
+  private _videoView: VideoView;
   playerView: PlayerView;
   content: JQuery;
 
@@ -24,6 +26,7 @@ class AppView implements IControllerView {
     this.playerView = new PlayerView(this._playerController);
     this._glView = new GLView(this._playerController.manager, this._glController);
     this._shadersView = new ShadersView(this._shadersController);
+    this._videoView = new VideoView();
 
     this._shadersController.ShaderNameObservable.subscribe((name) =>
       this._glController.onShaderName(name))
@@ -31,9 +34,10 @@ class AppView implements IControllerView {
 
   render(el: HTMLElement): void {
     this.playerView.render(this.content[0]);
-    this._shadersView.render(this.content[0]);
-    $(el).append(this.content);
     this._glView.render(this.content[0]);
+    this._shadersView.render(this.content[0]);
+    this._videoView.render(this.content[0]);
+    $(el).append(this.content);
 
     requestAnimationFrame(() => this.animate());
   }

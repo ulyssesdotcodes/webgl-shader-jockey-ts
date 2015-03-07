@@ -8,14 +8,16 @@ var AppView = (function () {
         this.playerView = new PlayerView(this._playerController);
         this._glView = new GLView(this._playerController.manager, this._glController);
         this._shadersView = new ShadersView(this._shadersController);
+        this._videoView = new VideoView();
         this._shadersController.ShaderNameObservable.subscribe(function (name) { return _this._glController.onShaderName(name); });
     }
     AppView.prototype.render = function (el) {
         var _this = this;
         this.playerView.render(this.content[0]);
-        this._shadersView.render(this.content[0]);
-        $(el).append(this.content);
         this._glView.render(this.content[0]);
+        this._shadersView.render(this.content[0]);
+        this._videoView.render(this.content[0]);
+        $(el).append(this.content);
         requestAnimationFrame(function () { return _this.animate(); });
     };
     AppView.prototype.animate = function () {

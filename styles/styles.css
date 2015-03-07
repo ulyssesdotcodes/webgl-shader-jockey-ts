@@ -79,3 +79,10 @@ body {
 .viewer-button:link, .viewer-button:visited {
   color:white;
 }
+
+.camera {
+  display: none;
+  position: absolute;
+  top:0px;
+  left:0px;
+}
