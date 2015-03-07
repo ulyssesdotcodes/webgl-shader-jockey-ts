@@ -26,10 +26,6 @@ class GLController {
     this._audioShaderPlane.MeshObservable.subscribe((mesh) => this.onNewMeshes([mesh]));
   }
 
-  static fromAudioManager(audioManager: AudioManager) {
-    var controller = new GLController(audioManager);
-  }
-
   onNewResolution(resolution) {
     this._resolutionProvider.updateResolution(
       new THREE.Vector2(resolution.width, resolution.height));
@@ -40,7 +36,7 @@ class GLController {
   }
 
   onShaderName(name: string) {
-    this._shaderLoader.getShaderFromServer("simple")
+    this._shaderLoader.getShaderFromServer(name)
       .subscribe(shader => this._audioShaderPlane.onShaderText(shader))
   }
 }

@@ -14,6 +14,7 @@
     "files": [
         "./Controllers/GLController.ts",
         "./Controllers/PlayerController.ts",
+        "./Controllers/ShadersController.ts",
         "./Models/AudioAnalyser.ts",
         "./Models/AudioManager.ts",
         "./Models/AudioShaderPlane.ts",
@@ -37,6 +38,7 @@
         "./Views/GLView.ts",
         "./Views/IControllerView.ts",
         "./Views/PlayerView.ts",
+        "./Views/ShadersView.ts",
         "./main.d.ts",
         "./main.ts",
         "./typed/MediaStream.d.ts",

@@ -212,8 +212,8 @@ var ConstPropertiesProvider = (function () {
 })();
 /// <reference path='../Models/ConstPropertiesProvider.ts'/>
 var GLView = (function () {
-    function GLView(audioManager) {
-        this._glController = new GLController(audioManager);
+    function GLView(audioManager, glController) {
+        this._glController = glController;
     }
     GLView.prototype.render = function (el) {
         var _this = this;
@@ -221,12 +221,12 @@ var GLView = (function () {
         this._scene = new THREE.Scene();
         this._renderer = new THREE.WebGLRenderer();
         this._camera.position.z = 1;
-        this._renderer.setPixelRatio(window.devicePixelRatio);
         var sceneContainer = new THREE.Object3D();
         this._scene.add(sceneContainer);
         this._glController.MeshObservable.scan(new THREE.Object3D(), function (obj, meshes) {
             obj = new THREE.Object3D();
             meshes.forEach(function (mesh) { return obj.add(mesh); });
+            obj.position = new THREE.Vector3(0, 0, 0);
             return obj;
         }).subscribe(function (obj) {
             _this._scene.remove(sceneContainer);
@@ -266,6 +266,7 @@ var UniformsManager = (function () {
 })();
 var ShaderPlane = (function () {
     function ShaderPlane(material) {
+        console.log(material.uniforms.resolution);
         var geometry = new THREE.PlaneBufferGeometry(2, 2);
         this._mesh = new THREE.Mesh(geometry, material);
     }
@@ -356,9 +357,6 @@ var GLController = (function () {
         this._audioShaderPlane = new AudioShaderPlane(audioManager, [this._resolutionProvider]);
         this._audioShaderPlane.MeshObservable.subscribe(function (mesh) { return _this.onNewMeshes([mesh]); });
     }
-    GLController.fromAudioManager = function (audioManager) {
-        var controller = new GLController(audioManager);
-    };
     GLController.prototype.onNewResolution = function (resolution) {
         this._resolutionProvider.updateResolution(new THREE.Vector2(resolution.width, resolution.height));
     };
@@ -367,27 +365,62 @@ var GLController = (function () {
     };
     GLController.prototype.onShaderName = function (name) {
         var _this = this;
-        this._shaderLoader.getShaderFromServer("simple").subscribe(function (shader) { return _this._audioShaderPlane.onShaderText(shader); });
+        this._shaderLoader.getShaderFromServer(name).subscribe(function (shader) { return _this._audioShaderPlane.onShaderText(shader); });
     };
     return GLController;
+})();
+var ShadersController = (function () {
+    function ShadersController() {
+        this._shaderNameSubject = new Rx.Subject();
+        this.ShaderNameObservable = this._shaderNameSubject.asObservable();
+    }
+    ShadersController.prototype.onShaderName = function (shaderName) {
+        this._shaderNameSubject.onNext(shaderName);
+    };
+    return ShadersController;
+})();
+/// <reference path='../Controllers/ShadersController'/>
+var ShadersView = (function () {
+    function ShadersView(shadersController) {
+        this.content = $("<div>", { class: "queue" });
+        this._shadersController = shadersController;
+    }
+    ShadersView.prototype.render = function (el) {
+        var _this = this;
+        var container = $("<div>", { class: "shaders" });
+        var select = $("<select />");
+        select.change(function (__) { return _this._shadersController.onShaderName(select.find('option:selected').val()); });
+        ShadersView.shaders.forEach(function (shaderName) { return select.append("<option value=\"" + shaderName + "\">" + shaderName + "</option>"); });
+        container.append(select);
+        $(el).append(container);
+    };
+    ShadersView.shaders = ["simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test"];
+    return ShadersView;
 })();
 /// <reference path="./PlayerView.ts"/>
 /// <reference path="../Controllers/PlayerController.ts"/>
 /// <reference path="./GLView.ts"/>
 /// <reference path="../Controllers/GLController.ts"/>
+/// <reference path="./ShadersView.ts"/>
 /// <reference path='./IControllerView.ts' />
 var AppView = (function () {
     function AppView() {
+        var _this = this;
         this.content = $("<div>", { text: "Hello, world!" });
         this._playerController = new PlayerController();
+        this._shadersController = new ShadersController();
+        this._glController = new GLController(this._playerController.manager);
         this.playerView = new PlayerView(this._playerController);
-        this._glView = new GLView(this._playerController.manager);
+        this._glView = new GLView(this._playerController.manager, this._glController);
+        this._shadersView = new ShadersView(this._shadersController);
+        this._shadersController.ShaderNameObservable.subscribe(function (name) { return _this._glController.onShaderName(name); });
     }
     AppView.prototype.render = function (el) {
         var _this = this;
         this.playerView.render(this.content[0]);
-        this._glView.render(this.content[0]);
+        this._shadersView.render(this.content[0]);
         $(el).append(this.content);
+        this._glView.render(this.content[0]);
         requestAnimationFrame(function () { return _this.animate(); });
     };
     AppView.prototype.animate = function () {

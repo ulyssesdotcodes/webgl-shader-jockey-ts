@@ -1,6 +1,6 @@
 var GLView = (function () {
-    function GLView(audioManager) {
-        this._glController = new GLController(audioManager);
+    function GLView(audioManager, glController) {
+        this._glController = glController;
     }
     GLView.prototype.render = function (el) {
         var _this = this;
@@ -8,12 +8,12 @@ var GLView = (function () {
         this._scene = new THREE.Scene();
         this._renderer = new THREE.WebGLRenderer();
         this._camera.position.z = 1;
-        this._renderer.setPixelRatio(window.devicePixelRatio);
         var sceneContainer = new THREE.Object3D();
         this._scene.add(sceneContainer);
         this._glController.MeshObservable.scan(new THREE.Object3D(), function (obj, meshes) {
             obj = new THREE.Object3D();
             meshes.forEach(function (mesh) { return obj.add(mesh); });
+            obj.position = new THREE.Vector3(0, 0, 0);
             return obj;
         }).subscribe(function (obj) {
             _this._scene.remove(sceneContainer);

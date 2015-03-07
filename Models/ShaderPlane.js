@@ -1,5 +1,6 @@
 var ShaderPlane = (function () {
     function ShaderPlane(material) {
+        console.log(material.uniforms.resolution);
         var geometry = new THREE.PlaneBufferGeometry(2, 2);
         this._mesh = new THREE.Mesh(geometry, material);
     }
