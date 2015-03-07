@@ -13,14 +13,18 @@ var Microphone = (function () {
             _this.node = audioContext.createMediaStreamSource(stream);
             _this.nodeSubject.onNext(_this.node);
         };
-        if (navigator.getUserMedia)
+        if (navigator.getUserMedia) {
             navigator.getUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
-        else if (navigator.webkitGetUserMedia)
+        }
+        else if (navigator.webkitGetUserMedia) {
             navigator.webkitGetUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
-        else if (navigator.mozGetUserMedia)
+        }
+        else if (navigator.mozGetUserMedia) {
             navigator.mozGetUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
-        else
+        }
+        else {
             return (alert("Error: getUserMedia not supported!"));
+        }
         this.created = true;
     };
     Microphone.prototype.getNodeObservable = function () {

@@ -6,6 +6,7 @@ var PlayerController = (function () {
         this.microphone = new Microphone();
         this.microphone.getNodeObservable().subscribe(function (node) { return _this.manager.updateSourceNode(node); });
         this.soundCloudLoader = new SoundCloudLoader();
+        this.onMicClick();
     }
     Object.defineProperty(PlayerController.prototype, "manager", {
         get: function () {
@@ -20,6 +21,7 @@ var PlayerController = (function () {
     PlayerController.prototype.onUrl = function (url) {
         this.soundCloudLoader.loadStream(url);
         this.manager.updateSourceNode(this.playerSource);
+        this.playerSource.connect(this._manager.context.destination);
     };
     PlayerController.prototype.setPlayerSource = function (source) {
         this.playerSource = this.manager.context.createMediaElementSource(source);

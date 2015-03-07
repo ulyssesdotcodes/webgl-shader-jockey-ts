@@ -76,7 +76,6 @@ var AudioManager = (function () {
         };
     }
     AudioManager.prototype.updateSourceNode = function (sourceNode) {
-        sourceNode.connect(this.context.destination);
         this._audioAnalyser = new AudioAnalyser(sourceNode, AudioManager.FFT_SIZE);
     };
     Object.defineProperty(AudioManager.prototype, "context", {
@@ -99,7 +98,7 @@ var AudioManager = (function () {
         }
         this._audioTexture.value.needsUpdate = true;
     };
-    AudioManager.FFT_SIZE = 512;
+    AudioManager.FFT_SIZE = 1024;
     return AudioManager;
 })();
 var Microphone = (function () {
@@ -117,14 +116,18 @@ var Microphone = (function () {
             _this.node = audioContext.createMediaStreamSource(stream);
             _this.nodeSubject.onNext(_this.node);
         };
-        if (navigator.getUserMedia)
+        if (navigator.getUserMedia) {
             navigator.getUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
-        else if (navigator.webkitGetUserMedia)
+        }
+        else if (navigator.webkitGetUserMedia) {
             navigator.webkitGetUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
-        else if (navigator.mozGetUserMedia)
+        }
+        else if (navigator.mozGetUserMedia) {
             navigator.mozGetUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
-        else
+        }
+        else {
             return (alert("Error: getUserMedia not supported!"));
+        }
         this.created = true;
     };
     Microphone.prototype.getNodeObservable = function () {
@@ -172,6 +175,7 @@ var PlayerController = (function () {
         this.microphone = new Microphone();
         this.microphone.getNodeObservable().subscribe(function (node) { return _this.manager.updateSourceNode(node); });
         this.soundCloudLoader = new SoundCloudLoader();
+        this.onMicClick();
     }
     Object.defineProperty(PlayerController.prototype, "manager", {
         get: function () {
@@ -186,6 +190,7 @@ var PlayerController = (function () {
     PlayerController.prototype.onUrl = function (url) {
         this.soundCloudLoader.loadStream(url);
         this.manager.updateSourceNode(this.playerSource);
+        this.playerSource.connect(this._manager.context.destination);
     };
     PlayerController.prototype.setPlayerSource = function (source) {
         this.playerSource = this.manager.context.createMediaElementSource(source);

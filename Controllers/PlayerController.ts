@@ -19,6 +19,8 @@ class PlayerController {
       this.manager.updateSourceNode(node));
 
     this.soundCloudLoader = new SoundCloudLoader();
+
+    this.onMicClick();
   }
 
   onMicClick(): void {
@@ -28,6 +30,7 @@ class PlayerController {
   onUrl(url: string): void {
     this.soundCloudLoader.loadStream(url);
     this.manager.updateSourceNode(this.playerSource);
+    this.playerSource.connect(this._manager.context.destination);
   }
 
   setPlayerSource(source: HTMLMediaElement) {

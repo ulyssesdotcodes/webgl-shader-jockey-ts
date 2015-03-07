@@ -27,7 +27,9 @@ void main(void)
     vec4 color = vec4(fromPos(uv, vec3(0.5)).rbg, 1.0);
 
     for(int i = 0; i < TOUCH_EVENT_COUNT; i++) {
-      color = color + fromPos(uv, te[i]);
+      if (te[i].x != 0.0) {
+        color = color + fromPos(uv, te[i]);
+      }
     }
 
     gl_FragColor = color;

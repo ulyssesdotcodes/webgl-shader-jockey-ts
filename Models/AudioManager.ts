@@ -7,7 +7,7 @@
 // Input: an audio context and a render time observable.
 // Output: an IGLProperty Array observable containing sampled audio data.
 class AudioManager implements IPropertiesProvider {
-  static FFT_SIZE = 512;
+  static FFT_SIZE = 1024;
   private _audioContext: AudioContext;
   private _audioAnalyser: AudioAnalyser;
 
@@ -46,7 +46,6 @@ class AudioManager implements IPropertiesProvider {
   }
 
   updateSourceNode(sourceNode: AudioSourceNode) {
-    sourceNode.connect(this.context.destination);
     this._audioAnalyser = new AudioAnalyser(sourceNode, AudioManager.FFT_SIZE);
   }
 
@@ -63,7 +62,7 @@ class AudioManager implements IPropertiesProvider {
 
     if (this._audioAnalyser == undefined) return;
 
-    var frequencyBuffer = this._audioAnalyser.getFrequencyData();
+    var frequencyBuffer: Uint8Array = this._audioAnalyser.getFrequencyData();
 
     for (var i in frequencyBuffer) {
       this._audioTextureBuffer[i * 4] = frequencyBuffer[i];

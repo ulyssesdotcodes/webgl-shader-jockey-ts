@@ -19,17 +19,21 @@ class Microphone {
       this.nodeSubject.onNext(this.node);
     }
 
-    if ( navigator.getUserMedia )
+    if (navigator.getUserMedia) {
       navigator.getUserMedia({ audio: true, video: false }, gotStream, (err) =>
-        console.log(err))
-    else if (navigator.webkitGetUserMedia )
+        console.log(err));
+    }
+    else if (navigator.webkitGetUserMedia) {
       navigator.webkitGetUserMedia({ audio: true, video: false }, gotStream, (err) =>
-        console.log(err))
-    else if (navigator.mozGetUserMedia )
-      navigator.mozGetUserMedia({ audio: true, video:false }, gotStream, (err) =>
-        console.log(err))
-    else
-      return(alert("Error: getUserMedia not supported!"));
+        console.log(err));
+    }
+    else if (navigator.mozGetUserMedia) {
+      navigator.mozGetUserMedia({ audio: true, video: false }, gotStream, (err) =>
+        console.log(err));
+    }
+    else {
+      return (alert("Error: getUserMedia not supported!"));
+    }
 
     this.created = true;
   }

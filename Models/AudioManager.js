@@ -15,7 +15,6 @@ var AudioManager = (function () {
         };
     }
     AudioManager.prototype.updateSourceNode = function (sourceNode) {
-        sourceNode.connect(this.context.destination);
         this._audioAnalyser = new AudioAnalyser(sourceNode, AudioManager.FFT_SIZE);
     };
     Object.defineProperty(AudioManager.prototype, "context", {
@@ -38,6 +37,6 @@ var AudioManager = (function () {
         }
         this._audioTexture.value.needsUpdate = true;
     };
-    AudioManager.FFT_SIZE = 512;
+    AudioManager.FFT_SIZE = 1024;
     return AudioManager;
 })();
