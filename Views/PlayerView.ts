@@ -10,13 +10,23 @@ class PlayerView implements IControllerView {
   }
 
   render(el: HTMLElement): void {
+    var soundcloud: JQuery =
+      $("<div>", { class: "soundcloud", text: "Soundcloud URL:" });
+
+    this.input = $("<input>", { class: "soundcloud-input", type: "text" });
+
+    this.input.change(() => this.playerController.onUrl(this.input.val()));
+
+    soundcloud.append(this.input);
+
     var mic: JQuery = $("<a>", {
       href: "#",
-      class: "mic"
+      class: "mic-icon"
     });
 
     var micIcon: JQuery = $("<img>", {
-      src: "./resources/ic_mic_none_white_48dp.png"
+      src: "./resources/ic_mic_none_white_48dp.png",
+      class: "icon"
     });
 
     mic.append(micIcon);
@@ -27,17 +37,8 @@ class PlayerView implements IControllerView {
       this.audioPlayer.pause();
     });
 
-    var soundcloud =
-      $('<div>', { class: 'soundcloud', text: 'Soundcloud URL:' });
-
-    this.input = $("<input>", { class: 'soundcloud-input', type: 'text' });
-
-    this.input.change(() => this.playerController.onUrl(this.input.val()));
-
-    soundcloud.append(this.input);
-
     this.audioPlayer = document.createElement("audio");
-    this.audioPlayer.setAttribute('class', 'audio-player');
+    this.audioPlayer.setAttribute("class", "audio-player");
     this.audioPlayer.controls = true;
 
     this.playerController.getUrlObservable().subscribe((url) => {
