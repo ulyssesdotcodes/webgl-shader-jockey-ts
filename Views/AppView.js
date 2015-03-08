@@ -3,12 +3,13 @@ var AppView = (function () {
         var _this = this;
         this.content = $("<div>", { text: "Hello, world!" });
         this._playerController = new PlayerController();
+        this._videoController = new VideoController();
         this._shadersController = new ShadersController();
-        this._glController = new GLController(this._playerController.manager);
+        this._glController = new GLController(this._playerController.manager, this._videoController.Manager);
         this.playerView = new PlayerView(this._playerController);
         this._glView = new GLView(this._playerController.manager, this._glController);
         this._shadersView = new ShadersView(this._shadersController);
-        this._videoView = new VideoView();
+        this._videoView = new VideoView(this._videoController);
         this._shadersController.ShaderNameObservable.subscribe(function (name) { return _this._glController.onShaderName(name); });
     }
     AppView.prototype.render = function (el) {
@@ -24,6 +25,7 @@ var AppView = (function () {
         var _this = this;
         requestAnimationFrame(function () { return _this.animate(); });
         this._playerController.sampleAudio();
+        this._videoController.sampleVideo();
         this._glView.animate();
     };
     return AppView;

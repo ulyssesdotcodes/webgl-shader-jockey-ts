@@ -248,9 +248,25 @@ var GLView = (function () {
         this._glController.onNewResolution({ width: window.innerWidth, height: window.innerHeight });
     };
     GLView.prototype.animate = function () {
+        this._glController.update();
         this._renderer.render(this._scene, this._camera);
     };
     return GLView;
+})();
+var ShaderPlane = (function () {
+    function ShaderPlane(material) {
+        console.log(material.uniforms.resolution);
+        var geometry = new THREE.PlaneBufferGeometry(2, 2);
+        this._mesh = new THREE.Mesh(geometry, material);
+    }
+    Object.defineProperty(ShaderPlane.prototype, "mesh", {
+        get: function () {
+            return this._mesh;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return ShaderPlane;
 })();
 /// <reference path="../typed/rx.d.ts"/>
 /// <reference path="../typed/three.d.ts"/>
@@ -269,42 +285,27 @@ var UniformsManager = (function () {
     };
     return UniformsManager;
 })();
-var ShaderPlane = (function () {
-    function ShaderPlane(material) {
-        console.log(material.uniforms.resolution);
-        var geometry = new THREE.PlaneBufferGeometry(2, 2);
-        this._mesh = new THREE.Mesh(geometry, material);
-    }
-    Object.defineProperty(ShaderPlane.prototype, "mesh", {
-        get: function () {
-            return this._mesh;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    return ShaderPlane;
-})();
 /// <reference path="../typed/rx.d.ts"/>
 /// <reference path="./ShaderPlane.ts"/>
 /// <reference path="./UniformsManager.ts"/>
-var AudioShaderPlane = (function () {
-    function AudioShaderPlane(audioManager, additionalProperties) {
+var PropertiesShaderPlane = (function () {
+    function PropertiesShaderPlane(glProperties) {
         this._shaderSubject = new Rx.Subject();
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
-        this._uniformsManager = new UniformsManager(additionalProperties.concat([audioManager]));
+        this._uniformsManager = new UniformsManager(glProperties);
         Rx.Observable.combineLatest(this._shaderSubject, this._uniformsManager.UniformsObservable, function (shaderText, uniforms) { return new THREE.ShaderMaterial({
             uniforms: uniforms,
             fragmentShader: shaderText.fragmentShader,
             vertexShader: shaderText.vertextShader
         }); }).map(function (shader) { return new ShaderPlane(shader).mesh; }).subscribe(this._meshSubject);
     }
-    AudioShaderPlane.prototype.onShaderText = function (shader) {
+    PropertiesShaderPlane.prototype.onShaderText = function (shader) {
         /* Calculate the uniforms after it's subscribed to*/
         this._uniformsManager.calculateUniforms();
         this._shaderSubject.onNext(shader);
     };
-    return AudioShaderPlane;
+    return PropertiesShaderPlane;
 })();
 var ShaderText = (function () {
     function ShaderText(fragment, vertex) {
@@ -345,21 +346,38 @@ var ResolutionProvider = (function () {
     };
     return ResolutionProvider;
 })();
+var TimeProvider = (function () {
+    function TimeProvider() {
+        this._startTime = Date.now();
+        this._timeProperty = {
+            name: "time",
+            type: "f",
+            value: 0.0
+        };
+    }
+    TimeProvider.prototype.glProperties = function () {
+        return Rx.Observable.just([this._timeProperty]);
+    };
+    TimeProvider.prototype.updateTime = function () {
+        this._timeProperty.value = (this._startTime - Date.now()) / 1000.0;
+    };
+    return TimeProvider;
+})();
 /// <reference path='../typed/three.d.ts'/>
 /// <reference path='../Models/IPropertiesProvider.ts'/>
-/// <reference path='../Models/UniformsManager.ts'/>
-/// <reference path='../Models/AudioShaderPlane.ts'/>
+/// <reference path='../Models/PropertiesShaderPlane.ts'/>
 /// <reference path='../Models/ShaderLoader.ts'/>
 /// <reference path='../Models/ResolutionProvider.ts'/>
+/// <reference path='../Models/TimeProvider.ts'/>
 var GLController = (function () {
-    function GLController(audioManager) {
+    function GLController(audioManager, videoManager) {
         var _this = this;
-        this._uniformsManager = new UniformsManager([audioManager]);
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
         this._resolutionProvider = new ResolutionProvider();
+        this._timeProvider = new TimeProvider();
         this._shaderLoader = new ShaderLoader();
-        this._audioShaderPlane = new AudioShaderPlane(audioManager, [this._resolutionProvider]);
+        this._audioShaderPlane = new PropertiesShaderPlane([videoManager, this._resolutionProvider, this._timeProvider]);
         this._audioShaderPlane.MeshObservable.subscribe(function (mesh) { return _this.onNewMeshes([mesh]); });
     }
     GLController.prototype.onNewResolution = function (resolution) {
@@ -371,6 +389,9 @@ var GLController = (function () {
     GLController.prototype.onShaderName = function (name) {
         var _this = this;
         this._shaderLoader.getShaderFromServer(name).subscribe(function (shader) { return _this._audioShaderPlane.onShaderText(shader); });
+    };
+    GLController.prototype.update = function () {
+        this._timeProvider.updateTime();
     };
     return GLController;
 })();
@@ -399,14 +420,15 @@ var ShadersView = (function () {
         container.append(select);
         $(el).append(container);
     };
-    ShadersView.shaders = ["simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test"];
+    ShadersView.shaders = ["simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test", "video_test"];
     return ShadersView;
 })();
 var VideoView = (function () {
-    function VideoView() {
+    function VideoView(videoController) {
         this._video = document.createElement("video");
         this._video.setAttribute("class", "camera");
         this._video.setAttribute("autoplay", "true");
+        this._videoController = videoController;
         navigator["getUserMedia"] = navigator["getUserMedia"] || navigator["webkitGetUserMedia"] || navigator["mozGetUserMedia"];
         window["URL"] = window["URL"] || window["webkitURL"];
     }
@@ -425,8 +447,57 @@ var VideoView = (function () {
         };
         navigator["getUserMedia"]({ audio: false, video: true }, gotStream, console.log);
         $(el).append(this._video);
+        this._videoController.setVideoSource(this._video);
     };
     return VideoView;
+})();
+var VideoManager = (function () {
+    function VideoManager() {
+        this._videoCanvas = document.createElement("canvas");
+        this._videoCanvas.width = window.innerWidth;
+        this._videoCanvas.height = window.innerHeight;
+        this._videoContext = this._videoCanvas.getContext("2d");
+        var texture = new THREE.Texture(this._videoCanvas);
+        this._videoTexture = {
+            name: "camera",
+            type: "t",
+            value: texture
+        };
+    }
+    VideoManager.prototype.updateVideoElement = function (videoElement) {
+        this._videoElement = videoElement;
+    };
+    VideoManager.prototype.glProperties = function () {
+        return Rx.Observable.just([this._videoTexture]);
+    };
+    VideoManager.prototype.sampleVideo = function () {
+        if (this._videoElement == undefined) {
+            return;
+        }
+        this._videoContext.drawImage(this._videoElement, 0, 0, this._videoCanvas.width, this._videoCanvas.height);
+        this._videoTexture.value.needsUpdate = true;
+    };
+    return VideoManager;
+})();
+/// <reference path='../Models/VideoManager.ts'/>
+var VideoController = (function () {
+    function VideoController() {
+        this._videoManager = new VideoManager();
+    }
+    Object.defineProperty(VideoController.prototype, "Manager", {
+        get: function () {
+            return this._videoManager;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    VideoController.prototype.setVideoSource = function (videoElement) {
+        this._videoManager.updateVideoElement(videoElement);
+    };
+    VideoController.prototype.sampleVideo = function () {
+        this._videoManager.sampleVideo();
+    };
+    return VideoController;
 })();
 /// <reference path="./PlayerView.ts"/>
 /// <reference path="../Controllers/PlayerController.ts"/>
@@ -434,18 +505,20 @@ var VideoView = (function () {
 /// <reference path="../Controllers/GLController.ts"/>
 /// <reference path="./ShadersView.ts"/>
 /// <reference path="./VideoView.ts"/>
+/// <reference path="../Controllers/VideoController.ts"/>
 /// <reference path='./IControllerView.ts' />
 var AppView = (function () {
     function AppView() {
         var _this = this;
         this.content = $("<div>", { text: "Hello, world!" });
         this._playerController = new PlayerController();
+        this._videoController = new VideoController();
         this._shadersController = new ShadersController();
-        this._glController = new GLController(this._playerController.manager);
+        this._glController = new GLController(this._playerController.manager, this._videoController.Manager);
         this.playerView = new PlayerView(this._playerController);
         this._glView = new GLView(this._playerController.manager, this._glController);
         this._shadersView = new ShadersView(this._shadersController);
-        this._videoView = new VideoView();
+        this._videoView = new VideoView(this._videoController);
         this._shadersController.ShaderNameObservable.subscribe(function (name) { return _this._glController.onShaderName(name); });
     }
     AppView.prototype.render = function (el) {
@@ -461,6 +534,7 @@ var AppView = (function () {
         var _this = this;
         requestAnimationFrame(function () { return _this.animate(); });
         this._playerController.sampleAudio();
+        this._videoController.sampleVideo();
         this._glView.animate();
     };
     return AppView;

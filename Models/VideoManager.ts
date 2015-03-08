@@ -5,9 +5,7 @@ class VideoManager implements IPropertiesProvider {
 
   private _videoTexture: IUniform;
 
-  constructor(videoElement: HTMLMediaElement) {
-    this._videoElement = videoElement;
-
+  constructor() {
     this._videoCanvas = document.createElement("canvas");
     this._videoCanvas.width = window.innerWidth;
     this._videoCanvas.height = window.innerHeight;
@@ -22,11 +20,19 @@ class VideoManager implements IPropertiesProvider {
     }
   }
 
+  updateVideoElement(videoElement: HTMLVideoElement) {
+    this._videoElement = videoElement;
+  }
+
   glProperties(): Rx.Observable<Array<IUniform>> {
     return Rx.Observable.just([this._videoTexture]);
   }
 
   sampleVideo() {
+    if (this._videoElement == undefined) {
+      return;
+    }
+
     this._videoContext.drawImage(this._videoElement, 0, 0,
       this._videoCanvas.width, this._videoCanvas.height);
 

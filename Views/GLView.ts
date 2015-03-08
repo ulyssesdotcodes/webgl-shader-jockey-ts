@@ -50,6 +50,7 @@ class GLView implements IControllerView {
   }
 
   animate() {
+    this._glController.update();
     this._renderer.render(this._scene, this._camera);
   }
 }

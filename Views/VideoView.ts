@@ -1,10 +1,13 @@
 class VideoView{
-  private _video: HTMLMediaElement;
+  private _video: HTMLVideoElement;
+  private _videoController: VideoController;
 
-  constructor() {
+  constructor(videoController: VideoController) {
     this._video = document.createElement("video");
     this._video.setAttribute("class", "camera");
     this._video.setAttribute("autoplay", "true");
+
+    this._videoController = videoController;
 
 
     navigator["getUserMedia"] = navigator["getUserMedia"]||
@@ -27,5 +30,7 @@ class VideoView{
     navigator["getUserMedia"]({audio: false, video: true}, gotStream, console.log);
 
     $(el).append(this._video);
+
+    this._videoController.setVideoSource(this._video);
   }
 }

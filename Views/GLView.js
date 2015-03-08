@@ -30,6 +30,7 @@ var GLView = (function () {
         this._glController.onNewResolution({ width: window.innerWidth, height: window.innerHeight });
     };
     GLView.prototype.animate = function () {
+        this._glController.update();
         this._renderer.render(this._scene, this._camera);
     };
     return GLView;

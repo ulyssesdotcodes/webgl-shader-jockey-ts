@@ -4,10 +4,12 @@
 /// <reference path="../Controllers/GLController.ts"/>
 /// <reference path="./ShadersView.ts"/>
 /// <reference path="./VideoView.ts"/>
+/// <reference path="../Controllers/VideoController.ts"/>
 /// <reference path='./IControllerView.ts' />
 
 class AppView implements IControllerView {
   private _playerController: PlayerController;
+  private _videoController: VideoController;
   private _shadersController: ShadersController;
   private _glController: GLController;
   private _glView: GLView;
@@ -20,13 +22,15 @@ class AppView implements IControllerView {
     this.content = $("<div>", { text: "Hello, world!" });
 
     this._playerController = new PlayerController();
+    this._videoController = new VideoController();
     this._shadersController = new ShadersController();
-    this._glController = new GLController(this._playerController.manager);
+    this._glController = new GLController(this._playerController.manager,
+      this._videoController.Manager);
 
     this.playerView = new PlayerView(this._playerController);
     this._glView = new GLView(this._playerController.manager, this._glController);
     this._shadersView = new ShadersView(this._shadersController);
-    this._videoView = new VideoView();
+    this._videoView = new VideoView(this._videoController);
 
     this._shadersController.ShaderNameObservable.subscribe((name) =>
       this._glController.onShaderName(name))
@@ -45,6 +49,7 @@ class AppView implements IControllerView {
   animate(): void {
     requestAnimationFrame(() => this.animate());
     this._playerController.sampleAudio();
+    this._videoController.sampleVideo();
     this._glView.animate();
   }
 }

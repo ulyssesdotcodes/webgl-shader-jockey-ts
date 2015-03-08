@@ -2,18 +2,18 @@
 /// <reference path="./ShaderPlane.ts"/>
 /// <reference path="./UniformsManager.ts"/>
 
-class AudioShaderPlane {
+class PropertiesShaderPlane {
   private _shaderSubject: Rx.Subject<ShaderText>;
   private _meshSubject: Rx.Subject<THREE.Mesh>;
   private _uniformsManager: UniformsManager;
   MeshObservable: Rx.Observable<THREE.Mesh>;
 
-  constructor(audioManager: AudioManager, additionalProperties: Array<IPropertiesProvider>) {
+  constructor(glProperties: Array<IPropertiesProvider>) {
     this._shaderSubject = new Rx.Subject<ShaderText>();
     this._meshSubject = new Rx.Subject<THREE.Mesh>();
     this.MeshObservable = this._meshSubject.asObservable();
 
-    this._uniformsManager = new UniformsManager(additionalProperties.concat([audioManager]));
+    this._uniformsManager = new UniformsManager(glProperties);
 
     Rx.Observable.combineLatest(this._shaderSubject, this._uniformsManager.UniformsObservable,
       (shaderText, uniforms) => new THREE.ShaderMaterial({

@@ -1,8 +1,9 @@
 var VideoView = (function () {
-    function VideoView() {
+    function VideoView(videoController) {
         this._video = document.createElement("video");
         this._video.setAttribute("class", "camera");
         this._video.setAttribute("autoplay", "true");
+        this._videoController = videoController;
         navigator["getUserMedia"] = navigator["getUserMedia"] || navigator["webkitGetUserMedia"] || navigator["mozGetUserMedia"];
         window["URL"] = window["URL"] || window["webkitURL"];
     }
@@ -21,6 +22,7 @@ var VideoView = (function () {
         };
         navigator["getUserMedia"]({ audio: false, video: true }, gotStream, console.log);
         $(el).append(this._video);
+        this._videoController.setVideoSource(this._video);
     };
     return VideoView;
 })();
