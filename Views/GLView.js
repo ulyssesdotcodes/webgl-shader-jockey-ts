@@ -23,7 +23,7 @@ var GLView = (function () {
         el.appendChild(this._renderer.domElement);
         this.onWindowResize();
         window.addEventListener('resize', function (__) { return _this.onWindowResize(); }, false);
-        this._glController.onShaderName("vertical_wav");
+        this._glController.onShaderName("circular_fft");
     };
     GLView.prototype.onWindowResize = function () {
         this._renderer.setSize(window.innerWidth, window.innerHeight);

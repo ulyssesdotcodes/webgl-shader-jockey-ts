@@ -12,6 +12,6 @@ var ShadersView = (function () {
         container.append(select);
         $(el).append(container);
     };
-    ShadersView.shaders = ["simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test", "video_test"];
+    ShadersView.shaders = ["simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test", "video_test", "video_audio_distortion"];
     return ShadersView;
 })();

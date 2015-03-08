@@ -41,7 +41,7 @@ class GLView implements IControllerView {
 
     window.addEventListener('resize', (__) => this.onWindowResize(), false);
 
-    this._glController.onShaderName("vertical_wav");
+    this._glController.onShaderName("circular_fft");
   }
 
   onWindowResize() {

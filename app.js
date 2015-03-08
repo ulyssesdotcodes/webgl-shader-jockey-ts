@@ -233,7 +233,7 @@ var GLView = (function () {
         el.appendChild(this._renderer.domElement);
         this.onWindowResize();
         window.addEventListener('resize', function (__) { return _this.onWindowResize(); }, false);
-        this._glController.onShaderName("vertical_wav");
+        this._glController.onShaderName("circular_fft");
     };
     GLView.prototype.onWindowResize = function () {
         this._renderer.setSize(window.innerWidth, window.innerHeight);
@@ -412,7 +412,7 @@ var ShadersView = (function () {
         container.append(select);
         $(el).append(container);
     };
-    ShadersView.shaders = ["simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test", "video_test"];
+    ShadersView.shaders = ["simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test", "video_test", "video_audio_distortion"];
     return ShadersView;
 })();
 var VideoView = (function () {
@@ -515,7 +515,7 @@ var AppView = (function () {
     }
     AppView.prototype.render = function (el) {
         var _this = this;
-        this.playerView.render(this.content[0]);
+        // this.playerView.render(this.content[0]);
         this._glView.render(this.content[0]);
         this._shadersView.render(this.content[0]);
         this._videoView.render(this.content[0]);

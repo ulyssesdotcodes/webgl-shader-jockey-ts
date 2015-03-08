@@ -37,7 +37,7 @@ class AppView implements IControllerView {
   }
 
   render(el: HTMLElement): void {
-    this.playerView.render(this.content[0]);
+    // this.playerView.render(this.content[0]);
     this._glView.render(this.content[0]);
     this._shadersView.render(this.content[0]);
     this._videoView.render(this.content[0]);
