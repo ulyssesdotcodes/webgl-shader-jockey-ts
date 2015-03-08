@@ -8,12 +8,12 @@ class ShaderLoader {
   }
 
   private getVertex(name: string): Rx.Observable<string> {
-    return $.getAsObservable<ShaderResponse>('/shaders/' + name + ".vert")
+    return $.getAsObservable<ShaderResponse>('shaders/' + name + ".vert")
       .map((shader) => shader.data );
   }
 
   private getFragment(name: string): Rx.Observable<string> {
-    return $.getAsObservable<ShaderResponse>('/shaders/' + name + '.frag')
+    return $.getAsObservable<ShaderResponse>('shaders/' + name + '.frag')
       .map((shader) => shader.data)
   }
 }
