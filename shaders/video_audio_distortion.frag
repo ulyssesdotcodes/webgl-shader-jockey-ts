@@ -2,6 +2,7 @@ uniform sampler2D camera;
 uniform vec2 resolution;
 uniform float audioResolution;
 uniform sampler2D audioTexture;
+uniform float time;
 
 void main(void)
 {
@@ -15,10 +16,10 @@ void main(void)
 
   float fft = t1[0] * t2[0];
 
-	float offsetMult = sin(uv.x * 10.0);
+	float offsetMult = sin(uv.x * 16.0 * 3.1416);
 
-	float offset = uv.y + fft * 0.3 * offsetMult;
-	float offsetY = mod(uv.y + offset, 1.0);
+	float offset = uv.y + ((1.0 + fft) * (1.0 + fft) - 1.0) * 0.1 * offsetMult;
+	float offsetY = mod(offset, 1.0);
 
   vec4 cam = texture2D(camera, vec2(uv.x, offsetY));
 
