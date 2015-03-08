@@ -57,17 +57,10 @@ var AudioAnalyser = (function () {
 /// <reference path='./IUniform.ts'/>
 /// <reference path="./IPropertiesProvider.ts" />
 /// <reference path='./AudioAnalyser.ts'/>
-// Input: an audio context and a render time observable.
-// Output: an IGLProperty Array observable containing sampled audio data.
 var AudioManager = (function () {
     function AudioManager(audioContext) {
         this._audioTextureBuffer = new Uint8Array(AudioManager.FFT_SIZE * 4);
         this._audioContext = audioContext;
-        this._timeUniform = {
-            name: "time",
-            type: "f",
-            value: 0.0
-        };
         var dataTexture = new THREE.DataTexture(this._audioTextureBuffer, AudioManager.FFT_SIZE, 1, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.LinearFilter, THREE.LinearMipMapLinearFilter, 1);
         this._audioTexture = {
             name: "audioTexture",
@@ -86,10 +79,9 @@ var AudioManager = (function () {
         configurable: true
     });
     AudioManager.prototype.glProperties = function () {
-        return Rx.Observable.just([this._timeUniform, this._audioTexture]);
+        return Rx.Observable.just([this._audioTexture]);
     };
     AudioManager.prototype.sampleAudio = function () {
-        this._timeUniform.value = this._audioContext.currentTime;
         if (this._audioAnalyser == undefined)
             return;
         var frequencyBuffer = this._audioAnalyser.getFrequencyData();
@@ -377,7 +369,7 @@ var GLController = (function () {
         this._resolutionProvider = new ResolutionProvider();
         this._timeProvider = new TimeProvider();
         this._shaderLoader = new ShaderLoader();
-        this._audioShaderPlane = new PropertiesShaderPlane([videoManager, this._resolutionProvider, this._timeProvider]);
+        this._audioShaderPlane = new PropertiesShaderPlane([videoManager, this._resolutionProvider, this._timeProvider, audioManager]);
         this._audioShaderPlane.MeshObservable.subscribe(function (mesh) { return _this.onNewMeshes([mesh]); });
     }
     GLController.prototype.onNewResolution = function (resolution) {

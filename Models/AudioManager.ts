@@ -4,26 +4,17 @@
 /// <reference path="./IPropertiesProvider.ts" />
 /// <reference path='./AudioAnalyser.ts'/>
 
-// Input: an audio context and a render time observable.
-// Output: an IGLProperty Array observable containing sampled audio data.
 class AudioManager implements IPropertiesProvider {
   static FFT_SIZE = 1024;
   private _audioContext: AudioContext;
   private _audioAnalyser: AudioAnalyser;
 
-  private _timeUniform: IUniform;
   private _audioTexture: IUniform;
 
   private _audioTextureBuffer = new Uint8Array(AudioManager.FFT_SIZE * 4);
 
   constructor(audioContext: AudioContext) {
     this._audioContext = audioContext;
-
-    this._timeUniform = {
-      name: "time",
-      type: "f",
-      value: 0.0
-    };
 
     var dataTexture = new THREE.DataTexture(
       this._audioTextureBuffer,
@@ -54,12 +45,10 @@ class AudioManager implements IPropertiesProvider {
   }
 
   glProperties(): Rx.Observable<Array<IUniform>> {
-    return Rx.Observable.just([this._timeUniform, this._audioTexture]);
+    return Rx.Observable.just([this._audioTexture]);
   }
 
   sampleAudio(): void {
-    this._timeUniform.value = this._audioContext.currentTime;
-
     if (this._audioAnalyser == undefined) return;
 
     var frequencyBuffer: Uint8Array = this._audioAnalyser.getFrequencyData();

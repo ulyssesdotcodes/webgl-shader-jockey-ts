@@ -22,7 +22,7 @@ class GLController {
 
     this._shaderLoader = new ShaderLoader();
     this._audioShaderPlane = new PropertiesShaderPlane([videoManager,
-      this._resolutionProvider, this._timeProvider]);
+      this._resolutionProvider, this._timeProvider, audioManager]);
     this._audioShaderPlane.MeshObservable.subscribe((mesh) => this.onNewMeshes([mesh]));
   }
 
