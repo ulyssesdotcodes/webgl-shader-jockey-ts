@@ -4,6 +4,11 @@ uniform float audioResolution;
 uniform sampler2D audioTexture;
 uniform float time;
 
+float quadrant(float coord) {
+	coord = sign(coord);
+	return -1.0 * sign(coord * (coord - 1.0)) * 3.1415;
+}
+
 void main(void)
 {
 	vec2 uv = gl_FragCoord.xy / resolution.xy;
@@ -16,16 +21,23 @@ void main(void)
 
   float fft = t1[0] * t2[0];
 
-	float offsetMult = sin(uv.x * 16.0 * 3.1416);
+	vec2 cuv = uv - vec2(0.5);
+	float offset = 0.0;
+	if(cuv.x < 0.0) {
+		offset = radians(180.0);
+	}
+	else if (cuv.y < 0.0) {
+		offset = 2.0 * radians(180.0);
+	}
 
-	float offset = uv.y + ((1.0 + fft) * (1.0 + fft) - 1.0) * 0.1 * offsetMult;
-	float offsetY = mod(offset, 1.0);
+	float a = atan(cuv.x, cuv.y) + radians(90.0);
+	float r = length(cuv);
 
-  vec4 cam = texture2D(camera, vec2(uv.x, offsetY));
+	r = r - fft * 0.2;
 
-  // reverse cam
-  vec4 diff = vec4(1.0) - cam;
+	uv = vec2(r * cos(a), r * sin(a)) + vec2(0.5);
+
+  vec4 cam = texture2D(camera, uv);
 
   gl_FragColor = cam;
-
 }
