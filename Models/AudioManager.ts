@@ -4,36 +4,19 @@
 /// <reference path="./IPropertiesProvider.ts" />
 /// <reference path='./AudioAnalyser.ts'/>
 
-class AudioManager implements IPropertiesProvider {
+class AudioManager {
   static FFT_SIZE = 1024;
   private _audioContext: AudioContext;
   private _audioAnalyser: AudioAnalyser;
 
-  private _audioTexture: IUniform;
-
-  private _audioTextureBuffer = new Uint8Array(AudioManager.FFT_SIZE * 4);
+  private _audioEventSubject: Rx.Subject<IAudioEvent>;
+  AudioEventObservable: Rx.Observable<IAudioEvent>;
 
   constructor(audioContext: AudioContext) {
     this._audioContext = audioContext;
 
-    var dataTexture = new THREE.DataTexture(
-      this._audioTextureBuffer,
-      AudioManager.FFT_SIZE,
-      1,
-      THREE.RGBAFormat,
-      THREE.UnsignedByteType,
-      THREE.UVMapping,
-      THREE.ClampToEdgeWrapping,
-      THREE.ClampToEdgeWrapping,
-      THREE.LinearFilter,
-      THREE.LinearMipMapLinearFilter,
-      1);
-
-    this._audioTexture = {
-      name: "audioTexture",
-      type: "t",
-      value: dataTexture
-    }
+    this._audioEventSubject = new Rx.Subject<IAudioEvent>();
+    this.AudioEventObservable = this._audioEventSubject.asObservable();
   }
 
   updateSourceNode(sourceNode: AudioSourceNode) {
@@ -44,19 +27,17 @@ class AudioManager implements IPropertiesProvider {
     return this._audioContext;
   }
 
-  glProperties(): Rx.Observable<Array<IUniform>> {
-    return Rx.Observable.just([this._audioTexture]);
-  }
-
   sampleAudio(): void {
-    if (this._audioAnalyser == undefined) return;
+    if (this._audioAnalyser === undefined) {
+      return;
+    }
 
     var frequencyBuffer: Uint8Array = this._audioAnalyser.getFrequencyData();
 
-    for (var i in frequencyBuffer) {
-      this._audioTextureBuffer[i * 4] = frequencyBuffer[i];
-    }
-
-    this._audioTexture.value.needsUpdate = true;
+    this._audioEventSubject.onNext({ frequencyBuffer: frequencyBuffer });
   }
+}
+
+interface IAudioEvent {
+  frequencyBuffer: Uint8Array;
 }

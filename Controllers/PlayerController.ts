@@ -18,7 +18,7 @@ class PlayerController {
     this.microphone.getNodeObservable().subscribe((node: AudioNode) =>
       this.manager.updateSourceNode(node));
 
-    this.soundCloudLoader = new SoundCloudLoader();
+    // this.soundCloudLoader = new SoundCloudLoader();
 
     this.onMicClick();
   }

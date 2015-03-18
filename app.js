@@ -59,14 +59,9 @@ var AudioAnalyser = (function () {
 /// <reference path='./AudioAnalyser.ts'/>
 var AudioManager = (function () {
     function AudioManager(audioContext) {
-        this._audioTextureBuffer = new Uint8Array(AudioManager.FFT_SIZE * 4);
         this._audioContext = audioContext;
-        var dataTexture = new THREE.DataTexture(this._audioTextureBuffer, AudioManager.FFT_SIZE, 1, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.LinearFilter, THREE.LinearMipMapLinearFilter, 1);
-        this._audioTexture = {
-            name: "audioTexture",
-            type: "t",
-            value: dataTexture
-        };
+        this._audioEventSubject = new Rx.Subject();
+        this.AudioEventObservable = this._audioEventSubject.asObservable();
     }
     AudioManager.prototype.updateSourceNode = function (sourceNode) {
         this._audioAnalyser = new AudioAnalyser(sourceNode, AudioManager.FFT_SIZE);
@@ -78,17 +73,12 @@ var AudioManager = (function () {
         enumerable: true,
         configurable: true
     });
-    AudioManager.prototype.glProperties = function () {
-        return Rx.Observable.just([this._audioTexture]);
-    };
     AudioManager.prototype.sampleAudio = function () {
-        if (this._audioAnalyser == undefined)
+        if (this._audioAnalyser === undefined) {
             return;
-        var frequencyBuffer = this._audioAnalyser.getFrequencyData();
-        for (var i in frequencyBuffer) {
-            this._audioTextureBuffer[i * 4] = frequencyBuffer[i];
         }
-        this._audioTexture.value.needsUpdate = true;
+        var frequencyBuffer = this._audioAnalyser.getFrequencyData();
+        this._audioEventSubject.onNext({ frequencyBuffer: frequencyBuffer });
     };
     AudioManager.FFT_SIZE = 1024;
     return AudioManager;
@@ -166,7 +156,7 @@ var PlayerController = (function () {
         this._manager = new AudioManager(new AudioContext());
         this.microphone = new Microphone();
         this.microphone.getNodeObservable().subscribe(function (node) { return _this.manager.updateSourceNode(node); });
-        this.soundCloudLoader = new SoundCloudLoader();
+        // this.soundCloudLoader = new SoundCloudLoader();
         this.onMicClick();
     }
     Object.defineProperty(PlayerController.prototype, "manager", {
@@ -355,12 +345,37 @@ var TimeProvider = (function () {
     };
     return TimeProvider;
 })();
+var AudioUniformProvider = (function () {
+    function AudioUniformProvider(audioManager) {
+        var _this = this;
+        this._audioTextureBuffer = new Uint8Array(AudioManager.FFT_SIZE * 4);
+        this._audioManager = audioManager;
+        var dataTexture = new THREE.DataTexture(this._audioTextureBuffer, AudioManager.FFT_SIZE, 1, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.LinearFilter, THREE.LinearMipMapLinearFilter, 1);
+        this._audioTexture = {
+            name: "audioTexture",
+            type: "t",
+            value: dataTexture
+        };
+        this._audioManager.AudioEventObservable.subscribe(function (ae) { return _this.onAudioEvent(ae); });
+    }
+    AudioUniformProvider.prototype.glProperties = function () {
+        return Rx.Observable.just([this._audioTexture]);
+    };
+    AudioUniformProvider.prototype.onAudioEvent = function (audioEvent) {
+        for (var i = 0; i < audioEvent.frequencyBuffer.length; i++) {
+            this._audioTextureBuffer[i * 4] = audioEvent.frequencyBuffer[i];
+        }
+        this._audioTexture.value.needsUpdate = true;
+    };
+    return AudioUniformProvider;
+})();
 /// <reference path='../typed/three.d.ts'/>
 /// <reference path='../Models/IPropertiesProvider.ts'/>
 /// <reference path='../Models/PropertiesShaderPlane.ts'/>
 /// <reference path='../Models/ShaderLoader.ts'/>
 /// <reference path='../Models/ResolutionProvider.ts'/>
 /// <reference path='../Models/TimeProvider.ts'/>
+/// <reference path='../Models/AudioUniformProvider.ts'/>
 var GLController = (function () {
     function GLController(audioManager, videoManager) {
         var _this = this;
@@ -369,7 +384,8 @@ var GLController = (function () {
         this._resolutionProvider = new ResolutionProvider();
         this._timeProvider = new TimeProvider();
         this._shaderLoader = new ShaderLoader();
-        this._audioShaderPlane = new PropertiesShaderPlane([videoManager, this._resolutionProvider, this._timeProvider, audioManager]);
+        var audioUniformProvider = new AudioUniformProvider(audioManager);
+        this._audioShaderPlane = new PropertiesShaderPlane([videoManager, this._resolutionProvider, this._timeProvider, audioUniformProvider]);
         this._audioShaderPlane.MeshObservable.subscribe(function (mesh) { return _this.onNewMeshes([mesh]); });
     }
     GLController.prototype.onNewResolution = function (resolution) {
