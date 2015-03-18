@@ -692,6 +692,47 @@ var ControlsView = (function () {
     };
     return ControlsView;
 })();
+var PopupWindowController = (function () {
+    function PopupWindowController() {
+        this._popupWindow = new PopupWindow();
+    }
+    PopupWindowController.prototype.onClick = function (e) {
+        e.preventDefault();
+        this._popupWindow.openPopup();
+    };
+    PopupWindowController.LINK = "viewer.html";
+    return PopupWindowController;
+})();
+var PopupWindow = (function () {
+    function PopupWindow() {
+        this._location = window.location.protocol + window.location.hostname;
+    }
+    PopupWindow.prototype.openPopup = function () {
+        this._window = window.open("viewer.html");
+    };
+    PopupWindow.prototype.sendUniforms = function (uniforms) {
+        if (this._window === undefined) {
+            return;
+        }
+        this._window.postMessage(uniforms, this._location);
+    };
+    return PopupWindow;
+})();
+/// <reference path='../Models/PopupWindow.ts'/>
+var PopupWindowView = (function () {
+    function PopupWindowView(popupWindowController) {
+        this._popupWindowController = popupWindowController;
+    }
+    PopupWindowView.prototype.render = function (el) {
+        var _this = this;
+        var link = $("<a>", { class: "fullscreen", href: "" });
+        var icon = $("<img/>", { src: "/resources/ic_fullscreen_white_48dp.png" });
+        link.append(icon);
+        link.click(function (e) { return _this._popupWindowController.onClick(e); });
+        $(el).append(link);
+    };
+    return PopupWindowView;
+})();
 /// <reference path="./PlayerView.ts"/>
 /// <reference path="../Controllers/PlayerController.ts"/>
 /// <reference path="./GLView.ts"/>
@@ -702,6 +743,8 @@ var ControlsView = (function () {
 /// <reference path="../Controllers/ControlsController.ts"/>
 /// <reference path="./ControlsView.ts"/>
 /// <reference path='./IControllerView.ts' />
+/// <reference path="../Controllers/PopupWindowController.ts"/>
+/// <reference path='./PopupWindowView.ts' />
 var AppView = (function () {
     function AppView() {
         var _this = this;
@@ -711,11 +754,13 @@ var AppView = (function () {
         this._shadersController = new ShadersController();
         this._controlsController = new ControlsController();
         this._glController = new GLController(this._playerController.manager, this._videoController.Manager, this._controlsController.UniformsProvider);
+        this._popupWindowController = new PopupWindowController();
         this.playerView = new PlayerView(this._playerController);
         this._glView = new GLView(this._playerController.manager, this._glController);
         this._shadersView = new ShadersView(this._shadersController);
         this._controlsView = new ControlsView(this._controlsController);
         this._videoView = new VideoView(this._videoController);
+        this._popupWindowView = new PopupWindowView(this._popupWindowController);
         this._shadersController.ShaderNameObservable.subscribe(function (name) { return _this._glController.onShaderName(name); });
     }
     AppView.prototype.render = function (el) {
@@ -725,6 +770,7 @@ var AppView = (function () {
         this._shadersView.render(this.content[0]);
         this._controlsView.render(this.content[0]);
         this._videoView.render(this.content[0]);
+        this._popupWindowView.render(this.content[0]);
         $(el).append(this.content);
         requestAnimationFrame(function () { return _this.animate(); });
     };
