@@ -223,7 +223,7 @@ var GLView = (function () {
         el.appendChild(this._renderer.domElement);
         this.onWindowResize();
         window.addEventListener('resize', function (__) { return _this.onWindowResize(); }, false);
-        this._glController.onShaderName("circular_fft");
+        this._glController.onShaderName("loudness_test");
     };
     GLView.prototype.onWindowResize = function () {
         this._renderer.setSize(window.innerWidth, window.innerHeight);
@@ -369,6 +369,31 @@ var AudioUniformProvider = (function () {
     };
     return AudioUniformProvider;
 })();
+var LoudnessAccumulator = (function () {
+    function LoudnessAccumulator(audioManager) {
+        var _this = this;
+        this._accumulatedUniform = {
+            name: "accumulatedLoudness",
+            type: "f",
+            value: 0.0
+        };
+        audioManager.AudioEventObservable.subscribe(function (ae) { return _this.onAudioEvent(ae); });
+    }
+    LoudnessAccumulator.prototype.onAudioEvent = function (audioEvent) {
+        var sum = 0.0;
+        for (var i = 0; i < audioEvent.frequencyBuffer.length; i++) {
+            sum += audioEvent.frequencyBuffer[i];
+        }
+        var average = sum / audioEvent.frequencyBuffer.length;
+        average = average / 128.0;
+        average *= average;
+        this._accumulatedUniform.value += average;
+    };
+    LoudnessAccumulator.prototype.glProperties = function () {
+        return Rx.Observable.just([this._accumulatedUniform]);
+    };
+    return LoudnessAccumulator;
+})();
 /// <reference path='../typed/three.d.ts'/>
 /// <reference path='../Models/IPropertiesProvider.ts'/>
 /// <reference path='../Models/PropertiesShaderPlane.ts'/>
@@ -376,6 +401,7 @@ var AudioUniformProvider = (function () {
 /// <reference path='../Models/ResolutionProvider.ts'/>
 /// <reference path='../Models/TimeProvider.ts'/>
 /// <reference path='../Models/AudioUniformProvider.ts'/>
+/// <reference path='../Models/LoudnessAccumulator.ts'/>
 var GLController = (function () {
     function GLController(audioManager, videoManager) {
         var _this = this;
@@ -385,7 +411,10 @@ var GLController = (function () {
         this._timeProvider = new TimeProvider();
         this._shaderLoader = new ShaderLoader();
         var audioUniformProvider = new AudioUniformProvider(audioManager);
-        this._audioShaderPlane = new PropertiesShaderPlane([videoManager, this._resolutionProvider, this._timeProvider, audioUniformProvider]);
+        var loudnessAccumulator = new LoudnessAccumulator(audioManager);
+        // this._audioShaderPlane = new PropertiesShaderPlane([videoManager,
+        //   this._resolutionProvider, this._timeProvider, audioUniformProvider]);
+        this._audioShaderPlane = new PropertiesShaderPlane([this._timeProvider, loudnessAccumulator, this._resolutionProvider]);
         this._audioShaderPlane.MeshObservable.subscribe(function (mesh) { return _this.onNewMeshes([mesh]); });
     }
     GLController.prototype.onNewResolution = function (resolution) {
@@ -428,7 +457,7 @@ var ShadersView = (function () {
         container.append(select);
         $(el).append(container);
     };
-    ShadersView.shaders = ["simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test", "video_test", "video_audio_distortion"];
+    ShadersView.shaders = ["simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test", "video_test", "video_audio_distortion", "loudness_test"];
     return ShadersView;
 })();
 var VideoView = (function () {
