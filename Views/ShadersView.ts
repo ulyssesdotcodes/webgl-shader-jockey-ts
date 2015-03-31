@@ -2,7 +2,7 @@
 
 class ShadersView {
   static shaders = ["simple",  "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test",
-    "video_test", "video_audio_distortion", "loudness_test"];
+    "video_test", "video_audio_distortion", "loudness_test", "mandelbrot"];
 
   private _shadersController: ShadersController;
 

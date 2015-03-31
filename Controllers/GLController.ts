@@ -26,10 +26,8 @@ class GLController {
 
     var audioUniformProvider =  new AudioUniformProvider(audioManager);
     var loudnessAccumulator =  new LoudnessAccumulator(audioManager);
-    // this._audioShaderPlane = new PropertiesShaderPlane([videoManager,
-    //   this._resolutionProvider, this._timeProvider, audioUniformProvider]);
-    this._audioShaderPlane =
-      new PropertiesShaderPlane([this._timeProvider, loudnessAccumulator, this._resolutionProvider]);
+    this._audioShaderPlane = new PropertiesShaderPlane([videoManager,
+      this._resolutionProvider, this._timeProvider, audioUniformProvider, loudnessAccumulator]);
     this._audioShaderPlane.MeshObservable.subscribe((mesh) => this.onNewMeshes([mesh]));
   }
 

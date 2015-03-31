@@ -377,6 +377,11 @@ var LoudnessAccumulator = (function () {
             type: "f",
             value: 0.0
         };
+        this._loudnessUniform = {
+            name: "loudness",
+            type: "f",
+            value: 0.0
+        };
         audioManager.AudioEventObservable.subscribe(function (ae) { return _this.onAudioEvent(ae); });
     }
     LoudnessAccumulator.prototype.onAudioEvent = function (audioEvent) {
@@ -388,9 +393,10 @@ var LoudnessAccumulator = (function () {
         average = average / 128.0;
         average *= average;
         this._accumulatedUniform.value += average;
+        this._loudnessUniform.value = average;
     };
     LoudnessAccumulator.prototype.glProperties = function () {
-        return Rx.Observable.just([this._accumulatedUniform]);
+        return Rx.Observable.just([this._accumulatedUniform, this._loudnessUniform]);
     };
     return LoudnessAccumulator;
 })();
@@ -412,9 +418,7 @@ var GLController = (function () {
         this._shaderLoader = new ShaderLoader();
         var audioUniformProvider = new AudioUniformProvider(audioManager);
         var loudnessAccumulator = new LoudnessAccumulator(audioManager);
-        // this._audioShaderPlane = new PropertiesShaderPlane([videoManager,
-        //   this._resolutionProvider, this._timeProvider, audioUniformProvider]);
-        this._audioShaderPlane = new PropertiesShaderPlane([this._timeProvider, loudnessAccumulator, this._resolutionProvider]);
+        this._audioShaderPlane = new PropertiesShaderPlane([videoManager, this._resolutionProvider, this._timeProvider, audioUniformProvider, loudnessAccumulator]);
         this._audioShaderPlane.MeshObservable.subscribe(function (mesh) { return _this.onNewMeshes([mesh]); });
     }
     GLController.prototype.onNewResolution = function (resolution) {
@@ -457,7 +461,7 @@ var ShadersView = (function () {
         container.append(select);
         $(el).append(container);
     };
-    ShadersView.shaders = ["simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test", "video_test", "video_audio_distortion", "loudness_test"];
+    ShadersView.shaders = ["simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test", "video_test", "video_audio_distortion", "loudness_test", "mandelbrot"];
     return ShadersView;
 })();
 var VideoView = (function () {
