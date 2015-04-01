@@ -33,11 +33,16 @@ class AudioManager {
     }
 
     var frequencyBuffer: Uint8Array = this._audioAnalyser.getFrequencyData();
+    var timeDomainBuffer: Uint8Array = this._audioAnalyser.getTimeDomainData();
 
-    this._audioEventSubject.onNext({ frequencyBuffer: frequencyBuffer });
+    this._audioEventSubject.onNext({
+      frequencyBuffer: frequencyBuffer,
+      timeDomainBuffer: timeDomainBuffer
+    });
   }
 }
 
 interface IAudioEvent {
   frequencyBuffer: Uint8Array;
+  timeDomainBuffer: Uint8Array;
 }

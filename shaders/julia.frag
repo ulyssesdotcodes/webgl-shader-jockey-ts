@@ -5,15 +5,13 @@ uniform float loudness;
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
 
-  vec2 z, c;
-  c.x = 1.333333 * (uv.x - 0.5) * 2.5  - 0.5;
-  c.y = (uv.y - 0.5) * 2.5;
+  vec2 c = vec2(cos(.25 * time), sin(.25 * time * 1.423));
 
-  z = c;
-  float restrictedLoudness = 1.0 - (loudness * loudness);
-  int iter = 10 + int(100.0 * sin(restrictedLoudness * 3.1415));
+  vec2 z = uv *
+
+  int iter = 10 + int(200.0 * sin(loudness * 3.1415) / 2.0);
   int endi = iter;
-  for(int i=0; i<=110; i++) {
+  for(int i=0; i<210; i++) {
     if (i > iter) break;
 
     float x= (z.x * z.x - z.y * z.y) + c.x;

@@ -1,19 +1,21 @@
 uniform vec2 resolution;
 uniform float time;
 uniform float loudness;
+uniform float accumulatedLoudness;
 
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
+  float al = (accumulatedLoudness + time / 10.0) / 5.0;
 
   vec2 z, c;
-  c.x = 1.333333 * (uv.x - 0.5) * 2.5  - 0.5;
-  c.y = (uv.y - 0.5) * 2.5;
+  c.x = 1.333333 * cos(.25 * al) * 0.5 - 0.5;
+  c.y = sin(0.25 * al) * 0.5 - 0.5;
 
-  z = c;
-  float restrictedLoudness = 1.0 - (loudness * loudness);
-  int iter = 10 + int(100.0 * sin(restrictedLoudness * 3.1415));
+  z = uv * vec2(1.333, 1.0);
+  float l = 2.0 * loudness * loudness;
+  int iter = 10 + int(200.0 * sin(l * 3.1415) / 2.0);
   int endi = iter;
-  for(int i=0; i<=110; i++) {
+  for(int i=0; i<210; i++) {
     if (i > iter) break;
 
     float x= (z.x * z.x - z.y * z.y) + c.x;

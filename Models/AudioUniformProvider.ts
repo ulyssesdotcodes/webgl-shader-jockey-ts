@@ -38,6 +38,10 @@ class AudioUniformProvider implements IPropertiesProvider{
       this._audioTextureBuffer[i * 4] = audioEvent.frequencyBuffer[i];
     }
 
+    for (var i = 0; i < audioEvent.timeDomainBuffer.length; i++) {
+      this._audioTextureBuffer[i * 4 + 1] = audioEvent.frequencyBuffer[i];
+    }
+
     this._audioTexture.value.needsUpdate = true;
   }
 }

@@ -45,10 +45,15 @@ var AudioAnalyser = (function () {
         this.fftSize = fftSize;
         audioNode.connect(this._analyser);
         this.frequencyBuffer = new Uint8Array(this.fftSize);
+        this.timeDomainBuffer = new Uint8Array(this.fftSize);
     }
     AudioAnalyser.prototype.getFrequencyData = function () {
         this._analyser.getByteFrequencyData(this.frequencyBuffer);
         return this.frequencyBuffer;
+    };
+    AudioAnalyser.prototype.getTimeDomainData = function () {
+        this._analyser.getByteTimeDomainData(this.timeDomainBuffer);
+        return this.timeDomainBuffer;
     };
     return AudioAnalyser;
 })();
@@ -78,7 +83,11 @@ var AudioManager = (function () {
             return;
         }
         var frequencyBuffer = this._audioAnalyser.getFrequencyData();
-        this._audioEventSubject.onNext({ frequencyBuffer: frequencyBuffer });
+        var timeDomainBuffer = this._audioAnalyser.getTimeDomainData();
+        this._audioEventSubject.onNext({
+            frequencyBuffer: frequencyBuffer,
+            timeDomainBuffer: timeDomainBuffer
+        });
     };
     AudioManager.FFT_SIZE = 1024;
     return AudioManager;
@@ -300,12 +309,14 @@ var ShaderText = (function () {
 /// <reference path='./ShaderText.ts'/>
 var ShaderLoader = (function () {
     function ShaderLoader() {
+        var _this = this;
+        this.getVertex("plane").subscribe(function (vert) { return _this._regularVert = vert; });
     }
     ShaderLoader.prototype.getShaderFromServer = function (name) {
         return Rx.Observable.combineLatest(this.getFragment(name), this.getVertex(name), function (frag, vert) { return new ShaderText(frag, vert); });
     };
     ShaderLoader.prototype.getVertex = function (name) {
-        return $.getAsObservable('shaders/' + name + ".vert").map(function (shader) { return shader.data; });
+        return $.getAsObservable('shaders/' + name + ".vert").map(function (shader) { return shader.data; }).onErrorResumeNext(Rx.Observable.just(this._regularVert));
     };
     ShaderLoader.prototype.getFragment = function (name) {
         return $.getAsObservable('shaders/' + name + '.frag').map(function (shader) { return shader.data; });
@@ -364,6 +375,9 @@ var AudioUniformProvider = (function () {
     AudioUniformProvider.prototype.onAudioEvent = function (audioEvent) {
         for (var i = 0; i < audioEvent.frequencyBuffer.length; i++) {
             this._audioTextureBuffer[i * 4] = audioEvent.frequencyBuffer[i];
+        }
+        for (var i = 0; i < audioEvent.timeDomainBuffer.length; i++) {
+            this._audioTextureBuffer[i * 4 + 1] = audioEvent.frequencyBuffer[i];
         }
         this._audioTexture.value.needsUpdate = true;
     };
@@ -461,7 +475,18 @@ var ShadersView = (function () {
         container.append(select);
         $(el).append(container);
     };
-    ShadersView.shaders = ["simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test", "video_test", "video_audio_distortion", "loudness_test", "mandelbrot"];
+    ShadersView.shaders = [
+        "simple",
+        "fft_matrix_product",
+        "circular_fft",
+        "vertical_wav",
+        "threejs_test",
+        "video_test",
+        "video_audio_distortion",
+        "loudness_test",
+        "mandelbrot",
+        "mandelbrot_mover"
+    ];
     return ShadersView;
 })();
 var VideoView = (function () {
