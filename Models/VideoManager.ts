@@ -1,9 +1,9 @@
-class VideoManager implements IPropertiesProvider {
+class VideoManager implements IPropertiesProvider<THREE.Texture> {
   private _videoElement: HTMLMediaElement;
   private _videoCanvas: HTMLCanvasElement;
   private _videoContext: CanvasRenderingContext2D;
 
-  private _videoTexture: IUniform;
+  private _videoTexture: IUniform<THREE.Texture>;
 
   constructor() {
     this._videoCanvas = document.createElement("canvas");
@@ -24,7 +24,7 @@ class VideoManager implements IPropertiesProvider {
     this._videoElement = videoElement;
   }
 
-  glProperties(): Rx.Observable<Array<IUniform>> {
+  glProperties(): Rx.Observable<Array<IUniform<THREE.Texture>>> {
     return Rx.Observable.just([this._videoTexture]);
   }
 

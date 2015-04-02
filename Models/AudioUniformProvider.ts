@@ -1,7 +1,7 @@
 class AudioUniformProvider implements IPropertiesProvider{
   private _audioManager: AudioManager;
 
-  private _audioTexture: IUniform;
+  private _audioTexture: IUniform<THREE.DataTexture>;
   private _audioTextureBuffer = new Uint8Array(AudioManager.FFT_SIZE * 4);
 
   constructor(audioManager: AudioManager) {
@@ -29,7 +29,7 @@ class AudioUniformProvider implements IPropertiesProvider{
     this._audioManager.AudioEventObservable.subscribe((ae) => this.onAudioEvent(ae));
   }
 
-  glProperties(): Rx.Observable<Array<IUniform>> {
+  glProperties(): Rx.Observable<Array<IUniform<any>>> {
     return Rx.Observable.just([this._audioTexture]);
   }
 

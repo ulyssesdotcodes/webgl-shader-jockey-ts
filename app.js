@@ -398,15 +398,18 @@ var LoudnessAccumulator = (function () {
         };
         audioManager.AudioEventObservable.subscribe(function (ae) { return _this.onAudioEvent(ae); });
     }
+    LoudnessAccumulator.prototype.setVolumeUniform = function (volumeUniform) {
+        this._volume = volumeUniform;
+    };
     LoudnessAccumulator.prototype.onAudioEvent = function (audioEvent) {
         var sum = 0.0;
         for (var i = 0; i < audioEvent.frequencyBuffer.length; i++) {
             sum += audioEvent.frequencyBuffer[i];
         }
+        var volume = this._volume === undefined ? 1.0 : this._volume.value;
         var average = sum / audioEvent.frequencyBuffer.length;
         average = average / 128.0;
-        average *= average;
-        this._accumulatedUniform.value += average;
+        this._accumulatedUniform.value += average * volume;
         this._loudnessUniform.value = average;
     };
     LoudnessAccumulator.prototype.glProperties = function () {
@@ -423,7 +426,7 @@ var LoudnessAccumulator = (function () {
 /// <reference path='../Models/AudioUniformProvider.ts'/>
 /// <reference path='../Models/LoudnessAccumulator.ts'/>
 var GLController = (function () {
-    function GLController(audioManager, videoManager) {
+    function GLController(audioManager, videoManager, controlsProvider) {
         var _this = this;
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
@@ -432,7 +435,15 @@ var GLController = (function () {
         this._shaderLoader = new ShaderLoader();
         var audioUniformProvider = new AudioUniformProvider(audioManager);
         var loudnessAccumulator = new LoudnessAccumulator(audioManager);
-        this._audioShaderPlane = new PropertiesShaderPlane([videoManager, this._resolutionProvider, this._timeProvider, audioUniformProvider, loudnessAccumulator]);
+        controlsProvider.glProperties().flatMap(Rx.Observable.from).filter(function (uniform) { return uniform.name == "volume"; }).subscribe(function (volumeUniform) { return loudnessAccumulator.setVolumeUniform(volumeUniform); });
+        this._audioShaderPlane = new PropertiesShaderPlane([
+            videoManager,
+            this._resolutionProvider,
+            this._timeProvider,
+            audioUniformProvider,
+            loudnessAccumulator,
+            controlsProvider
+        ]);
         this._audioShaderPlane.MeshObservable.subscribe(function (mesh) { return _this.onNewMeshes([mesh]); });
     }
     GLController.prototype.onNewResolution = function (resolution) {
@@ -463,7 +474,6 @@ var ShadersController = (function () {
 /// <reference path='../Controllers/ShadersController'/>
 var ShadersView = (function () {
     function ShadersView(shadersController) {
-        this.content = $("<div>", { class: "queue" });
         this._shadersController = shadersController;
     }
     ShadersView.prototype.render = function (el) {
@@ -565,6 +575,58 @@ var VideoController = (function () {
     };
     return VideoController;
 })();
+var VolumeControl = (function () {
+    function VolumeControl() {
+        this.VolumeLevel = {
+            name: "volume",
+            type: "f",
+            value: 1.0
+        };
+    }
+    VolumeControl.prototype.updateVolume = function (volume) {
+        this.VolumeLevel.value = volume;
+    };
+    return VolumeControl;
+})();
+/// <reference path='./VolumeControl.ts'/>
+var ControlsProvider = (function () {
+    function ControlsProvider() {
+        this._volumeControl = new VolumeControl();
+    }
+    ControlsProvider.prototype.glProperties = function () {
+        return Rx.Observable.just([this._volumeControl.VolumeLevel]);
+    };
+    ControlsProvider.prototype.updateVolume = function (volume) {
+        this._volumeControl.updateVolume(volume);
+    };
+    return ControlsProvider;
+})();
+/// <reference path='../Models/ControlsProvider.ts'/>
+var ControlsController = (function () {
+    function ControlsController() {
+        this.UniformsProvider = new ControlsProvider();
+    }
+    ControlsController.prototype.onVolumeChange = function (volume) {
+        this.UniformsProvider.updateVolume(parseFloat(volume));
+    };
+    return ControlsController;
+})();
+var ControlsView = (function () {
+    function ControlsView(controller) {
+        this._controlsController = controller;
+    }
+    ControlsView.prototype.render = function (el) {
+        var _this = this;
+        var container = $("<div>", { class: "controls" });
+        var volumeSlider = $("<input>", { type: "range", min: 0, max: 2.0, step: 0.05 });
+        volumeSlider.on('input', function (__) {
+            _this._controlsController.onVolumeChange(volumeSlider.val());
+        });
+        container.append(volumeSlider);
+        $(el).append(container);
+    };
+    return ControlsView;
+})();
 /// <reference path="./PlayerView.ts"/>
 /// <reference path="../Controllers/PlayerController.ts"/>
 /// <reference path="./GLView.ts"/>
@@ -572,6 +634,8 @@ var VideoController = (function () {
 /// <reference path="./ShadersView.ts"/>
 /// <reference path="./VideoView.ts"/>
 /// <reference path="../Controllers/VideoController.ts"/>
+/// <reference path="../Controllers/ControlsController.ts"/>
+/// <reference path="./ControlsView.ts"/>
 /// <reference path='./IControllerView.ts' />
 var AppView = (function () {
     function AppView() {
@@ -580,10 +644,12 @@ var AppView = (function () {
         this._playerController = new PlayerController();
         this._videoController = new VideoController();
         this._shadersController = new ShadersController();
-        this._glController = new GLController(this._playerController.manager, this._videoController.Manager);
+        this._controlsController = new ControlsController();
+        this._glController = new GLController(this._playerController.manager, this._videoController.Manager, this._controlsController.UniformsProvider);
         this.playerView = new PlayerView(this._playerController);
         this._glView = new GLView(this._playerController.manager, this._glController);
         this._shadersView = new ShadersView(this._shadersController);
+        this._controlsView = new ControlsView(this._controlsController);
         this._videoView = new VideoView(this._videoController);
         this._shadersController.ShaderNameObservable.subscribe(function (name) { return _this._glController.onShaderName(name); });
     }
@@ -592,6 +658,7 @@ var AppView = (function () {
         // this.playerView.render(this.content[0]);
         this._glView.render(this.content[0]);
         this._shadersView.render(this.content[0]);
+        this._controlsView.render(this.content[0]);
         this._videoView.render(this.content[0]);
         $(el).append(this.content);
         requestAnimationFrame(function () { return _this.animate(); });

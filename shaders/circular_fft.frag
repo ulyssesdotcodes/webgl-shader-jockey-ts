@@ -4,6 +4,7 @@ uniform sampler2D audioTexture;
 uniform vec2 resolution;
 uniform float audioResolution;
 uniform float time;
+uniform float volume;
 uniform vec3 te[TOUCH_EVENT_COUNT];
 
 vec4 fromPos(in vec2 uv, in vec3 tuv) {
@@ -13,7 +14,7 @@ vec4 fromPos(in vec2 uv, in vec3 tuv) {
     float r = length(cuv);
 
     // FFT
-    float fft = texture2D(audioTexture, vec2(r, 0.25)).x;
+    float fft = texture2D(audioTexture, vec2(r, 0.25)).x * volume;
 
     // Rotating colors
     vec4 base = vec4(uv,0.5+0.5*sin(time),1.0);

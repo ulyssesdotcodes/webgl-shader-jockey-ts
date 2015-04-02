@@ -1,5 +1,5 @@
-﻿interface IUniform {
+﻿interface IUniform<T> {
   name: string;
   type: string;
-  value: any;
+  value: T;
 }

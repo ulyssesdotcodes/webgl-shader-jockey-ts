@@ -1,5 +1,5 @@
-class ResolutionProvider implements IPropertiesProvider {
-  private _resolutionProperty: IUniform;
+class ResolutionProvider implements IPropertiesProvider<THREE.Vector2> {
+  private _resolutionProperty: IUniform<THREE.Vector2>;
 
   constructor() {
     this._resolutionProperty = {

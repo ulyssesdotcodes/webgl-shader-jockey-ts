@@ -9,9 +9,7 @@ class ShadersView {
 
   private _shadersController: ShadersController;
 
-  private content: JQuery;
   constructor(shadersController: ShadersController) {
-    this.content = $("<div>", { class: "queue" })
     this._shadersController = shadersController;
   }
 

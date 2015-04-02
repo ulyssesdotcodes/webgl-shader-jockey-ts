@@ -1,5 +1,5 @@
 /// <reference path="./IUniform.ts"/>
 
-interface IPropertiesProvider{
-  glProperties(): Rx.Observable<Array<IUniform>>;
+interface IPropertiesProvider<T>{
+  glProperties(): Rx.Observable<Array<IUniform<T>>>;
 }

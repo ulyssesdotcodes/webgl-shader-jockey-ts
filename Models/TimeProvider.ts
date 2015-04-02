@@ -1,5 +1,5 @@
-class TimeProvider implements IPropertiesProvider {
-  private _timeProperty: IUniform;
+class TimeProvider implements IPropertiesProvider<number> {
+  private _timeProperty: IUniform<number>;
   private _startTime: number;
 
   constructor() {
