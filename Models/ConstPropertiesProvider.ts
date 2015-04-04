@@ -1,4 +1,6 @@
-﻿class ConstPropertiesProvider implements IPropertiesProvider {
+/// <reference path='./IPropertiesProvider.ts' />
+
+﻿class ConstPropertiesProvider implements IPropertiesProvider<any> {
   private _propertiesSubject: Rx.Subject<Array<IUniform<any>>>;
 
   constructor() {

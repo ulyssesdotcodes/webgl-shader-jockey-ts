@@ -1,4 +1,4 @@
-class AudioUniformProvider implements IPropertiesProvider{
+class AudioUniformProvider implements IPropertiesProvider<THREE.DataTexture>{
   private _audioManager: AudioManager;
 
   private _audioTexture: IUniform<THREE.DataTexture>;

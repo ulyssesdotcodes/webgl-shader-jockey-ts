@@ -1,9 +1,3 @@
-uniform vec2 resolution;
-uniform float time;
-uniform float loudness;
-uniform float volume;
-uniform float accumulatedLoudness;
-
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
   float al = (accumulatedLoudness + time / 10.0) / 5.0;

@@ -194,6 +194,7 @@ var PlayerController = (function () {
     };
     return PlayerController;
 })();
+/// <reference path='./IPropertiesProvider.ts' />
 var ConstPropertiesProvider = (function () {
     function ConstPropertiesProvider() {
         this._propertiesSubject = new Rx.Subject();
@@ -285,11 +286,30 @@ var PropertiesShaderPlane = (function () {
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
         this._uniformsManager = new UniformsManager(glProperties);
-        Rx.Observable.combineLatest(this._shaderSubject, this._uniformsManager.UniformsObservable, function (shaderText, uniforms) { return new THREE.ShaderMaterial({
-            uniforms: uniforms,
-            fragmentShader: shaderText.fragmentShader,
-            vertexShader: shaderText.vertextShader
-        }); }).map(function (shader) { return new ShaderPlane(shader).mesh; }).subscribe(this._meshSubject);
+        Rx.Observable.combineLatest(this._shaderSubject, this._uniformsManager.UniformsObservable, function (shaderText, uniforms) {
+            var fragText = shaderText.fragmentShader;
+            Object.keys(uniforms).forEach(function (key) {
+                var uniform = uniforms[key];
+                var uniformType;
+                switch (uniform.type) {
+                    case "f":
+                        uniformType = "float";
+                        break;
+                    case "v2":
+                        uniformType = "vec2";
+                        break;
+                    case "t":
+                        uniformType = "sampler2D";
+                        break;
+                }
+                fragText = "uniform " + uniformType + " " + uniform.name + ";\n" + fragText;
+            });
+            return new THREE.ShaderMaterial({
+                uniforms: uniforms,
+                fragmentShader: fragText,
+                vertexShader: shaderText.vertextShader
+            });
+        }).map(function (shader) { return new ShaderPlane(shader).mesh; }).subscribe(this._meshSubject);
     }
     PropertiesShaderPlane.prototype.onShaderText = function (shader) {
         /* Calculate the uniforms after it's subscribed to*/

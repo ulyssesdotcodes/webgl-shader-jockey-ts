@@ -1,9 +1,3 @@
-uniform sampler2D camera;
-uniform vec2 resolution;
-uniform float audioResolution;
-uniform sampler2D audioTexture;
-uniform float time;
-
 float quadrant(float coord) {
 	coord = sign(coord);
 	return -1.0 * sign(coord * (coord - 1.0)) * 3.1415;

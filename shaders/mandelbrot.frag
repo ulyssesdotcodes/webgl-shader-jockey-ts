@@ -1,8 +1,3 @@
-uniform vec2 resolution;
-uniform float time;
-uniform float loudness;
-uniform float volume;
-
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
 

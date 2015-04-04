@@ -1,10 +1,5 @@
 #define TOUCH_EVENT_COUNT 10
 precision highp float;
-uniform sampler2D audioTexture;
-uniform vec2 resolution;
-uniform float audioResolution;
-uniform float time;
-uniform float volume;
 uniform vec3 te[TOUCH_EVENT_COUNT];
 
 vec4 fromPos(in vec2 uv, in vec3 tuv) {

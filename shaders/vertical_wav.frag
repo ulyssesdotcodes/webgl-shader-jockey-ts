@@ -1,8 +1,4 @@
 precision highp float;
-uniform sampler2D audioTexture;
-uniform vec2 resolution;
-uniform float audioResolution;
-uniform float time;
 
 void main(void)
 {

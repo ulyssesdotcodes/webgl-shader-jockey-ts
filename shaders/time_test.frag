@@ -1,6 +1,3 @@
-uniform vec2 resolution;
-uniform float time;
-
 void main(void)
 {
   vec2 pos = gl_FragCoord.xy / resolution.xy;

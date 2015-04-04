@@ -1,6 +1,3 @@
-uniform vec2 resolution;
-uniform float time;
-
 void main()	{
 
 	vec2 p = -1.0 + 2.0 * gl_FragCoord.xy / resolution.xy;

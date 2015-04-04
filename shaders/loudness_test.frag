@@ -1,7 +1,3 @@
-uniform vec2 resolution;
-uniform float accumulatedLoudness;
-uniform float time;
-
 // p is a polar coordinate with (radians, distance)
 vec2 toCartesian(vec2 p) {
   return vec2(p.y * cos(p.x), p.y * sin(p.x));

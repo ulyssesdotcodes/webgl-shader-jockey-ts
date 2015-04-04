@@ -1,8 +1,4 @@
 precision highp float;
-uniform sampler2D audioTexture;
-uniform vec2 resolution;
-uniform float audioResolution;
-uniform float time;
 
 void main(void)
 {
@@ -10,7 +6,7 @@ void main(void)
         uv=abs(2.0*(uv-0.5));
 
         float scaledResolution = 0.33;
-        
+
         vec4 t1 = texture2D(audioTexture, vec2(uv[0] * scaledResolution,0.1) );
         vec4 t2 = texture2D(audioTexture, vec2(uv[1] * scaledResolution,0.1) );
         float fft = t1[0]*t2[0]*0.6;

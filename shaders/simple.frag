@@ -1,8 +1,5 @@
 #define TOUCH_EVENT_COUNT 10
 precision highp float;
-uniform sampler2D audioTexture;
-uniform float time;
-uniform vec2 resolution;
 uniform vec3 te[TOUCH_EVENT_COUNT];
 uniform vec3 colormod;
 
@@ -18,7 +15,7 @@ void main() {
     if (tec.z == 0.0) {
       continue;
     }
-    
+
     float distTouch = length(tec.xy - vUv);
 
     float c = 1.0 - (time - tec.z) / 2.0;
