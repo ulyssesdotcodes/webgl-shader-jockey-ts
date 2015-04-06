@@ -24,5 +24,6 @@ void main() {
     endi = i;
   }
 
-  gl_FragColor = vec4(vec3(endi == iter ? 0.0 : float(endi)/float(iter)), 1.0);
+  float l = endi == iter ? 0.0 : float(endi)/float(iter);
+  gl_FragColor = vec4(baseHue((time + l) / 5.0) * l, 1.0);
 }

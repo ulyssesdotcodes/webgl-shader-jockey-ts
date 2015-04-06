@@ -2,18 +2,15 @@
 precision highp float;
 uniform vec3 te[TOUCH_EVENT_COUNT];
 
-vec4 fromPos(in vec2 uv, in vec3 tuv) {
-    // Convert to polar
-    vec2 cuv = abs(uv - tuv.xy);
-    float a = atan(cuv.x, cuv.y);
-    float r = length(cuv);
+vec4 fromPos(vec2 uv, vec3 te) {
+    vec2 cuv = toPolar(uv, te.xy);
 
     // FFT
-    float fft = texture2D(audioTexture, vec2(r, 0.25)).x * volume;
+    float fft = texture2D(audioTexture, vec2(cuv.y, 0.25)).x * volume;
 
     // Rotating colors
     vec4 base = vec4(uv,0.5+0.5*sin(time),1.0);
-    return base * (sin(r * 64.0 * 3.1415 - time ) * fft);
+    return base * (sin(cuv.y * 64.0 * 3.1415 + time ) * fft);
 }
 
 void main(void)

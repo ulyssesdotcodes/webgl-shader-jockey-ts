@@ -3,6 +3,7 @@
 
 class ShaderLoader {
   private _regularVert: string;
+  private _utilFrag: string;
 
   constructor() {
     this.getVertex("plane").subscribe((vert) => this._regularVert = vert);
@@ -21,7 +22,18 @@ class ShaderLoader {
 
   private getFragment(name: string): Rx.Observable<string> {
     return $.getAsObservable<ShaderResponse>('shaders/' + name + '.frag')
-      .map((shader) => shader.data);
+      .map((shader) => shader.data)
+      .combineLatest(this.utilFrag(), (frag, util) => util.concat(frag));
+  }
+
+  private utilFrag(): Rx.Observable<string> {
+    if(this._utilFrag === undefined) {
+      return $.getAsObservable<ShaderResponse>('shaders/util.frag')
+        .map((shader) => shader.data)
+        .doOnNext((util) => this._utilFrag = util);
+    }
+
+    return Rx.Observable.just(this._utilFrag);
   }
 }
 

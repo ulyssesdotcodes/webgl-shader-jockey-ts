@@ -339,7 +339,14 @@ var ShaderLoader = (function () {
         return $.getAsObservable('shaders/' + name + ".vert").map(function (shader) { return shader.data; }).onErrorResumeNext(Rx.Observable.just(this._regularVert));
     };
     ShaderLoader.prototype.getFragment = function (name) {
-        return $.getAsObservable('shaders/' + name + '.frag').map(function (shader) { return shader.data; });
+        return $.getAsObservable('shaders/' + name + '.frag').map(function (shader) { return shader.data; }).combineLatest(this.utilFrag(), function (frag, util) { return util.concat(frag); });
+    };
+    ShaderLoader.prototype.utilFrag = function () {
+        var _this = this;
+        if (this._utilFrag === undefined) {
+            return $.getAsObservable('shaders/util.frag').map(function (shader) { return shader.data; }).doOnNext(function (util) { return _this._utilFrag = util; });
+        }
+        return Rx.Observable.just(this._utilFrag);
     };
     return ShaderLoader;
 })();
