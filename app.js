@@ -247,7 +247,6 @@ var GLView = (function () {
 })();
 var ShaderPlane = (function () {
     function ShaderPlane(material) {
-        console.log(material.uniforms.resolution);
         var geometry = new THREE.PlaneBufferGeometry(2, 2);
         this._mesh = new THREE.Mesh(geometry, material);
     }
@@ -615,16 +614,34 @@ var VolumeControl = (function () {
     };
     return VolumeControl;
 })();
+var HueControl = (function () {
+    function HueControl() {
+        this.HueShift = {
+            name: "hue",
+            type: "f",
+            value: 0.0
+        };
+    }
+    HueControl.prototype.updateHueShift = function (shift) {
+        this.HueShift.value = shift;
+    };
+    return HueControl;
+})();
 /// <reference path='./VolumeControl.ts'/>
+/// <reference path='./HueControl.ts'/>
 var ControlsProvider = (function () {
     function ControlsProvider() {
         this._volumeControl = new VolumeControl();
+        this._hueControl = new HueControl();
     }
     ControlsProvider.prototype.glProperties = function () {
-        return Rx.Observable.just([this._volumeControl.VolumeLevel]);
+        return Rx.Observable.just([this._volumeControl.VolumeLevel, this._hueControl.HueShift]);
     };
     ControlsProvider.prototype.updateVolume = function (volume) {
         this._volumeControl.updateVolume(volume);
+    };
+    ControlsProvider.prototype.updateHueShift = function (shift) {
+        this._hueControl.updateHueShift(shift);
     };
     return ControlsProvider;
 })();
@@ -636,6 +653,9 @@ var ControlsController = (function () {
     ControlsController.prototype.onVolumeChange = function (volume) {
         this.UniformsProvider.updateVolume(parseFloat(volume));
     };
+    ControlsController.prototype.onHueShiftChange = function (shift) {
+        this.UniformsProvider.updateHueShift(parseFloat(shift));
+    };
     return ControlsController;
 })();
 var ControlsView = (function () {
@@ -643,14 +663,32 @@ var ControlsView = (function () {
         this._controlsController = controller;
     }
     ControlsView.prototype.render = function (el) {
-        var _this = this;
         var container = $("<div>", { class: "controls" });
+        this.renderVolume(container);
+        this.renderHue(container);
+        $(el).append(container);
+    };
+    ControlsView.prototype.renderVolume = function (container) {
+        var _this = this;
+        var volumeContainer = $("<div>");
+        volumeContainer.append("Volume: ");
         var volumeSlider = $("<input>", { type: "range", min: 0, max: 2.0, step: 0.05 });
         volumeSlider.on('input', function (__) {
             _this._controlsController.onVolumeChange(volumeSlider.val());
         });
-        container.append(volumeSlider);
-        $(el).append(container);
+        volumeContainer.append(volumeSlider);
+        container.append(volumeContainer);
+    };
+    ControlsView.prototype.renderHue = function (container) {
+        var _this = this;
+        var hueContainer = $("<div>");
+        hueContainer.append("Hue: ");
+        var hueSlider = $("<input>", { type: "range", min: -0.5, max: 0.5, step: 0.05 });
+        hueSlider.on('input', function (__) {
+            _this._controlsController.onHueShiftChange(hueSlider.val());
+        });
+        hueContainer.append(hueSlider);
+        container.append(hueContainer);
     };
     return ControlsView;
 })();

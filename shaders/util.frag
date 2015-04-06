@@ -40,6 +40,12 @@ vec3 hsv2rgb(vec3 c) {
   return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
+vec4 applyHueShift(vec4 color) {
+  vec3 hsv = rgb2hsv(color.rgb);
+  hsv.x = fract(hsv.x + hue);
+  return vec4(hsv2rgb(hsv), color.w);
+}
+
 vec3 baseHue(float time) {
   return hsv2rgb(vec3(fract(sin(time)), 1.0, 0.5));
 }

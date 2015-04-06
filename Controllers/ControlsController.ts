@@ -10,4 +10,8 @@ class ControlsController {
   onVolumeChange(volume: string) {
     this.UniformsProvider.updateVolume(parseFloat(volume));
   }
+
+  onHueShiftChange(shift: string) {
+    this.UniformsProvider.updateHueShift(parseFloat(shift));
+  }
 }

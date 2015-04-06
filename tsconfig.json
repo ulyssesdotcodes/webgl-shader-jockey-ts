@@ -22,6 +22,7 @@
         "./Models/AudioUniformProvider.ts",
         "./Models/ConstPropertiesProvider.ts",
         "./Models/ControlsProvider.ts",
+        "./Models/HueControl.ts",
         "./Models/IPropertiesProvider.ts",
         "./Models/IShaderProvider.ts",
         "./Models/IUniform.ts",
