@@ -2,14 +2,16 @@
 
 class GLView implements IControllerView {
   private _glController: GLController;
+  private _sceneUniformController: SceneUniformController;
   private _currentPlaneMesh: THREE.Mesh;
   private _renderer: THREE.WebGLRenderer;
   private _windowDimensPropertyProvider: ConstPropertiesProvider;
   private _camera: THREE.Camera;
   private _scene: THREE.Scene;
 
-  constructor(audioManager: AudioManager, glController: GLController) {
+  constructor(glController: GLController, sceneUniformController: SceneUniformController) {
     this._glController = glController;
+    this._sceneUniformController = sceneUniformController;
   }
 
   render(el: HTMLElement): void {
@@ -46,11 +48,11 @@ class GLView implements IControllerView {
 
   onWindowResize() {
     this._renderer.setSize(window.innerWidth, window.innerHeight);
-    this._glController.onNewResolution({ width: window.innerWidth, height: window.innerHeight })
+    this._sceneUniformController.onNewResolution({ width: window.innerWidth, height: window.innerHeight })
   }
 
   animate() {
-    this._glController.update();
+    this._sceneUniformController.update();
     this._renderer.render(this._scene, this._camera);
   }
 }

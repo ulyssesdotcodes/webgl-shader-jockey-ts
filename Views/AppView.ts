@@ -1,3 +1,4 @@
+/// <reference path="../Controllers/SceneUniformController.ts"/>
 /// <reference path="./PlayerView.ts"/>
 /// <reference path="../Controllers/PlayerController.ts"/>
 /// <reference path="./GLView.ts"/>
@@ -12,6 +13,7 @@
 /// <reference path='./PopupWindowView.ts' />
 
 class AppView implements IControllerView {
+  private _sceneUniformController: SceneUniformController;
   private _playerController: PlayerController;
   private _videoController: VideoController;
   private _shadersController: ShadersController;
@@ -33,13 +35,18 @@ class AppView implements IControllerView {
     this._videoController = new VideoController();
     this._shadersController = new ShadersController();
     this._controlsController = new ControlsController();
-    this._glController = new GLController(this._playerController.manager,
-      this._videoController.Manager, this._controlsController.UniformsProvider);
+
+    this._sceneUniformController =
+    new SceneUniformController(
+      this._playerController.manager, this._videoController.Manager, this._controlsController.UniformsProvider);
+
+    this._glController = new GLController(this._sceneUniformController);
+
 
     this._popupWindowController = new PopupWindowController();
 
     this.playerView = new PlayerView(this._playerController);
-    this._glView = new GLView(this._playerController.manager, this._glController);
+    this._glView = new GLView(this._glController, this._sceneUniformController);
     this._shadersView = new ShadersView(this._shadersController);
     this._controlsView = new ControlsView(this._controlsController);
     this._videoView = new VideoView(this._videoController);

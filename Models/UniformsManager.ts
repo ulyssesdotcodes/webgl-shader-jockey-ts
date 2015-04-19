@@ -4,19 +4,19 @@
 class UniformsManager {
   private _uniformsSubject: Rx.Subject<any>;
   UniformsObservable: Rx.Observable<any>;
-  private _propertiesProviders: Array<IPropertiesProvider<any>>;
+  private _properties: Rx.Observable<IUniform<any>[]>;
 
-  constructor(propertiesProviders: Array<IPropertiesProvider<any>>) {
+  constructor(properties: Rx.Observable<IUniform<any>[]>) {
     this._uniformsSubject = new Rx.Subject();
     this.UniformsObservable = this._uniformsSubject.asObservable();
-    this._propertiesProviders = propertiesProviders;
+    this._properties= properties;
   }
 
   calculateUniforms() {
-    Rx.Observable.from(this._propertiesProviders)
-      .flatMap((provider) => provider.glProperties())
-      .scan({}, (acc, properties) => {
-        properties.forEach((property) => acc[property.name] = property);
+    this._properties
+      .flatMap(Rx.Observable.from)
+      .scan({}, (acc, property) => {
+        acc[property.name] = property;
         return acc;
       })
       .subscribe((properties) => this._uniformsSubject.onNext(properties));

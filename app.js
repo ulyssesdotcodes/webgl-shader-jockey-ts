@@ -1,3 +1,37 @@
+var SceneUniformController = (function () {
+    function SceneUniformController(audioManager, videoManager, controlsProvider) {
+        this._resolutionProvider = new ResolutionProvider();
+        this._timeProvider = new TimeProvider();
+        var audioUniformProvider = new AudioUniformProvider(audioManager);
+        // Self-contained properties
+        this.controlsProperties = controlsProvider.glProperties();
+        this.resolutionProperties = this._resolutionProvider.glProperties();
+        this.timeProperties = this._timeProvider.glProperties();
+        this.videoProperties = videoManager.glProperties();
+        this.audioProperties = audioUniformProvider.glProperties();
+        // Properties that depend on other properties
+        var loudnessAccumulator = new LoudnessAccumulator(audioManager);
+        this.controlsProperties.flatMap(Rx.Observable.from).filter(function (uniform) { return uniform.name == "volume"; }).subscribe(function (volumeUniform) { return loudnessAccumulator.setVolumeUniform(volumeUniform); });
+        this.loudnessProperties = loudnessAccumulator.glProperties();
+        var propertiesObservable = Rx.Observable.combineLatest([
+            this.controlsProperties,
+            this.resolutionProperties,
+            this.timeProperties,
+            this.videoProperties,
+            this.audioProperties,
+            this.loudnessProperties
+        ], [].concat);
+        this._uniformsManager = new UniformsManager(propertiesObservable);
+        this.SceneUniformsObservable = this._uniformsManager.UniformsObservable;
+    }
+    SceneUniformController.prototype.onNewResolution = function (resolution) {
+        this._resolutionProvider.updateResolution(new THREE.Vector2(resolution.width, resolution.height));
+    };
+    SceneUniformController.prototype.update = function () {
+        this._timeProvider.updateTime();
+    };
+    return SceneUniformController;
+})();
 var PlayerView = (function () {
     function PlayerView(playerController) {
         this.content = $("<div>", { class: "controls" });
@@ -209,8 +243,9 @@ var ConstPropertiesProvider = (function () {
 })();
 /// <reference path='../Models/ConstPropertiesProvider.ts'/>
 var GLView = (function () {
-    function GLView(audioManager, glController) {
+    function GLView(glController, sceneUniformController) {
         this._glController = glController;
+        this._sceneUniformController = sceneUniformController;
     }
     GLView.prototype.render = function (el) {
         var _this = this;
@@ -237,10 +272,10 @@ var GLView = (function () {
     };
     GLView.prototype.onWindowResize = function () {
         this._renderer.setSize(window.innerWidth, window.innerHeight);
-        this._glController.onNewResolution({ width: window.innerWidth, height: window.innerHeight });
+        this._sceneUniformController.onNewResolution({ width: window.innerWidth, height: window.innerHeight });
     };
     GLView.prototype.animate = function () {
-        this._glController.update();
+        this._sceneUniformController.update();
         this._renderer.render(this._scene, this._camera);
     };
     return GLView;
@@ -262,15 +297,15 @@ var ShaderPlane = (function () {
 /// <reference path="../typed/rx.d.ts"/>
 /// <reference path="../typed/three.d.ts"/>
 var UniformsManager = (function () {
-    function UniformsManager(propertiesProviders) {
+    function UniformsManager(properties) {
         this._uniformsSubject = new Rx.Subject();
         this.UniformsObservable = this._uniformsSubject.asObservable();
-        this._propertiesProviders = propertiesProviders;
+        this._properties = properties;
     }
     UniformsManager.prototype.calculateUniforms = function () {
         var _this = this;
-        Rx.Observable.from(this._propertiesProviders).flatMap(function (provider) { return provider.glProperties(); }).scan({}, function (acc, properties) {
-            properties.forEach(function (property) { return acc[property.name] = property; });
+        this._properties.flatMap(Rx.Observable.from).scan({}, function (acc, property) {
+            acc[property.name] = property;
             return acc;
         }).subscribe(function (properties) { return _this._uniformsSubject.onNext(properties); });
     };
@@ -280,11 +315,11 @@ var UniformsManager = (function () {
 /// <reference path="./ShaderPlane.ts"/>
 /// <reference path="./UniformsManager.ts"/>
 var PropertiesShaderPlane = (function () {
-    function PropertiesShaderPlane(glProperties) {
+    function PropertiesShaderPlane(properties) {
         this._shaderSubject = new Rx.Subject();
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
-        this._uniformsManager = new UniformsManager(glProperties);
+        this._uniformsManager = new UniformsManager(properties);
         Rx.Observable.combineLatest(this._shaderSubject, this._uniformsManager.UniformsObservable, function (shaderText, uniforms) {
             var fragText = shaderText.fragmentShader;
             Object.keys(uniforms).forEach(function (key) {
@@ -452,38 +487,20 @@ var LoudnessAccumulator = (function () {
 /// <reference path='../Models/AudioUniformProvider.ts'/>
 /// <reference path='../Models/LoudnessAccumulator.ts'/>
 var GLController = (function () {
-    function GLController(audioManager, videoManager, controlsProvider) {
+    function GLController(uniformController) {
         var _this = this;
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
-        this._resolutionProvider = new ResolutionProvider();
-        this._timeProvider = new TimeProvider();
         this._shaderLoader = new ShaderLoader();
-        var audioUniformProvider = new AudioUniformProvider(audioManager);
-        var loudnessAccumulator = new LoudnessAccumulator(audioManager);
-        controlsProvider.glProperties().flatMap(Rx.Observable.from).filter(function (uniform) { return uniform.name == "volume"; }).subscribe(function (volumeUniform) { return loudnessAccumulator.setVolumeUniform(volumeUniform); });
-        this._audioShaderPlane = new PropertiesShaderPlane([
-            videoManager,
-            this._resolutionProvider,
-            this._timeProvider,
-            audioUniformProvider,
-            loudnessAccumulator,
-            controlsProvider
-        ]);
+        this._audioShaderPlane = new PropertiesShaderPlane(uniformController.SceneUniformsObservable);
         this._audioShaderPlane.MeshObservable.subscribe(function (mesh) { return _this.onNewMeshes([mesh]); });
     }
-    GLController.prototype.onNewResolution = function (resolution) {
-        this._resolutionProvider.updateResolution(new THREE.Vector2(resolution.width, resolution.height));
-    };
     GLController.prototype.onNewMeshes = function (meshes) {
         this._meshSubject.onNext(meshes);
     };
     GLController.prototype.onShaderName = function (name) {
         var _this = this;
         this._shaderLoader.getShaderFromServer(name).subscribe(function (shader) { return _this._audioShaderPlane.onShaderText(shader); });
-    };
-    GLController.prototype.update = function () {
-        this._timeProvider.updateTime();
     };
     return GLController;
 })();
@@ -733,6 +750,7 @@ var PopupWindowView = (function () {
     };
     return PopupWindowView;
 })();
+/// <reference path="../Controllers/SceneUniformController.ts"/>
 /// <reference path="./PlayerView.ts"/>
 /// <reference path="../Controllers/PlayerController.ts"/>
 /// <reference path="./GLView.ts"/>
@@ -753,10 +771,11 @@ var AppView = (function () {
         this._videoController = new VideoController();
         this._shadersController = new ShadersController();
         this._controlsController = new ControlsController();
-        this._glController = new GLController(this._playerController.manager, this._videoController.Manager, this._controlsController.UniformsProvider);
+        this._sceneUniformController = new SceneUniformController(this._playerController.manager, this._videoController.Manager, this._controlsController.UniformsProvider);
+        this._glController = new GLController(this._sceneUniformController);
         this._popupWindowController = new PopupWindowController();
         this.playerView = new PlayerView(this._playerController);
-        this._glView = new GLView(this._playerController.manager, this._glController);
+        this._glView = new GLView(this._glController, this._sceneUniformController);
         this._shadersView = new ShadersView(this._shadersController);
         this._controlsView = new ControlsView(this._controlsController);
         this._videoView = new VideoView(this._videoController);

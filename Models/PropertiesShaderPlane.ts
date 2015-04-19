@@ -8,12 +8,12 @@ class PropertiesShaderPlane {
   private _uniformsManager: UniformsManager;
   MeshObservable: Rx.Observable<THREE.Mesh>;
 
-  constructor(glProperties: Array<IPropertiesProvider<any>>) {
+  constructor(properties: Rx.Observable<IUniform<any>[]>) {
     this._shaderSubject = new Rx.Subject<ShaderText>();
     this._meshSubject = new Rx.Subject<THREE.Mesh>();
     this.MeshObservable = this._meshSubject.asObservable();
 
-    this._uniformsManager = new UniformsManager(glProperties);
+    this._uniformsManager = new UniformsManager(properties);
 
     Rx.Observable.combineLatest(this._shaderSubject, this._uniformsManager.UniformsObservable,
       (shaderText, uniforms) => {

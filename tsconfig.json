@@ -5,7 +5,8 @@
         "declaration": false,
         "noImplicitAny": false,
         "removeComments": true,
-        "noLib": false
+        "noLib": false,
+        "sourceMap": true
     },
     "filesGlob": [
         "./**/*.ts",
@@ -16,6 +17,7 @@
         "./Controllers/GLController.ts",
         "./Controllers/PlayerController.ts",
         "./Controllers/PopupWindowController.ts",
+        "./Controllers/SceneUniformController.ts",
         "./Controllers/ShadersController.ts",
         "./Controllers/VideoController.ts",
         "./Models/AudioAnalyser.ts",
@@ -41,6 +43,8 @@
         "./Models/VideoManager.ts",
         "./Models/VideoShaderPlane.ts",
         "./Models/VolumeControl.ts",
+        "./Models/WindowMessager.ts",
+        "./Models/WindowMessagerReceiver.ts",
         "./Tests/TestUtils.ts",
         "./Tests/audiomanager.tests.ts",
         "./Tests/audioshaderplane.tests.ts",

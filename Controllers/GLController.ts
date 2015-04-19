@@ -12,38 +12,15 @@ class GLController {
   MeshObservable: Rx.Observable<Array<THREE.Mesh>>;
   private _shaderLoader: ShaderLoader;
   private _audioShaderPlane: PropertiesShaderPlane;
-  private _resolutionProvider: ResolutionProvider;
-  private _timeProvider: TimeProvider;
 
-  constructor(audioManager: AudioManager, videoManager: VideoManager,
-    controlsProvider: IPropertiesProvider<any>) {
+  constructor(uniformController: SceneUniformController) {
     this._meshSubject = new Rx.Subject<Array<THREE.Mesh>>();
     this.MeshObservable = this._meshSubject.asObservable();
 
-    this._resolutionProvider = new ResolutionProvider();
-    this._timeProvider = new TimeProvider();
-
     this._shaderLoader = new ShaderLoader();
 
-    var audioUniformProvider = new AudioUniformProvider(audioManager);
-
-    var loudnessAccumulator = new LoudnessAccumulator(audioManager);
-    controlsProvider.glProperties()
-      .flatMap(Rx.Observable.from)
-      .filter((uniform: IUniform<any>) => uniform.name == "volume")
-      .subscribe(
-        (volumeUniform: IUniform<number>) => loudnessAccumulator.setVolumeUniform(volumeUniform));
-
-    this._audioShaderPlane = new PropertiesShaderPlane([
-      videoManager, this._resolutionProvider, this._timeProvider,
-      audioUniformProvider, loudnessAccumulator, controlsProvider
-    ]);
+    this._audioShaderPlane = new PropertiesShaderPlane(uniformController.SceneUniformsObservable);
     this._audioShaderPlane.MeshObservable.subscribe((mesh) => this.onNewMeshes([mesh]));
-  }
-
-  onNewResolution(resolution) {
-    this._resolutionProvider.updateResolution(
-      new THREE.Vector2(resolution.width, resolution.height));
   }
 
   onNewMeshes(meshes: Array<THREE.Mesh>) {
@@ -53,9 +30,5 @@ class GLController {
   onShaderName(name: string) {
     this._shaderLoader.getShaderFromServer(name)
       .subscribe(shader => this._audioShaderPlane.onShaderText(shader))
-  }
-
-  update() {
-    this._timeProvider.updateTime();
   }
 }
