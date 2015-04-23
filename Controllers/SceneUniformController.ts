@@ -2,8 +2,7 @@ class SceneUniformController {
   private _resolutionProvider: ResolutionProvider;
   private _timeProvider: TimeProvider;
 
-  private _uniformsManager: UniformsManager;
-  SceneUniformsObservable: Rx.Observable<any>;
+  ScenePropertiesObservable: Rx.Observable<IUniform<any>[]>;
 
   controlsProperties: Rx.Observable<IUniform<any>[]>;
   resolutionProperties: Rx.Observable<IUniform<any>[]>;
@@ -37,18 +36,16 @@ class SceneUniformController {
         (volumeUniform: IUniform<number>) => loudnessAccumulator.setVolumeUniform(volumeUniform));
     this.loudnessProperties = loudnessAccumulator.glProperties();
 
-    var propertiesObservable = Rx.Observable.combineLatest([
-      this.controlsProperties,
-      this.resolutionProperties,
-      this.timeProperties,
-      this.videoProperties,
-      this.audioProperties,
-      this.loudnessProperties],
-      [].concat);
-
-    this._uniformsManager = new UniformsManager(propertiesObservable);
-
-    this.SceneUniformsObservable = this._uniformsManager.UniformsObservable;
+    this.ScenePropertiesObservable =
+      Rx.Observable.combineLatest([
+        this.controlsProperties,
+        this.resolutionProperties,
+        this.timeProperties,
+        this.videoProperties,
+        this.audioProperties,
+        this.loudnessProperties],
+        (controls, resolution, time, video, audio, loudness) =>
+          controls.concat(resolution, time, video, audio, loudness));
   }
 
   onNewResolution(resolution) {

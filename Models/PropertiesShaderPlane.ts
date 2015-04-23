@@ -37,6 +37,7 @@ class PropertiesShaderPlane {
           fragText = "uniform " + uniformType + " " + uniform.name + ";\n" + fragText;
         });
 
+
         return new THREE.ShaderMaterial({
           uniforms: uniforms,
           fragmentShader: fragText,

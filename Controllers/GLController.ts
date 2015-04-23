@@ -6,6 +6,7 @@
 /// <reference path='../Models/TimeProvider.ts'/>
 /// <reference path='../Models/AudioUniformProvider.ts'/>
 /// <reference path='../Models/LoudnessAccumulator.ts'/>
+/// <reference path='../Controllers/SceneUniformController.ts'/>
 
 class GLController {
   private _meshSubject: Rx.Subject<Array<THREE.Mesh>>;
@@ -19,7 +20,7 @@ class GLController {
 
     this._shaderLoader = new ShaderLoader();
 
-    this._audioShaderPlane = new PropertiesShaderPlane(uniformController.SceneUniformsObservable);
+    this._audioShaderPlane = new PropertiesShaderPlane(uniformController.ScenePropertiesObservable);
     this._audioShaderPlane.MeshObservable.subscribe((mesh) => this.onNewMeshes([mesh]));
   }
 

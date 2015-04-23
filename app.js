@@ -13,16 +13,14 @@ var SceneUniformController = (function () {
         var loudnessAccumulator = new LoudnessAccumulator(audioManager);
         this.controlsProperties.flatMap(Rx.Observable.from).filter(function (uniform) { return uniform.name == "volume"; }).subscribe(function (volumeUniform) { return loudnessAccumulator.setVolumeUniform(volumeUniform); });
         this.loudnessProperties = loudnessAccumulator.glProperties();
-        var propertiesObservable = Rx.Observable.combineLatest([
+        this.ScenePropertiesObservable = Rx.Observable.combineLatest([
             this.controlsProperties,
             this.resolutionProperties,
             this.timeProperties,
             this.videoProperties,
             this.audioProperties,
             this.loudnessProperties
-        ], [].concat);
-        this._uniformsManager = new UniformsManager(propertiesObservable);
-        this.SceneUniformsObservable = this._uniformsManager.UniformsObservable;
+        ], function (controls, resolution, time, video, audio, loudness) { return controls.concat(resolution, time, video, audio, loudness); });
     }
     SceneUniformController.prototype.onNewResolution = function (resolution) {
         this._resolutionProvider.updateResolution(new THREE.Vector2(resolution.width, resolution.height));
@@ -486,13 +484,14 @@ var LoudnessAccumulator = (function () {
 /// <reference path='../Models/TimeProvider.ts'/>
 /// <reference path='../Models/AudioUniformProvider.ts'/>
 /// <reference path='../Models/LoudnessAccumulator.ts'/>
+/// <reference path='../Controllers/SceneUniformController.ts'/>
 var GLController = (function () {
     function GLController(uniformController) {
         var _this = this;
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
         this._shaderLoader = new ShaderLoader();
-        this._audioShaderPlane = new PropertiesShaderPlane(uniformController.SceneUniformsObservable);
+        this._audioShaderPlane = new PropertiesShaderPlane(uniformController.ScenePropertiesObservable);
         this._audioShaderPlane.MeshObservable.subscribe(function (mesh) { return _this.onNewMeshes([mesh]); });
     }
     GLController.prototype.onNewMeshes = function (meshes) {
