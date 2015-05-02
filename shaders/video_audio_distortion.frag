@@ -33,5 +33,5 @@ void main(void)
 
   vec4 cam = texture2D(camera, uv);
 
-  gl_FragColor = cam;
+  gl_FragColor = applyHueShift(cam);
 }
