@@ -40,14 +40,14 @@ vec3 hsv2rgb(vec3 c) {
   return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-vec4 applyHueShift(vec4 color) {
-  applyHueShift(color, hue);
-}
-
 vec4 applyHueShift(vec4 color, float shift) {
   vec3 hsv = rgb2hsv(color.rgb);
   hsv.x = fract(hsv.x + shift);
   return vec4(hsv2rgb(hsv), color.w);
+}
+
+vec4 applyHueShift(vec4 color) {
+  return applyHueShift(color, hue);
 }
 
 vec3 baseHue(float time) {
