@@ -41,8 +41,12 @@ vec3 hsv2rgb(vec3 c) {
 }
 
 vec4 applyHueShift(vec4 color) {
+  applyHueShift(color, hue);
+}
+
+vec4 applyHueShift(vec4 color, float shift) {
   vec3 hsv = rgb2hsv(color.rgb);
-  hsv.x = fract(hsv.x + hue);
+  hsv.x = fract(hsv.x + shift);
   return vec4(hsv2rgb(hsv), color.w);
 }
 
