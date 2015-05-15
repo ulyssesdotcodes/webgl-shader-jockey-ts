@@ -1,27 +1,41 @@
-﻿class AudioAnalyser {
+class AudioAnalyser {
   private _analyser: AnalyserNode;
   private fftSize: number;
 
   private frequencyBuffer: Uint8Array;
   private timeDomainBuffer: Uint8Array;
 
-  constructor(audioNode: AudioNode, fftSize: number) {
-    this._analyser = audioNode.context.createAnalyser();
+  private _connected: boolean;
+
+  constructor(context: AudioContext, fftSize: number) {
+    this._analyser = context.createAnalyser();
 
     this.fftSize = fftSize;
-    audioNode.connect(this._analyser);
 
     this.frequencyBuffer = new Uint8Array(this.fftSize);
     this.timeDomainBuffer = new Uint8Array(this.fftSize);
   }
 
+  connectSource(node: AudioNode) {
+    node.connect(this._analyser);
+    this._connected = true;
+  }
+
+  connectDestination(dest: AudioNode) {
+    this._analyser.connect(dest);
+  }
+
   getFrequencyData(): Uint8Array {
-    this._analyser.getByteFrequencyData(this.frequencyBuffer);
+    if (this._connected) {
+      this._analyser.getByteFrequencyData(this.frequencyBuffer);
+    }
     return this.frequencyBuffer;
   }
 
   getTimeDomainData(): Uint8Array {
-    this._analyser.getByteTimeDomainData(this.timeDomainBuffer);
+    if (this._connected) {
+      this._analyser.getByteTimeDomainData(this.timeDomainBuffer);
+    }
     return this.timeDomainBuffer;
   }
 }

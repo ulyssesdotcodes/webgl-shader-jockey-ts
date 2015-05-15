@@ -13,7 +13,7 @@ void main(void)
   vec4 t1 = texture2D(audioTexture, vec2(audioUv[0] * scaledResolution, 0.1));
   vec4 t2 = texture2D(audioTexture, vec2(audioUv[1] * scaledResolution, 0.1));
 
-  float fft = t1[0] * t2[0];
+  float fft = t1[0] * t2[0] * volume;
 
 	vec2 cuv = uv - vec2(0.5);
 	float offset = 0.0;
@@ -33,5 +33,5 @@ void main(void)
 
   vec4 cam = texture2D(camera, uv);
 
-  gl_FragColor = applyHueShift(applyHueShift(cam), baseHue(time / 10.0).r);
+  gl_FragColor = applyHueShift(applyHueShift(cam));
 }

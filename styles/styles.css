@@ -12,10 +12,19 @@ body {
 
 .controls {
   position: absolute;
-  float: left;
   bottom: 0;
   background-color: rgba(0,0,0,0.5);
   color: white;
+}
+
+.audio-controls {
+  float: left;
+  left:0;
+}
+
+.shader-controls {
+  float:right;
+  right:0;
 }
 
 .audio-player {

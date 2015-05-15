@@ -6,7 +6,7 @@ class ControlsView {
   }
 
   render(el: HTMLElement): void {
-    var container: JQuery = $("<div>", { class: "controls" });
+    var container: JQuery = $("<div>", { class: "controls shader-controls" });
 
     this.renderVolume(container);
     this.renderHue(container);

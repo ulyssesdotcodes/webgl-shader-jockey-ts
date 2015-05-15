@@ -3,6 +3,7 @@
 /// <reference path='./IUniform.ts'/>
 /// <reference path="./IPropertiesProvider.ts" />
 /// <reference path='./AudioAnalyser.ts'/>
+/// <reference path="../typed/three.d.ts"/>
 
 class AudioManager {
   static FFT_SIZE = 1024;
@@ -14,13 +15,18 @@ class AudioManager {
 
   constructor(audioContext: AudioContext) {
     this._audioContext = audioContext;
+    this._audioAnalyser = new AudioAnalyser(this._audioContext, AudioManager.FFT_SIZE);
 
     this._audioEventSubject = new Rx.Subject<IAudioEvent>();
     this.AudioEventObservable = this._audioEventSubject.asObservable();
   }
 
-  updateSourceNode(sourceNode: AudioSourceNode) {
-    this._audioAnalyser = new AudioAnalyser(sourceNode, AudioManager.FFT_SIZE);
+  updateSourceNode(sourceNode: AudioSourceNode, connectToDestination: boolean) {
+    this._audioAnalyser.connectSource(sourceNode);
+
+    if(connectToDestination) {
+      this._audioAnalyser.connectDestination(this._audioContext.destination);
+    }
   }
 
   get context(): AudioContext {

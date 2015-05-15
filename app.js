@@ -1,14 +1,10 @@
 var PlayerView = (function () {
     function PlayerView(playerController) {
-        this.content = $("<div>", { class: "controls" });
+        this.content = $("<div>", { class: "controls audio-controls" });
         this.playerController = playerController;
     }
     PlayerView.prototype.render = function (el) {
         var _this = this;
-        var soundcloud = $("<div>", { class: "soundcloud", text: "Soundcloud URL:" });
-        this.input = $("<input>", { class: "soundcloud-input", type: "text" });
-        this.input.change(function () { return _this.playerController.onUrl(_this.input.val()); });
-        soundcloud.append(this.input);
         var mic = $("<a>", {
             href: "#",
             class: "mic-icon"
@@ -26,13 +22,16 @@ var PlayerView = (function () {
         this.audioPlayer = document.createElement("audio");
         this.audioPlayer.setAttribute("class", "audio-player");
         this.audioPlayer.controls = true;
+        this.audioPlayer.autoplay = true;
         this.playerController.getUrlObservable().subscribe(function (url) {
+            console.log(url);
             _this.audioPlayer.setAttribute("src", url);
             _this.audioPlayer.play();
         });
-        this.playerController.setPlayerSource(this.audioPlayer);
+        window.addEventListener('load', function (e) {
+            _this.playerController.setPlayerSource(_this.audioPlayer);
+        }, false);
         this.content.append(mic);
-        this.content.append(soundcloud);
         this.content.append(this.audioPlayer);
         $(el).append(this.content);
     };
@@ -40,19 +39,29 @@ var PlayerView = (function () {
 })();
 /// <reference path="./IUniform.ts"/>
 var AudioAnalyser = (function () {
-    function AudioAnalyser(audioNode, fftSize) {
-        this._analyser = audioNode.context.createAnalyser();
+    function AudioAnalyser(context, fftSize) {
+        this._analyser = context.createAnalyser();
         this.fftSize = fftSize;
-        audioNode.connect(this._analyser);
         this.frequencyBuffer = new Uint8Array(this.fftSize);
         this.timeDomainBuffer = new Uint8Array(this.fftSize);
     }
+    AudioAnalyser.prototype.connectSource = function (node) {
+        node.connect(this._analyser);
+        this._connected = true;
+    };
+    AudioAnalyser.prototype.connectDestination = function (dest) {
+        this._analyser.connect(dest);
+    };
     AudioAnalyser.prototype.getFrequencyData = function () {
-        this._analyser.getByteFrequencyData(this.frequencyBuffer);
+        if (this._connected) {
+            this._analyser.getByteFrequencyData(this.frequencyBuffer);
+        }
         return this.frequencyBuffer;
     };
     AudioAnalyser.prototype.getTimeDomainData = function () {
-        this._analyser.getByteTimeDomainData(this.timeDomainBuffer);
+        if (this._connected) {
+            this._analyser.getByteTimeDomainData(this.timeDomainBuffer);
+        }
         return this.timeDomainBuffer;
     };
     return AudioAnalyser;
@@ -62,14 +71,19 @@ var AudioAnalyser = (function () {
 /// <reference path='./IUniform.ts'/>
 /// <reference path="./IPropertiesProvider.ts" />
 /// <reference path='./AudioAnalyser.ts'/>
+/// <reference path="../typed/three.d.ts"/>
 var AudioManager = (function () {
     function AudioManager(audioContext) {
         this._audioContext = audioContext;
+        this._audioAnalyser = new AudioAnalyser(this._audioContext, AudioManager.FFT_SIZE);
         this._audioEventSubject = new Rx.Subject();
         this.AudioEventObservable = this._audioEventSubject.asObservable();
     }
-    AudioManager.prototype.updateSourceNode = function (sourceNode) {
-        this._audioAnalyser = new AudioAnalyser(sourceNode, AudioManager.FFT_SIZE);
+    AudioManager.prototype.updateSourceNode = function (sourceNode, connectToDestination) {
+        this._audioAnalyser.connectSource(sourceNode);
+        if (connectToDestination) {
+            this._audioAnalyser.connectDestination(this._audioContext.destination);
+        }
     };
     Object.defineProperty(AudioManager.prototype, "context", {
         get: function () {
@@ -108,13 +122,19 @@ var Microphone = (function () {
             _this.nodeSubject.onNext(_this.node);
         };
         if (navigator.getUserMedia) {
-            navigator.getUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
+            navigator.getUserMedia({ audio: true, video: false }, gotStream, function (err) {
+                return console.log(err);
+            });
         }
         else if (navigator.webkitGetUserMedia) {
-            navigator.webkitGetUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
+            navigator.webkitGetUserMedia({ audio: true, video: false }, gotStream, function (err) {
+                return console.log(err);
+            });
         }
         else if (navigator.mozGetUserMedia) {
-            navigator.mozGetUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
+            navigator.mozGetUserMedia({ audio: true, video: false }, gotStream, function (err) {
+                return console.log(err);
+            });
         }
         else {
             return (alert("Error: getUserMedia not supported!"));
@@ -158,39 +178,41 @@ var SoundCloudLoader = (function () {
 /// <reference path="../Models/AudioManager.ts"/>
 /// <reference path="../Models/Microphone.ts"/>
 /// <reference path="../Models/SoundCloudLoader.ts"/>
+/// <reference path="../typed/rx.binding.d.ts"/>
 var PlayerController = (function () {
-    function PlayerController() {
+    function PlayerController(urls) {
         var _this = this;
-        window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
+        this._urlSubject = new Rx.BehaviorSubject();
+        // window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
         this._manager = new AudioManager(new AudioContext());
         this.microphone = new Microphone();
-        this.microphone.getNodeObservable().subscribe(function (node) { return _this.manager.updateSourceNode(node); });
-        // this.soundCloudLoader = new SoundCloudLoader();
-        this.onMicClick();
+        this.microphone.getNodeObservable().subscribe(function (node) {
+            return _this.manager.updateSourceNode(node, false);
+        });
+        if (urls == undefined || urls.length == 0) {
+            this.onMicClick();
+        }
+        else {
+            this._urlSubject.onNext(urls[0]);
+        }
     }
     Object.defineProperty(PlayerController.prototype, "manager", {
-        get: function () {
-            return this._manager;
-        },
+        get: function () { return this._manager; },
         enumerable: true,
         configurable: true
     });
     PlayerController.prototype.onMicClick = function () {
         this.microphone.emitNode(this.manager.context);
     };
-    PlayerController.prototype.onUrl = function (url) {
-        this.soundCloudLoader.loadStream(url);
-        this.manager.updateSourceNode(this.playerSource);
-        this.playerSource.connect(this._manager.context.destination);
-    };
     PlayerController.prototype.setPlayerSource = function (source) {
         this.playerSource = this.manager.context.createMediaElementSource(source);
+        this.manager.updateSourceNode(this.playerSource, true);
     };
     PlayerController.prototype.sampleAudio = function () {
         this.manager.sampleAudio();
     };
     PlayerController.prototype.getUrlObservable = function () {
-        return this.soundCloudLoader.getUrlObservable();
+        return this._urlSubject.asObservable();
     };
     return PlayerController;
 })();
@@ -220,12 +242,14 @@ var GLView = (function () {
         this._camera.position.z = 1;
         var sceneContainer = new THREE.Object3D();
         this._scene.add(sceneContainer);
-        this._glController.MeshObservable.scan(new THREE.Object3D(), function (obj, meshes) {
+        this._glController.MeshObservable
+            .scan(new THREE.Object3D(), function (obj, meshes) {
             obj = new THREE.Object3D();
             meshes.forEach(function (mesh) { return obj.add(mesh); });
             obj.position = new THREE.Vector3(0, 0, 0);
             return obj;
-        }).subscribe(function (obj) {
+        })
+            .subscribe(function (obj) {
             _this._scene.remove(sceneContainer);
             sceneContainer = obj;
             _this._scene.add(sceneContainer);
@@ -269,10 +293,13 @@ var UniformsManager = (function () {
     }
     UniformsManager.prototype.calculateUniforms = function () {
         var _this = this;
-        Rx.Observable.from(this._propertiesProviders).flatMap(function (provider) { return provider.glProperties(); }).scan({}, function (acc, properties) {
+        Rx.Observable.from(this._propertiesProviders)
+            .flatMap(function (provider) { return provider.glProperties(); })
+            .scan({}, function (acc, properties) {
             properties.forEach(function (property) { return acc[property.name] = property; });
             return acc;
-        }).subscribe(function (properties) { return _this._uniformsSubject.onNext(properties); });
+        })
+            .subscribe(function (properties) { return _this._uniformsSubject.onNext(properties); });
     };
     return UniformsManager;
 })();
@@ -308,7 +335,9 @@ var PropertiesShaderPlane = (function () {
                 fragmentShader: fragText,
                 vertexShader: shaderText.vertextShader
             });
-        }).map(function (shader) { return new ShaderPlane(shader).mesh; }).subscribe(this._meshSubject);
+        })
+            .map(function (shader) { return new ShaderPlane(shader).mesh; })
+            .subscribe(this._meshSubject);
     }
     PropertiesShaderPlane.prototype.onShaderText = function (shader) {
         /* Calculate the uniforms after it's subscribed to*/
@@ -335,15 +364,21 @@ var ShaderLoader = (function () {
         return Rx.Observable.combineLatest(this.getFragment(name), this.getVertex(name), function (frag, vert) { return new ShaderText(frag, vert); });
     };
     ShaderLoader.prototype.getVertex = function (name) {
-        return $.getAsObservable('shaders/' + name + ".vert").map(function (shader) { return shader.data; }).onErrorResumeNext(Rx.Observable.just(this._regularVert));
+        return $.getAsObservable('shaders/' + name + ".vert")
+            .map(function (shader) { return shader.data; })
+            .onErrorResumeNext(Rx.Observable.just(this._regularVert));
     };
     ShaderLoader.prototype.getFragment = function (name) {
-        return $.getAsObservable('shaders/' + name + '.frag').map(function (shader) { return shader.data; }).combineLatest(this.utilFrag(), function (frag, util) { return util.concat(frag); });
+        return $.getAsObservable('shaders/' + name + '.frag')
+            .map(function (shader) { return shader.data; })
+            .combineLatest(this.utilFrag(), function (frag, util) { return util.concat(frag); });
     };
     ShaderLoader.prototype.utilFrag = function () {
         var _this = this;
         if (this._utilFrag === undefined) {
-            return $.getAsObservable('shaders/util.frag').map(function (shader) { return shader.data; }).doOnNext(function (util) { return _this._utilFrag = util; });
+            return $.getAsObservable('shaders/util.frag')
+                .map(function (shader) { return shader.data; })
+                .doOnNext(function (util) { return _this._utilFrag = util; });
         }
         return Rx.Observable.just(this._utilFrag);
     };
@@ -461,14 +496,13 @@ var GLController = (function () {
         this._shaderLoader = new ShaderLoader();
         var audioUniformProvider = new AudioUniformProvider(audioManager);
         var loudnessAccumulator = new LoudnessAccumulator(audioManager);
-        controlsProvider.glProperties().flatMap(Rx.Observable.from).filter(function (uniform) { return uniform.name == "volume"; }).subscribe(function (volumeUniform) { return loudnessAccumulator.setVolumeUniform(volumeUniform); });
+        controlsProvider.glProperties()
+            .flatMap(Rx.Observable.from)
+            .filter(function (uniform) { return uniform.name == "volume"; })
+            .subscribe(function (volumeUniform) { return loudnessAccumulator.setVolumeUniform(volumeUniform); });
         this._audioShaderPlane = new PropertiesShaderPlane([
-            videoManager,
-            this._resolutionProvider,
-            this._timeProvider,
-            audioUniformProvider,
-            loudnessAccumulator,
-            controlsProvider
+            videoManager, this._resolutionProvider, this._timeProvider,
+            audioUniformProvider, loudnessAccumulator, controlsProvider
         ]);
         this._audioShaderPlane.MeshObservable.subscribe(function (mesh) { return _this.onNewMeshes([mesh]); });
     }
@@ -480,7 +514,8 @@ var GLController = (function () {
     };
     GLController.prototype.onShaderName = function (name) {
         var _this = this;
-        this._shaderLoader.getShaderFromServer(name).subscribe(function (shader) { return _this._audioShaderPlane.onShaderText(shader); });
+        this._shaderLoader.getShaderFromServer(name)
+            .subscribe(function (shader) { return _this._audioShaderPlane.onShaderText(shader); });
     };
     GLController.prototype.update = function () {
         this._timeProvider.updateTime();
@@ -506,21 +541,18 @@ var ShadersView = (function () {
         var _this = this;
         var container = $("<div>", { class: "shaders" });
         var select = $("<select />");
-        select.change(function (__) { return _this._shadersController.onShaderName(select.find('option:selected').val()); });
-        ShadersView.shaders.forEach(function (shaderName) { return select.append("<option value=\"" + shaderName + "\">" + shaderName + "</option>"); });
+        select.change(function (__) {
+            return _this._shadersController.onShaderName(select.find('option:selected').val());
+        });
+        ShadersView.shaders.forEach(function (shaderName) {
+            return select.append("<option value=\"" + shaderName + "\">" + shaderName + "</option>");
+        });
         container.append(select);
         $(el).append(container);
     };
     ShadersView.shaders = [
-        "simple",
-        "fft_matrix_product",
-        "circular_fft",
-        "vertical_wav",
-        "threejs_test",
-        "video_test",
-        "video_audio_distortion",
-        "loudness_test",
-        "mandelbrot",
+        "simple", "fft_matrix_product", "circular_fft", "vertical_wav", "threejs_test",
+        "video_test", "video_audio_distortion", "loudness_test", "mandelbrot",
         "mandelbrot_mover"
     ];
     return ShadersView;
@@ -530,24 +562,25 @@ var VideoView = (function () {
         this._video = document.createElement("video");
         this._video.setAttribute("class", "camera");
         this._video.setAttribute("autoplay", "true");
+        this._video.setAttribute("muted", "true");
+        this._video.setAttribute("src", ".ignored/video.mp4");
         this._videoController = videoController;
-        navigator["getUserMedia"] = navigator["getUserMedia"] || navigator["webkitGetUserMedia"] || navigator["mozGetUserMedia"];
+        navigator["getUserMedia"] = navigator["getUserMedia"] ||
+            navigator["webkitGetUserMedia"] ||
+            navigator["mozGetUserMedia"];
         window["URL"] = window["URL"] || window["webkitURL"];
     }
     VideoView.prototype.render = function (el) {
-        var _this = this;
-        var gotStream = function (stream) {
-            if (window["URL"]) {
-                _this._video.src = window["URL"].createObjectURL(stream);
-            }
-            else {
-                _this._video.src = stream;
-            }
-            _this._video.onerror = function (e) {
-                stream.stop();
-            };
-        };
-        navigator["getUserMedia"]({ audio: false, video: true }, gotStream, console.log);
+        // var gotStream = (stream) => {
+        // 	if (window["URL"])
+        // 	{   this._video.src = window["URL"].createObjectURL(stream);   }
+        // 	else // Opera
+        // 	{   this._video.src = stream;   }
+        //
+        // 	this._video.onerror = function(e)
+        // 	{   stream.stop();   };
+        // }
+        // navigator["getUserMedia"]({audio: false, video: true}, gotStream, console.log);
         $(el).append(this._video);
         this._videoController.setVideoSource(this._video);
     };
@@ -663,7 +696,7 @@ var ControlsView = (function () {
         this._controlsController = controller;
     }
     ControlsView.prototype.render = function (el) {
-        var container = $("<div>", { class: "controls" });
+        var container = $("<div>", { class: "controls shader-controls" });
         this.renderVolume(container);
         this.renderHue(container);
         $(el).append(container);
@@ -702,11 +735,11 @@ var ControlsView = (function () {
 /// <reference path="../Controllers/ControlsController.ts"/>
 /// <reference path="./ControlsView.ts"/>
 /// <reference path='./IControllerView.ts' />
-var AppView = (function () {
-    function AppView() {
+var Visualizer = (function () {
+    function Visualizer(urls) {
         var _this = this;
         this.content = $("<div>", { text: "Hello, world!" });
-        this._playerController = new PlayerController();
+        this._playerController = new PlayerController(urls);
         this._videoController = new VideoController();
         this._shadersController = new ShadersController();
         this._controlsController = new ControlsController();
@@ -716,11 +749,13 @@ var AppView = (function () {
         this._shadersView = new ShadersView(this._shadersController);
         this._controlsView = new ControlsView(this._controlsController);
         this._videoView = new VideoView(this._videoController);
-        this._shadersController.ShaderNameObservable.subscribe(function (name) { return _this._glController.onShaderName(name); });
+        this._shadersController.ShaderNameObservable.subscribe(function (name) {
+            return _this._glController.onShaderName(name);
+        });
     }
-    AppView.prototype.render = function (el) {
+    Visualizer.prototype.render = function (el) {
         var _this = this;
-        // this.playerView.render(this.content[0]);
+        this.playerView.render(this.content[0]);
         this._glView.render(this.content[0]);
         this._shadersView.render(this.content[0]);
         this._controlsView.render(this.content[0]);
@@ -728,26 +763,25 @@ var AppView = (function () {
         $(el).append(this.content);
         requestAnimationFrame(function () { return _this.animate(); });
     };
-    AppView.prototype.animate = function () {
+    Visualizer.prototype.animate = function () {
         var _this = this;
         requestAnimationFrame(function () { return _this.animate(); });
         this._playerController.sampleAudio();
         this._videoController.sampleVideo();
         this._glView.animate();
     };
-    return AppView;
+    return Visualizer;
 })();
 /// <reference path="./typed/jquery.d.ts"/>
 /// <reference path="./typed/rx.d.ts"/>
 /// <reference path="./typed/waa.d.ts"/>
 /// <reference path="./typed/soundcloud.d.ts"/>
-/// <reference path="Views/AppView.ts"/>
+/// <reference path="./Views/Visualizer.ts"/>
 function exec() {
     "use strict";
-    var app = new AppView();
+    var app = new Visualizer(['.ignored/learning_to_love.mp3', '.ignored/test_song.mp3']);
     app.render($("#content")[0]);
 }
 $(document).ready(function () {
     exec();
 });
-//# sourceMappingURL=app.js.map

@@ -1,6 +1,7 @@
 /// <reference path="../Models/AudioManager.ts"/>
 /// <reference path="../Models/Microphone.ts"/>
 /// <reference path="../Models/SoundCloudLoader.ts"/>
+/// <reference path="../typed/rx.binding.d.ts"/>
 
 class PlayerController {
   private playerSource: MediaElementAudioSourceNode;
@@ -8,33 +9,33 @@ class PlayerController {
   private _manager: AudioManager;
   get manager(): AudioManager { return this._manager; }
   private microphone: Microphone;
-  private soundCloudLoader: SoundCloudLoader;
 
-  constructor() {
-    window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
+  private _urlSubject: Rx.BehaviorSubject<string>;
+
+  constructor(urls: Array<string>) {
+    this._urlSubject = new Rx.BehaviorSubject<string>();
+
+    // window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
     this._manager = new AudioManager(new AudioContext());
 
     this.microphone = new Microphone();
     this.microphone.getNodeObservable().subscribe((node: AudioNode) =>
-      this.manager.updateSourceNode(node));
+      this.manager.updateSourceNode(node, false));
 
-    // this.soundCloudLoader = new SoundCloudLoader();
-
-    this.onMicClick();
+    if (urls == undefined || urls.length == 0) {
+      this.onMicClick();
+    }
+    else {
+      this._urlSubject.onNext(urls[0]);
+    }
   }
 
   onMicClick(): void {
     this.microphone.emitNode(this.manager.context);
   }
 
-  onUrl(url: string): void {
-    this.soundCloudLoader.loadStream(url);
-    this.manager.updateSourceNode(this.playerSource);
-    this.playerSource.connect(this._manager.context.destination);
-  }
-
   setPlayerSource(source: HTMLMediaElement) {
-    this.playerSource = this.manager.context.createMediaElementSource(source);
+    this.playerSource = this.manager.context.createMediaElementSource(source); this.manager.updateSourceNode(this.playerSource, true);
   }
 
   sampleAudio() {
@@ -42,6 +43,6 @@ class PlayerController {
   }
 
   getUrlObservable(): Rx.Observable<string> {
-    return this.soundCloudLoader.getUrlObservable();
+    return this._urlSubject.asObservable();
   }
 }

@@ -1,3 +1,7 @@
+/// <reference path="../typed/qunit.d.ts"/>
+/// <reference path="../typed/rx.d.ts"/>
+/// <reference path="../typed/rx.testing.d.ts"/>
+/// <reference path="../Models/AudioManager.ts"/>
 QUnit.module("audioManger");
 window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
 var audioManager = new AudioManager(new AudioContext());

@@ -1,3 +1,10 @@
+/// <reference path="./TestUtils.ts"/>
+/// <reference path="../typed/qunit.d.ts"/>
+/// <reference path="../typed/rx.d.ts"/>
+/// <reference path="../typed/rx.testing.d.ts"/>
+/// <reference path="../Models/AudioShaderPlane.ts"/>
+/// <reference path="../Models/AudioManager.ts"/>
+/// <reference path="../Models/UniformsManager.ts"/>
 QUnit.module("audioShaderPlane");
 var fragmentShader = "f";
 test("Plane Geometry Creation", function () {
