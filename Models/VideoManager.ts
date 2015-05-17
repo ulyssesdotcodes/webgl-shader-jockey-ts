@@ -33,8 +33,7 @@ class VideoManager implements IPropertiesProvider<THREE.Texture> {
       return;
     }
 
-    this._videoContext.drawImage(this._videoElement, 0, 0,
-      this._videoCanvas.width, this._videoCanvas.height);
+    this._videoContext.drawImage(this._videoElement, 0, 0, this._videoCanvas.width, this._videoCanvas.height);
 
     this._videoTexture.value.needsUpdate = true;
   }

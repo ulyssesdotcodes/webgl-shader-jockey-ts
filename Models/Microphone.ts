@@ -3,12 +3,12 @@ class Microphone {
   private node: AudioSourceNode;
   private nodeSubject: Rx.Subject<AudioSourceNode>;
 
-  constructor() {
+  constructor(context: AudioContext) {
     this.created = false;
     this.nodeSubject = new Rx.Subject<AudioSourceNode>();
   }
 
-  emitNode(audioContext: AudioContext) {
+  onContext(audioContext: AudioContext) {
     if (this.created) {
       this.nodeSubject.onNext(this.node);
       return;
@@ -32,13 +32,14 @@ class Microphone {
         console.log(err));
     }
     else {
+      this.created = false;
       return (alert("Error: getUserMedia not supported!"));
     }
 
     this.created = true;
   }
 
-  getNodeObservable(): Rx.Observable<AudioSourceNode> {
+  nodeObservable(): Rx.Observable<AudioSourceNode> {
     return this.nodeSubject;
   }
 }

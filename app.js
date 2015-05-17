@@ -1,221 +1,14 @@
-var PlayerView = (function () {
-    function PlayerView(playerController) {
-        this.content = $("<div>", { class: "controls audio-controls" });
-        this.playerController = playerController;
-    }
-    PlayerView.prototype.render = function (el) {
+var MicrophoneController = (function () {
+    function MicrophoneController(manager) {
         var _this = this;
-        var mic = $("<a>", {
-            href: "#",
-            class: "mic-icon"
-        });
-        var micIcon = $("<img>", {
-            src: "./resources/ic_mic_none_white_48dp.png",
-            class: "icon"
-        });
-        mic.append(micIcon);
-        mic.click(function (e) {
-            e.preventDefault();
-            _this.playerController.onMicClick();
-            _this.audioPlayer.pause();
-        });
-        this.audioPlayer = document.createElement("audio");
-        this.audioPlayer.setAttribute("class", "audio-player");
-        this.audioPlayer.controls = true;
-        this.audioPlayer.autoplay = true;
-        this.playerController.getUrlObservable().subscribe(function (url) {
-            console.log(url);
-            _this.audioPlayer.setAttribute("src", url);
-            _this.audioPlayer.play();
-        });
-        window.addEventListener('load', function (e) {
-            _this.playerController.setPlayerSource(_this.audioPlayer);
-        }, false);
-        this.content.append(mic);
-        this.content.append(this.audioPlayer);
-        $(el).append(this.content);
-    };
-    return PlayerView;
+        this._manager = manager;
+        this.microphone = new Microphone(manager.context);
+        this.microphone.nodeObservable().subscribe(function (node) { return _this._manager.updateSourceNode(node, false); });
+        this.microphone.onContext(manager.context);
+    }
+    return MicrophoneController;
 })();
 /// <reference path="./IUniform.ts"/>
-var AudioAnalyser = (function () {
-    function AudioAnalyser(context, fftSize) {
-        this._analyser = context.createAnalyser();
-        this.fftSize = fftSize;
-        this.frequencyBuffer = new Uint8Array(this.fftSize);
-        this.timeDomainBuffer = new Uint8Array(this.fftSize);
-    }
-    AudioAnalyser.prototype.connectSource = function (node) {
-        node.connect(this._analyser);
-        this._connected = true;
-    };
-    AudioAnalyser.prototype.connectDestination = function (dest) {
-        this._analyser.connect(dest);
-    };
-    AudioAnalyser.prototype.getFrequencyData = function () {
-        if (this._connected) {
-            this._analyser.getByteFrequencyData(this.frequencyBuffer);
-        }
-        return this.frequencyBuffer;
-    };
-    AudioAnalyser.prototype.getTimeDomainData = function () {
-        if (this._connected) {
-            this._analyser.getByteTimeDomainData(this.timeDomainBuffer);
-        }
-        return this.timeDomainBuffer;
-    };
-    return AudioAnalyser;
-})();
-/// <reference path="../typed/rx.d.ts" />
-/// <reference path="../typed/waa.d.ts" />
-/// <reference path='./IUniform.ts'/>
-/// <reference path="./IPropertiesProvider.ts" />
-/// <reference path='./AudioAnalyser.ts'/>
-/// <reference path="../typed/three.d.ts"/>
-var AudioManager = (function () {
-    function AudioManager(audioContext) {
-        this._audioContext = audioContext;
-        this._audioAnalyser = new AudioAnalyser(this._audioContext, AudioManager.FFT_SIZE);
-        this._audioEventSubject = new Rx.Subject();
-        this.AudioEventObservable = this._audioEventSubject.asObservable();
-    }
-    AudioManager.prototype.updateSourceNode = function (sourceNode, connectToDestination) {
-        this._audioAnalyser.connectSource(sourceNode);
-        if (connectToDestination) {
-            this._audioAnalyser.connectDestination(this._audioContext.destination);
-        }
-    };
-    Object.defineProperty(AudioManager.prototype, "context", {
-        get: function () {
-            return this._audioContext;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    AudioManager.prototype.sampleAudio = function () {
-        if (this._audioAnalyser === undefined) {
-            return;
-        }
-        var frequencyBuffer = this._audioAnalyser.getFrequencyData();
-        var timeDomainBuffer = this._audioAnalyser.getTimeDomainData();
-        this._audioEventSubject.onNext({
-            frequencyBuffer: frequencyBuffer,
-            timeDomainBuffer: timeDomainBuffer
-        });
-    };
-    AudioManager.FFT_SIZE = 1024;
-    return AudioManager;
-})();
-var Microphone = (function () {
-    function Microphone() {
-        this.created = false;
-        this.nodeSubject = new Rx.Subject();
-    }
-    Microphone.prototype.emitNode = function (audioContext) {
-        var _this = this;
-        if (this.created) {
-            this.nodeSubject.onNext(this.node);
-            return;
-        }
-        var gotStream = function (stream) {
-            _this.node = audioContext.createMediaStreamSource(stream);
-            _this.nodeSubject.onNext(_this.node);
-        };
-        if (navigator.getUserMedia) {
-            navigator.getUserMedia({ audio: true, video: false }, gotStream, function (err) {
-                return console.log(err);
-            });
-        }
-        else if (navigator.webkitGetUserMedia) {
-            navigator.webkitGetUserMedia({ audio: true, video: false }, gotStream, function (err) {
-                return console.log(err);
-            });
-        }
-        else if (navigator.mozGetUserMedia) {
-            navigator.mozGetUserMedia({ audio: true, video: false }, gotStream, function (err) {
-                return console.log(err);
-            });
-        }
-        else {
-            return (alert("Error: getUserMedia not supported!"));
-        }
-        this.created = true;
-    };
-    Microphone.prototype.getNodeObservable = function () {
-        return this.nodeSubject;
-    };
-    return Microphone;
-})();
-/// <reference path="../typed/soundcloud.d.ts" />
-var SoundCloudLoader = (function () {
-    function SoundCloudLoader() {
-        this.urlSubject = new Rx.Subject();
-        SC.initialize({
-            client_id: SoundCloudLoader.CLIENT_ID
-        });
-    }
-    SoundCloudLoader.prototype.getUrlObservable = function () {
-        return this.urlSubject.asObservable();
-    };
-    SoundCloudLoader.prototype.loadStream = function (url) {
-        var _this = this;
-        if (!SC) {
-            return; // No internet
-        }
-        SC.get('/resolve', { url: url, test: "two" }, function (sound) {
-            if (sound.errors) {
-                console.log("error: ", sound.errors);
-                _this.urlSubject.onError("Invalid URL");
-                return;
-            }
-            var url = sound.kind == 'playlist' ? sound.tracks[0].stream_url : sound.stream_url;
-            _this.urlSubject.onNext(url + '?client_id=' + SoundCloudLoader.CLIENT_ID);
-        });
-    };
-    SoundCloudLoader.CLIENT_ID = "384835fc6e109a2533f83591ae3713e9";
-    return SoundCloudLoader;
-})();
-/// <reference path="../Models/AudioManager.ts"/>
-/// <reference path="../Models/Microphone.ts"/>
-/// <reference path="../Models/SoundCloudLoader.ts"/>
-/// <reference path="../typed/rx.binding.d.ts"/>
-var PlayerController = (function () {
-    function PlayerController(urls) {
-        var _this = this;
-        this._urlSubject = new Rx.BehaviorSubject();
-        // window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
-        this._manager = new AudioManager(new AudioContext());
-        this.microphone = new Microphone();
-        this.microphone.getNodeObservable().subscribe(function (node) {
-            return _this.manager.updateSourceNode(node, false);
-        });
-        if (urls == undefined || urls.length == 0) {
-            this.onMicClick();
-        }
-        else {
-            this._urlSubject.onNext(urls[0]);
-        }
-    }
-    Object.defineProperty(PlayerController.prototype, "manager", {
-        get: function () { return this._manager; },
-        enumerable: true,
-        configurable: true
-    });
-    PlayerController.prototype.onMicClick = function () {
-        this.microphone.emitNode(this.manager.context);
-    };
-    PlayerController.prototype.setPlayerSource = function (source) {
-        this.playerSource = this.manager.context.createMediaElementSource(source);
-        this.manager.updateSourceNode(this.playerSource, true);
-    };
-    PlayerController.prototype.sampleAudio = function () {
-        this.manager.sampleAudio();
-    };
-    PlayerController.prototype.getUrlObservable = function () {
-        return this._urlSubject.asObservable();
-    };
-    return PlayerController;
-})();
 /// <reference path='./IPropertiesProvider.ts' />
 var ConstPropertiesProvider = (function () {
     function ConstPropertiesProvider() {
@@ -725,8 +518,75 @@ var ControlsView = (function () {
     };
     return ControlsView;
 })();
-/// <reference path="./PlayerView.ts"/>
-/// <reference path="../Controllers/PlayerController.ts"/>
+var AudioAnalyser = (function () {
+    function AudioAnalyser(context, fftSize) {
+        this._analyser = context.createAnalyser();
+        this.fftSize = fftSize;
+        this.frequencyBuffer = new Uint8Array(this.fftSize);
+        this.timeDomainBuffer = new Uint8Array(this.fftSize);
+    }
+    AudioAnalyser.prototype.connectSource = function (node) {
+        node.connect(this._analyser);
+        this._connected = true;
+    };
+    AudioAnalyser.prototype.connectDestination = function (dest) {
+        this._analyser.connect(dest);
+    };
+    AudioAnalyser.prototype.getFrequencyData = function () {
+        if (this._connected) {
+            this._analyser.getByteFrequencyData(this.frequencyBuffer);
+        }
+        return this.frequencyBuffer;
+    };
+    AudioAnalyser.prototype.getTimeDomainData = function () {
+        if (this._connected) {
+            this._analyser.getByteTimeDomainData(this.timeDomainBuffer);
+        }
+        return this.timeDomainBuffer;
+    };
+    return AudioAnalyser;
+})();
+/// <reference path="../typed/rx.d.ts" />
+/// <reference path="../typed/waa.d.ts" />
+/// <reference path='./IUniform.ts'/>
+/// <reference path="./IPropertiesProvider.ts" />
+/// <reference path='./AudioAnalyser.ts'/>
+/// <reference path="../typed/three.d.ts"/>
+var AudioManager = (function () {
+    function AudioManager(audioContext) {
+        this._audioContext = audioContext;
+        this._audioAnalyser = new AudioAnalyser(this._audioContext, AudioManager.FFT_SIZE);
+        this._audioEventSubject = new Rx.Subject();
+        this.AudioEventObservable = this._audioEventSubject.asObservable();
+    }
+    AudioManager.prototype.updateSourceNode = function (sourceNode, connectToDestination) {
+        this._audioAnalyser.connectSource(sourceNode);
+        if (connectToDestination) {
+            this._audioAnalyser.connectDestination(this._audioContext.destination);
+        }
+    };
+    Object.defineProperty(AudioManager.prototype, "context", {
+        get: function () {
+            return this._audioContext;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    AudioManager.prototype.sampleAudio = function () {
+        if (this._audioAnalyser === undefined) {
+            return;
+        }
+        var frequencyBuffer = this._audioAnalyser.getFrequencyData();
+        var timeDomainBuffer = this._audioAnalyser.getTimeDomainData();
+        this._audioEventSubject.onNext({
+            frequencyBuffer: frequencyBuffer,
+            timeDomainBuffer: timeDomainBuffer
+        });
+    };
+    AudioManager.FFT_SIZE = 1024;
+    return AudioManager;
+})();
+/// <reference path="../Controllers/MicrophoneController.ts"/>
 /// <reference path="./GLView.ts"/>
 /// <reference path="../Controllers/GLController.ts"/>
 /// <reference path="./ShadersView.ts"/>
@@ -735,17 +595,19 @@ var ControlsView = (function () {
 /// <reference path="../Controllers/ControlsController.ts"/>
 /// <reference path="./ControlsView.ts"/>
 /// <reference path='./IControllerView.ts' />
+/// <reference path='../Models/AudioManager.ts' />
 var Visualizer = (function () {
-    function Visualizer(urls) {
+    function Visualizer() {
         var _this = this;
         this.content = $("<div>", { text: "Hello, world!" });
-        this._playerController = new PlayerController(urls);
+        window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
+        this._audioManager = new AudioManager(new AudioContext());
+        var micController = new MicrophoneController(this._audioManager);
         this._videoController = new VideoController();
         this._shadersController = new ShadersController();
         this._controlsController = new ControlsController();
-        this._glController = new GLController(this._playerController.manager, this._videoController.Manager, this._controlsController.UniformsProvider);
-        this.playerView = new PlayerView(this._playerController);
-        this._glView = new GLView(this._playerController.manager, this._glController);
+        this._glController = new GLController(this._audioManager, this._videoController.Manager, this._controlsController.UniformsProvider);
+        this._glView = new GLView(this._audioManager, this._glController);
         this._shadersView = new ShadersView(this._shadersController);
         this._controlsView = new ControlsView(this._controlsController);
         this._videoView = new VideoView(this._videoController);
@@ -755,7 +617,6 @@ var Visualizer = (function () {
     }
     Visualizer.prototype.render = function (el) {
         var _this = this;
-        this.playerView.render(this.content[0]);
         this._glView.render(this.content[0]);
         this._shadersView.render(this.content[0]);
         this._controlsView.render(this.content[0]);
@@ -766,7 +627,7 @@ var Visualizer = (function () {
     Visualizer.prototype.animate = function () {
         var _this = this;
         requestAnimationFrame(function () { return _this.animate(); });
-        this._playerController.sampleAudio();
+        this._audioManager.sampleAudio();
         this._videoController.sampleVideo();
         this._glView.animate();
     };
@@ -779,7 +640,8 @@ var Visualizer = (function () {
 /// <reference path="./Views/Visualizer.ts"/>
 function exec() {
     "use strict";
-    var app = new Visualizer(['.ignored/learning_to_love.mp3', '.ignored/test_song.mp3']);
+    // var app: Visualizer = new FileVisualizer(['.ignored/learning_to_love.mp3', '.ignored/test_song.mp3']);
+    var app = new Visualizer();
     app.render($("#content")[0]);
 }
 $(document).ready(function () {

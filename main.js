@@ -3,14 +3,15 @@
 /// <reference path="./typed/waa.d.ts"/>
 /// <reference path="./typed/soundcloud.d.ts"/>
 /// <reference path="./Views/Visualizer.ts"/>
-
-function exec(): void {
+function exec() {
   "use strict";
-  // var app: Visualizer = new FileVisualizer(['.ignored/learning_to_love.mp3', '.ignored/test_song.mp3']);
-  var app: Visualizer = new Visualizer();
+  var app = new Visualizer([
+    '.ignored/dont_know_where_im_going.mp3',
+    '.ignored/learning_to_love.mp3',
+    '.ignored/test_song.mp3'
+  ]);
   app.render($("#content")[0]);
 }
-
 $(document).ready(function() {
   exec();
 });
