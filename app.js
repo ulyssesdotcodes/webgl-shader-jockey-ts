@@ -149,8 +149,9 @@ var ShaderText = (function () {
 /// <reference path="../typed/rx.jquery.d.ts"/>
 /// <reference path='./ShaderText.ts'/>
 var ShaderLoader = (function () {
-    function ShaderLoader() {
+    function ShaderLoader(initialMethodsUrl) {
         var _this = this;
+        this._initialMethodsUrl = initialMethodsUrl;
         this.getVertex("plane").subscribe(function (vert) { return _this._regularVert = vert; });
     }
     ShaderLoader.prototype.getShaderFromServer = function (name) {
@@ -164,7 +165,7 @@ var ShaderLoader = (function () {
     ShaderLoader.prototype.getFragment = function (name) {
         return $.getAsObservable('shaders/' + name + '.frag')
             .map(function (shader) { return shader.data; })
-            .combineLatest(this.utilFrag(), function (frag, util) { return util.concat(frag); });
+            .combineLatest(this.utilFrag(), this.initialMethodsFrag(), function (frag, im, util) { return util.concat(im).concat(frag); });
     };
     ShaderLoader.prototype.utilFrag = function () {
         var _this = this;
@@ -174,6 +175,15 @@ var ShaderLoader = (function () {
                 .doOnNext(function (util) { return _this._utilFrag = util; });
         }
         return Rx.Observable.just(this._utilFrag);
+    };
+    ShaderLoader.prototype.initialMethodsFrag = function () {
+        var _this = this;
+        if (this._initialMethodsFrag === undefined) {
+            return $.getAsObservable('shaders/' + this._initialMethodsUrl)
+                .map(function (shader) { return shader.data; })
+                .doOnNext(function (util) { return _this._initialMethodsFrag = util; });
+        }
+        return Rx.Observable.just(this._initialMethodsFrag);
     };
     return ShaderLoader;
 })();
@@ -286,17 +296,24 @@ var GLController = (function () {
         this.MeshObservable = this._meshSubject.asObservable();
         this._resolutionProvider = new ResolutionProvider();
         this._timeProvider = new TimeProvider();
-        this._shaderLoader = new ShaderLoader();
+        this._shaderLoader = new ShaderLoader(controlsProvider == null ? 'no_controls.frag' : 'controls_init.frag');
         var audioUniformProvider = new AudioUniformProvider(audioManager);
         var loudnessAccumulator = new LoudnessAccumulator(audioManager);
-        controlsProvider.glProperties()
-            .flatMap(Rx.Observable.from)
-            .filter(function (uniform) { return uniform.name == "volume"; })
-            .subscribe(function (volumeUniform) { return loudnessAccumulator.setVolumeUniform(volumeUniform); });
-        this._audioShaderPlane = new PropertiesShaderPlane([
-            videoManager, this._resolutionProvider, this._timeProvider,
-            audioUniformProvider, loudnessAccumulator, controlsProvider
-        ]);
+        var properties = [
+            this._resolutionProvider, this._timeProvider,
+            audioUniformProvider, loudnessAccumulator
+        ];
+        if (videoManager != null) {
+            properties.push(videoManager);
+        }
+        if (controlsProvider != null) {
+            controlsProvider.glProperties()
+                .flatMap(Rx.Observable.from)
+                .filter(function (uniform) { return uniform.name == "volume"; })
+                .subscribe(function (volumeUniform) { return loudnessAccumulator.setVolumeUniform(volumeUniform); });
+            properties.push(controlsProvider);
+        }
+        this._audioShaderPlane = new PropertiesShaderPlane(properties);
         this._audioShaderPlane.MeshObservable.subscribe(function (mesh) { return _this.onNewMeshes([mesh]); });
     }
     GLController.prototype.onNewResolution = function (resolution) {
@@ -409,8 +426,8 @@ var VideoManager = (function () {
 })();
 /// <reference path='../Models/VideoManager.ts'/>
 var VideoController = (function () {
-    function VideoController() {
-        this._videoManager = new VideoManager();
+    function VideoController(videoManger) {
+        this._videoManager = videoManger;
     }
     Object.defineProperty(VideoController.prototype, "Manager", {
         get: function () {
@@ -421,9 +438,6 @@ var VideoController = (function () {
     });
     VideoController.prototype.setVideoSource = function (videoElement) {
         this._videoManager.updateVideoElement(videoElement);
-    };
-    VideoController.prototype.sampleVideo = function () {
-        this._videoManager.sampleVideo();
     };
     return VideoController;
 })();
@@ -732,9 +746,11 @@ var SoundCloudLoader = (function () {
 /// <reference path="../typed/rx.binding-lite.d.ts"/>
 var PlayerController = (function () {
     function PlayerController(urls, manager) {
-        this._urlSubject = new Rx.BehaviorSubject('');
+        this._urls = urls;
+        this._currentUrl = 0;
         this._manager = manager;
-        this._urlSubject.onNext(urls[0]);
+        this._urlSubject = new Rx.BehaviorSubject('');
+        this._urlSubject.onNext(urls[this._currentUrl]);
     }
     Object.defineProperty(PlayerController.prototype, "manager", {
         get: function () { return this._manager; },
@@ -742,11 +758,19 @@ var PlayerController = (function () {
         configurable: true
     });
     PlayerController.prototype.setPlayerSource = function (source) {
-        this.playerSource = this.manager.context.createMediaElementSource(source);
-        this.manager.updateSourceNode(this.playerSource, true);
+        var _this = this;
+        var playerSource = this.manager.context.createMediaElementSource(source);
+        this.manager.updateSourceNode(playerSource, true);
+        source.onended = function (ev) { return _this.nextSong(); };
     };
     PlayerController.prototype.getUrlObservable = function () {
         return this._urlSubject.asObservable();
+    };
+    PlayerController.prototype.nextSong = function () {
+        this._currentUrl++;
+        if (this._currentUrl < this._urls.length) {
+            this._urlSubject.onNext(this._urls[this._currentUrl]);
+        }
     };
     return PlayerController;
 })();
@@ -768,15 +792,11 @@ var FileVisualizer = (function () {
         window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
         this._audioManager = new AudioManager(new AudioContext());
         this._playerController = new PlayerController(urls, this._audioManager);
-        this._videoController = new VideoController();
         this._shadersController = new ShadersController();
-        this._controlsController = new ControlsController();
-        this._glController = new GLController(this._audioManager, this._videoController.Manager, this._controlsController.UniformsProvider);
+        this._glController = new GLController(this._audioManager, null, null);
         this.playerView = new PlayerView(this._playerController);
         this._glView = new GLView(this._playerController.manager, this._glController);
         this._shadersView = new ShadersView(this._shadersController);
-        this._controlsView = new ControlsView(this._controlsController);
-        this._videoView = new VideoView(this._videoController);
         this._shadersController.ShaderNameObservable.subscribe(function (name) {
             return _this._glController.onShaderName(name);
         });
@@ -786,8 +806,6 @@ var FileVisualizer = (function () {
         this.playerView.render(this.content[0]);
         this._glView.render(this.content[0]);
         this._shadersView.render(this.content[0]);
-        this._controlsView.render(this.content[0]);
-        this._videoView.render(this.content[0]);
         $(el).append(this.content);
         requestAnimationFrame(function () { return _this.animate(); });
     };
@@ -795,7 +813,6 @@ var FileVisualizer = (function () {
         var _this = this;
         requestAnimationFrame(function () { return _this.animate(); });
         this._audioManager.sampleAudio();
-        this._videoController.sampleVideo();
         this._glView.animate();
     };
     return FileVisualizer;
@@ -810,6 +827,7 @@ function exec() {
     "use strict";
     var app = new FileVisualizer([
         'ignored/electronicaftm/01 - C2C - Down The Road.mp3',
+        'ignored/electronicaftm/02 - Gramatik - Control Room Before You Feat. ILLUMNTR.mp3',
         '.ignored/learning_to_love.mp3',
         '.ignored/test_song.mp3'
     ]);

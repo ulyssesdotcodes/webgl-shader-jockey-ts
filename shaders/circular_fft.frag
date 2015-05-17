@@ -1,12 +1,8 @@
-#define TOUCH_EVENT_COUNT 10
-precision highp float;
-uniform vec3 te[TOUCH_EVENT_COUNT];
-
 vec4 fromPos(vec2 uv, vec3 te) {
     vec2 cuv = toPolar(uv, te.xy);
 
     // FFT
-    float fft = texture2D(audioTexture, vec2(cuv.y, 0.25)).x * volume;
+    float fft = texture2D(audioTexture, vec2(cuv.y, 0.25)).x * getVolume() * 0.75;
 
     // Rotating colors
     vec4 base = vec4(uv,0.5+0.5*sin(time),1.0);
@@ -18,12 +14,6 @@ void main(void)
     vec2 uv = gl_FragCoord.xy / resolution.xy;
 
     vec4 color = vec4(fromPos(uv, vec3(0.5)).rbg, 1.0);
-
-    for(int i = 0; i < TOUCH_EVENT_COUNT; i++) {
-      if (te[i].x != 0.0) {
-        color = color + fromPos(uv, te[i]);
-      }
-    }
 
     gl_FragColor = color;
 }

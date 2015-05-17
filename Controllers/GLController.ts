@@ -23,21 +23,33 @@ class GLController {
     this._resolutionProvider = new ResolutionProvider();
     this._timeProvider = new TimeProvider();
 
-    this._shaderLoader = new ShaderLoader();
+    this._shaderLoader = new ShaderLoader(controlsProvider == null ? 'no_controls.frag' : 'controls_init.frag');
 
     var audioUniformProvider = new AudioUniformProvider(audioManager);
 
     var loudnessAccumulator = new LoudnessAccumulator(audioManager);
-    controlsProvider.glProperties()
-      .flatMap(Rx.Observable.from)
-      .filter((uniform: IUniform<any>) => uniform.name == "volume")
-      .subscribe(
+
+    var properties : Array<IPropertiesProvider<any>> = [
+      this._resolutionProvider, this._timeProvider,
+      audioUniformProvider, loudnessAccumulator
+    ];
+
+    if (videoManager != null) {
+      properties.push(videoManager);
+    }
+
+    if (controlsProvider != null) {
+      controlsProvider.glProperties()
+        .flatMap(Rx.Observable.from)
+        .filter((uniform: IUniform<any>) => uniform.name == "volume")
+        .subscribe(
         (volumeUniform: IUniform<number>) => loudnessAccumulator.setVolumeUniform(volumeUniform));
 
-    this._audioShaderPlane = new PropertiesShaderPlane([
-      videoManager, this._resolutionProvider, this._timeProvider,
-      audioUniformProvider, loudnessAccumulator, controlsProvider
-    ]);
+      properties.push(controlsProvider);
+    }
+
+    this._audioShaderPlane = new PropertiesShaderPlane(properties);
+
     this._audioShaderPlane.MeshObservable.subscribe((mesh) => this.onNewMeshes([mesh]));
   }
 

@@ -47,7 +47,7 @@ vec4 applyHueShift(vec4 color, float shift) {
 }
 
 vec4 applyHueShift(vec4 color) {
-  return applyHueShift(color, hue);
+  return applyHueShift(color, getHue());
 }
 
 vec3 baseHue(float time) {

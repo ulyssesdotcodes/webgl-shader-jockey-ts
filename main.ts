@@ -7,9 +7,10 @@
 
 function exec(): void {
   "use strict";
-  var app: Visualizer =
+  var app: FileVisualizer =
     new FileVisualizer([
       'ignored/electronicaftm/01 - C2C - Down The Road.mp3',
+      'ignored/electronicaftm/02 - Gramatik - Control Room Before You Feat. ILLUMNTR.mp3',
       '.ignored/learning_to_love.mp3',
       '.ignored/test_song.mp3'
     ]);

@@ -7,15 +7,11 @@ class VideoController {
     return this._videoManager;
   }
 
-  constructor() {
-    this._videoManager = new VideoManager();
+  constructor(videoManger: VideoManager) {
+    this._videoManager = videoManger;
   }
 
   setVideoSource(videoElement: HTMLVideoElement) {
     this._videoManager.updateVideoElement(videoElement);
-  }
-
-  sampleVideo() {
-    this._videoManager.sampleVideo();
   }
 }
