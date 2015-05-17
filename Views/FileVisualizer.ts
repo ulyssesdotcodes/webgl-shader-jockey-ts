@@ -30,7 +30,7 @@ class FileVisualizer implements IControllerView {
     window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
     this._audioManager = new AudioManager(new AudioContext());
 
-    this._playerController = new PlayerController(urls, audioManager);
+    this._playerController = new PlayerController(urls, this._audioManager);
     this._videoController = new VideoController();
     this._shadersController = new ShadersController();
     this._controlsController = new ControlsController();
