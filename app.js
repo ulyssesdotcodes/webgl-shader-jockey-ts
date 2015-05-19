@@ -1,14 +1,237 @@
-var MicrophoneController = (function () {
-    function MicrophoneController(manager) {
-        var _this = this;
-        this._manager = manager;
-        this.microphone = new Microphone(manager.context);
-        this.microphone.nodeObservable().subscribe(function (node) { return _this._manager.updateSourceNode(node, false); });
-        this.microphone.onContext(manager.context);
+var PlayerView = (function () {
+    function PlayerView(playerController) {
+        this.content = $("<div>", { class: "controls audio-controls" });
+        this.playerController = playerController;
     }
-    return MicrophoneController;
+    PlayerView.prototype.render = function (el) {
+        var _this = this;
+        this.audioPlayer = document.createElement("audio");
+        this.audioPlayer.setAttribute("class", "audio-player");
+        this.audioPlayer.controls = true;
+        this.audioPlayer.autoplay = true;
+        this.playerController.getUrlObservable().subscribe(function (url) {
+            _this.audioPlayer.setAttribute("src", url);
+            _this.audioPlayer.play();
+        });
+        window.addEventListener('load', function (e) {
+            _this.playerController.setPlayerSource(_this.audioPlayer);
+        }, false);
+        this.content.append(this.audioPlayer);
+        $(el).append(this.content);
+    };
+    return PlayerView;
+})();
+var PlaylistView = (function () {
+    function PlaylistView(playerController) {
+        this._content = $("<div>", { class: "controls playlist" });
+        this._playerController = playerController;
+        this._currentTrack = -1;
+    }
+    PlaylistView.prototype.render = function (el) {
+        var _this = this;
+        this._list = $("<ol>");
+        this._playerController.tracks().forEach(function (track) {
+            $("<li>", { html: _this.createText(track) }).appendTo(_this._list);
+        });
+        this._playerController.getTrackObservable()
+            .doOnNext(function (__) {
+            if (_this._currentTrack != -1) {
+                $(_this._list.children().get(_this._currentTrack)).css("font-weight", "Normal");
+            }
+        })
+            .subscribe(function (track) {
+            $(_this._list.children().get(track)).css("font-weight", "Bold");
+            _this._currentTrack = track;
+        });
+        this._content.append(this._list);
+        $(el).append(this._content);
+    };
+    PlaylistView.prototype.createText = function (track) {
+        return track.title + " - " + track.artist;
+    };
+    return PlaylistView;
 })();
 /// <reference path="./IUniform.ts"/>
+var AudioAnalyser = (function () {
+    function AudioAnalyser(context, fftSize) {
+        this._analyser = context.createAnalyser();
+        this.fftSize = fftSize;
+        this.frequencyBuffer = new Uint8Array(this.fftSize);
+        this.timeDomainBuffer = new Uint8Array(this.fftSize);
+    }
+    AudioAnalyser.prototype.connectSource = function (node) {
+        node.connect(this._analyser);
+        this._connected = true;
+    };
+    AudioAnalyser.prototype.connectDestination = function (dest) {
+        this._analyser.connect(dest);
+    };
+    AudioAnalyser.prototype.getFrequencyData = function () {
+        if (this._connected) {
+            this._analyser.getByteFrequencyData(this.frequencyBuffer);
+        }
+        return this.frequencyBuffer;
+    };
+    AudioAnalyser.prototype.getTimeDomainData = function () {
+        if (this._connected) {
+            this._analyser.getByteTimeDomainData(this.timeDomainBuffer);
+        }
+        return this.timeDomainBuffer;
+    };
+    return AudioAnalyser;
+})();
+/// <reference path="../typed/rx.d.ts" />
+/// <reference path="../typed/waa.d.ts" />
+/// <reference path='./IUniform.ts'/>
+/// <reference path="./IPropertiesProvider.ts" />
+/// <reference path='./AudioAnalyser.ts'/>
+/// <reference path="../typed/three.d.ts"/>
+var AudioManager = (function () {
+    function AudioManager(audioContext) {
+        this._audioContext = audioContext;
+        this._audioAnalyser = new AudioAnalyser(this._audioContext, AudioManager.FFT_SIZE);
+        this._audioEventSubject = new Rx.Subject();
+        this.AudioEventObservable = this._audioEventSubject.asObservable();
+    }
+    AudioManager.prototype.updateSourceNode = function (sourceNode, connectToDestination) {
+        this._audioAnalyser.connectSource(sourceNode);
+        if (connectToDestination) {
+            this._audioAnalyser.connectDestination(this._audioContext.destination);
+        }
+    };
+    Object.defineProperty(AudioManager.prototype, "context", {
+        get: function () {
+            return this._audioContext;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    AudioManager.prototype.sampleAudio = function () {
+        if (this._audioAnalyser === undefined) {
+            return;
+        }
+        var frequencyBuffer = this._audioAnalyser.getFrequencyData();
+        var timeDomainBuffer = this._audioAnalyser.getTimeDomainData();
+        this._audioEventSubject.onNext({
+            frequencyBuffer: frequencyBuffer,
+            timeDomainBuffer: timeDomainBuffer
+        });
+    };
+    AudioManager.FFT_SIZE = 1024;
+    return AudioManager;
+})();
+var Microphone = (function () {
+    function Microphone(context) {
+        this.created = false;
+        this.nodeSubject = new Rx.Subject();
+    }
+    Microphone.prototype.onContext = function (audioContext) {
+        var _this = this;
+        if (this.created) {
+            this.nodeSubject.onNext(this.node);
+            return;
+        }
+        var gotStream = function (stream) {
+            _this.node = audioContext.createMediaStreamSource(stream);
+            _this.nodeSubject.onNext(_this.node);
+        };
+        if (navigator.getUserMedia) {
+            navigator.getUserMedia({ audio: true, video: false }, gotStream, function (err) {
+                return console.log(err);
+            });
+        }
+        else if (navigator.webkitGetUserMedia) {
+            navigator.webkitGetUserMedia({ audio: true, video: false }, gotStream, function (err) {
+                return console.log(err);
+            });
+        }
+        else if (navigator.mozGetUserMedia) {
+            navigator.mozGetUserMedia({ audio: true, video: false }, gotStream, function (err) {
+                return console.log(err);
+            });
+        }
+        else {
+            this.created = false;
+            return (alert("Error: getUserMedia not supported!"));
+        }
+        this.created = true;
+    };
+    Microphone.prototype.nodeObservable = function () {
+        return this.nodeSubject;
+    };
+    return Microphone;
+})();
+/// <reference path="../typed/soundcloud.d.ts" />
+var SoundCloudLoader = (function () {
+    function SoundCloudLoader() {
+        this.urlSubject = new Rx.Subject();
+        SC.initialize({
+            client_id: SoundCloudLoader.CLIENT_ID
+        });
+    }
+    SoundCloudLoader.prototype.getUrlObservable = function () {
+        return this.urlSubject.asObservable();
+    };
+    SoundCloudLoader.prototype.loadStream = function (url) {
+        var _this = this;
+        if (!SC) {
+            return; // No internet
+        }
+        SC.get('/resolve', { url: url, test: "two" }, function (sound) {
+            if (sound.errors) {
+                console.log("error: ", sound.errors);
+                _this.urlSubject.onError("Invalid URL");
+                return;
+            }
+            var url = sound.kind == 'playlist' ? sound.tracks[0].stream_url : sound.stream_url;
+            _this.urlSubject.onNext(url + '?client_id=' + SoundCloudLoader.CLIENT_ID);
+        });
+    };
+    SoundCloudLoader.CLIENT_ID = "384835fc6e109a2533f83591ae3713e9";
+    return SoundCloudLoader;
+})();
+/// <reference path="../Models/AudioManager.ts"/>
+/// <reference path="../Models/Microphone.ts"/>
+/// <reference path="../Models/SoundCloudLoader.ts"/>
+/// <reference path="../typed/rx.binding-lite.d.ts"/>
+var PlayerController = (function () {
+    function PlayerController(tracks, manager) {
+        this._tracks = tracks;
+        this._currentTrack = 0;
+        this._manager = manager;
+        this._urlSubject = new Rx.BehaviorSubject(tracks[this._currentTrack].url);
+        this._currentTrackSubject = new Rx.BehaviorSubject(0);
+    }
+    Object.defineProperty(PlayerController.prototype, "manager", {
+        get: function () { return this._manager; },
+        enumerable: true,
+        configurable: true
+    });
+    PlayerController.prototype.setPlayerSource = function (source) {
+        var _this = this;
+        var playerSource = this.manager.context.createMediaElementSource(source);
+        this.manager.updateSourceNode(playerSource, true);
+        source.onended = function (ev) { return _this.nextSong(); };
+    };
+    PlayerController.prototype.getUrlObservable = function () {
+        return this._urlSubject.asObservable();
+    };
+    PlayerController.prototype.getTrackObservable = function () {
+        return this._currentTrackSubject.asObservable();
+    };
+    PlayerController.prototype.tracks = function () {
+        console.log(this._tracks);
+        return this._tracks;
+    };
+    PlayerController.prototype.nextSong = function () {
+        this._currentTrack++;
+        if (this._currentTrack < this._tracks.length) {
+            this._currentTrackSubject.onNext(this._currentTrack);
+            this._urlSubject.onNext(this._tracks[this._currentTrack].url);
+        }
+    };
+    return PlayerController;
+})();
 /// <reference path='./IPropertiesProvider.ts' />
 var ConstPropertiesProvider = (function () {
     function ConstPropertiesProvider() {
@@ -532,249 +755,8 @@ var ControlsView = (function () {
     };
     return ControlsView;
 })();
-var AudioAnalyser = (function () {
-    function AudioAnalyser(context, fftSize) {
-        this._analyser = context.createAnalyser();
-        this.fftSize = fftSize;
-        this.frequencyBuffer = new Uint8Array(this.fftSize);
-        this.timeDomainBuffer = new Uint8Array(this.fftSize);
-    }
-    AudioAnalyser.prototype.connectSource = function (node) {
-        node.connect(this._analyser);
-        this._connected = true;
-    };
-    AudioAnalyser.prototype.connectDestination = function (dest) {
-        this._analyser.connect(dest);
-    };
-    AudioAnalyser.prototype.getFrequencyData = function () {
-        if (this._connected) {
-            this._analyser.getByteFrequencyData(this.frequencyBuffer);
-        }
-        return this.frequencyBuffer;
-    };
-    AudioAnalyser.prototype.getTimeDomainData = function () {
-        if (this._connected) {
-            this._analyser.getByteTimeDomainData(this.timeDomainBuffer);
-        }
-        return this.timeDomainBuffer;
-    };
-    return AudioAnalyser;
-})();
-/// <reference path="../typed/rx.d.ts" />
-/// <reference path="../typed/waa.d.ts" />
-/// <reference path='./IUniform.ts'/>
-/// <reference path="./IPropertiesProvider.ts" />
-/// <reference path='./AudioAnalyser.ts'/>
-/// <reference path="../typed/three.d.ts"/>
-var AudioManager = (function () {
-    function AudioManager(audioContext) {
-        this._audioContext = audioContext;
-        this._audioAnalyser = new AudioAnalyser(this._audioContext, AudioManager.FFT_SIZE);
-        this._audioEventSubject = new Rx.Subject();
-        this.AudioEventObservable = this._audioEventSubject.asObservable();
-    }
-    AudioManager.prototype.updateSourceNode = function (sourceNode, connectToDestination) {
-        this._audioAnalyser.connectSource(sourceNode);
-        if (connectToDestination) {
-            this._audioAnalyser.connectDestination(this._audioContext.destination);
-        }
-    };
-    Object.defineProperty(AudioManager.prototype, "context", {
-        get: function () {
-            return this._audioContext;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    AudioManager.prototype.sampleAudio = function () {
-        if (this._audioAnalyser === undefined) {
-            return;
-        }
-        var frequencyBuffer = this._audioAnalyser.getFrequencyData();
-        var timeDomainBuffer = this._audioAnalyser.getTimeDomainData();
-        this._audioEventSubject.onNext({
-            frequencyBuffer: frequencyBuffer,
-            timeDomainBuffer: timeDomainBuffer
-        });
-    };
-    AudioManager.FFT_SIZE = 1024;
-    return AudioManager;
-})();
-/// <reference path="../Controllers/MicrophoneController.ts"/>
-/// <reference path="./GLView.ts"/>
-/// <reference path="../Controllers/GLController.ts"/>
-/// <reference path="./ShadersView.ts"/>
-/// <reference path="./VideoView.ts"/>
-/// <reference path="../Controllers/VideoController.ts"/>
-/// <reference path="../Controllers/ControlsController.ts"/>
-/// <reference path="./ControlsView.ts"/>
-/// <reference path='./IControllerView.ts' />
-/// <reference path='../Models/AudioManager.ts' />
-var Visualizer = (function () {
-    function Visualizer() {
-        var _this = this;
-        this.content = $("<div>", { text: "Hello, world!" });
-        window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
-        this._audioManager = new AudioManager(new AudioContext());
-        var micController = new MicrophoneController(this._audioManager);
-        this._videoController = new VideoController();
-        this._shadersController = new ShadersController();
-        this._controlsController = new ControlsController();
-        this._glController = new GLController(this._audioManager, this._videoController.Manager, this._controlsController.UniformsProvider);
-        this._glView = new GLView(this._audioManager, this._glController);
-        this._shadersView = new ShadersView(this._shadersController);
-        this._controlsView = new ControlsView(this._controlsController);
-        this._videoView = new VideoView(this._videoController);
-        this._shadersController.ShaderNameObservable.subscribe(function (name) {
-            return _this._glController.onShaderName(name);
-        });
-    }
-    Visualizer.prototype.render = function (el) {
-        var _this = this;
-        this._glView.render(this.content[0]);
-        this._shadersView.render(this.content[0]);
-        this._controlsView.render(this.content[0]);
-        this._videoView.render(this.content[0]);
-        $(el).append(this.content);
-        requestAnimationFrame(function () { return _this.animate(); });
-    };
-    Visualizer.prototype.animate = function () {
-        var _this = this;
-        requestAnimationFrame(function () { return _this.animate(); });
-        this._audioManager.sampleAudio();
-        this._videoController.sampleVideo();
-        this._glView.animate();
-    };
-    return Visualizer;
-})();
-var PlayerView = (function () {
-    function PlayerView(playerController) {
-        this.content = $("<div>", { class: "controls audio-controls" });
-        this.playerController = playerController;
-    }
-    PlayerView.prototype.render = function (el) {
-        var _this = this;
-        this.audioPlayer = document.createElement("audio");
-        this.audioPlayer.setAttribute("class", "audio-player");
-        this.audioPlayer.controls = true;
-        this.audioPlayer.autoplay = true;
-        this.playerController.getUrlObservable().subscribe(function (url) {
-            _this.audioPlayer.setAttribute("src", url);
-            _this.audioPlayer.play();
-        });
-        window.addEventListener('load', function (e) {
-            _this.playerController.setPlayerSource(_this.audioPlayer);
-        }, false);
-        this.content.append(this.audioPlayer);
-        $(el).append(this.content);
-    };
-    return PlayerView;
-})();
-var Microphone = (function () {
-    function Microphone(context) {
-        this.created = false;
-        this.nodeSubject = new Rx.Subject();
-    }
-    Microphone.prototype.onContext = function (audioContext) {
-        var _this = this;
-        if (this.created) {
-            this.nodeSubject.onNext(this.node);
-            return;
-        }
-        var gotStream = function (stream) {
-            _this.node = audioContext.createMediaStreamSource(stream);
-            _this.nodeSubject.onNext(_this.node);
-        };
-        if (navigator.getUserMedia) {
-            navigator.getUserMedia({ audio: true, video: false }, gotStream, function (err) {
-                return console.log(err);
-            });
-        }
-        else if (navigator.webkitGetUserMedia) {
-            navigator.webkitGetUserMedia({ audio: true, video: false }, gotStream, function (err) {
-                return console.log(err);
-            });
-        }
-        else if (navigator.mozGetUserMedia) {
-            navigator.mozGetUserMedia({ audio: true, video: false }, gotStream, function (err) {
-                return console.log(err);
-            });
-        }
-        else {
-            this.created = false;
-            return (alert("Error: getUserMedia not supported!"));
-        }
-        this.created = true;
-    };
-    Microphone.prototype.nodeObservable = function () {
-        return this.nodeSubject;
-    };
-    return Microphone;
-})();
-/// <reference path="../typed/soundcloud.d.ts" />
-var SoundCloudLoader = (function () {
-    function SoundCloudLoader() {
-        this.urlSubject = new Rx.Subject();
-        SC.initialize({
-            client_id: SoundCloudLoader.CLIENT_ID
-        });
-    }
-    SoundCloudLoader.prototype.getUrlObservable = function () {
-        return this.urlSubject.asObservable();
-    };
-    SoundCloudLoader.prototype.loadStream = function (url) {
-        var _this = this;
-        if (!SC) {
-            return; // No internet
-        }
-        SC.get('/resolve', { url: url, test: "two" }, function (sound) {
-            if (sound.errors) {
-                console.log("error: ", sound.errors);
-                _this.urlSubject.onError("Invalid URL");
-                return;
-            }
-            var url = sound.kind == 'playlist' ? sound.tracks[0].stream_url : sound.stream_url;
-            _this.urlSubject.onNext(url + '?client_id=' + SoundCloudLoader.CLIENT_ID);
-        });
-    };
-    SoundCloudLoader.CLIENT_ID = "384835fc6e109a2533f83591ae3713e9";
-    return SoundCloudLoader;
-})();
-/// <reference path="../Models/AudioManager.ts"/>
-/// <reference path="../Models/Microphone.ts"/>
-/// <reference path="../Models/SoundCloudLoader.ts"/>
-/// <reference path="../typed/rx.binding-lite.d.ts"/>
-var PlayerController = (function () {
-    function PlayerController(urls, manager) {
-        this._urls = urls;
-        this._currentUrl = 0;
-        this._manager = manager;
-        this._urlSubject = new Rx.BehaviorSubject('');
-        this._urlSubject.onNext(urls[this._currentUrl]);
-    }
-    Object.defineProperty(PlayerController.prototype, "manager", {
-        get: function () { return this._manager; },
-        enumerable: true,
-        configurable: true
-    });
-    PlayerController.prototype.setPlayerSource = function (source) {
-        var _this = this;
-        var playerSource = this.manager.context.createMediaElementSource(source);
-        this.manager.updateSourceNode(playerSource, true);
-        source.onended = function (ev) { return _this.nextSong(); };
-    };
-    PlayerController.prototype.getUrlObservable = function () {
-        return this._urlSubject.asObservable();
-    };
-    PlayerController.prototype.nextSong = function () {
-        this._currentUrl++;
-        if (this._currentUrl < this._urls.length) {
-            this._urlSubject.onNext(this._urls[this._currentUrl]);
-        }
-    };
-    return PlayerController;
-})();
 /// <reference path="./PlayerView.ts"/>
+/// <reference path="./PlaylistView.ts"/>
 /// <reference path="../Controllers/PlayerController.ts"/>
 /// <reference path="./GLView.ts"/>
 /// <reference path="../Controllers/GLController.ts"/>
@@ -785,16 +767,18 @@ var PlayerController = (function () {
 /// <reference path="./ControlsView.ts"/>
 /// <reference path='./IControllerView.ts' />
 /// <reference path='../Models/AudioManager.ts' />
+/// <reference path='../Models/Track.ts' />
 var FileVisualizer = (function () {
-    function FileVisualizer(urls) {
+    function FileVisualizer(tracks) {
         var _this = this;
         this.content = $("<div>", { text: "Hello, world!" });
         window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
         this._audioManager = new AudioManager(new AudioContext());
-        this._playerController = new PlayerController(urls, this._audioManager);
+        this._playerController = new PlayerController(tracks, this._audioManager);
         this._shadersController = new ShadersController();
         this._glController = new GLController(this._audioManager, null, null);
-        this.playerView = new PlayerView(this._playerController);
+        this._playerView = new PlayerView(this._playerController);
+        this._playlistView = new PlaylistView(this._playerController);
         this._glView = new GLView(this._playerController.manager, this._glController);
         this._shadersView = new ShadersView(this._shadersController);
         this._shadersController.ShaderNameObservable.subscribe(function (name) {
@@ -803,7 +787,8 @@ var FileVisualizer = (function () {
     }
     FileVisualizer.prototype.render = function (el) {
         var _this = this;
-        this.playerView.render(this.content[0]);
+        this._playerView.render(this.content[0]);
+        this._playlistView.render(this.content[0]);
         this._glView.render(this.content[0]);
         this._shadersView.render(this.content[0]);
         $(el).append(this.content);
@@ -817,23 +802,3 @@ var FileVisualizer = (function () {
     };
     return FileVisualizer;
 })();
-/// <reference path="./typed/jquery.d.ts"/>
-/// <reference path="./typed/rx.d.ts"/>
-/// <reference path="./typed/waa.d.ts"/>
-/// <reference path="./typed/soundcloud.d.ts"/>
-/// <reference path="./Views/Visualizer.ts"/>
-/// <reference path="./Views/FileVisualizer.ts"/>
-function exec() {
-    "use strict";
-    var app = new FileVisualizer([
-        'ignored/electronicaftm/01 - C2C - Down The Road.mp3',
-        'ignored/electronicaftm/02 - Gramatik - Control Room Before You Feat. ILLUMNTR.mp3',
-        '.ignored/learning_to_love.mp3',
-        '.ignored/test_song.mp3'
-    ]);
-    // var app: Visualizer = new Visualizer();
-    app.render($("#content")[0]);
-}
-$(document).ready(function () {
-    exec();
-});

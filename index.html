@@ -11,6 +11,23 @@
 
 <body>
   <div id="content"></div>
+
+  <script type="text/javascript">
+  var app =
+    new FileVisualizer([
+      {
+        title: 'learning to love',
+        artist: 'anonymous',
+        url: '.ignored/learning_to_love.mp3',
+      },
+      {
+        title: 'Am I Wry? No',
+        artist: 'Mew',
+        url: '.ignored/eager_nobody/01%20-%20Mew%20-%20Am%20I%20Wry%3f%20No.mp3',
+      }
+    ]);
+  app.render($("#content")[0]);
+  </script>
 </body>
 
 </html>

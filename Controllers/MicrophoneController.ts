@@ -6,8 +6,8 @@ class MicrophoneController {
   constructor(manager: AudioManager) {
     this._manager = manager;
 
-    this.microphone = new Microphone(manager.context);
-    this.microphone.nodeObservable().subscribe(node => this._manager.updateSourceNode(node, false));
-    this.microphone.onContext(manager.context);
+    this._microphone = new Microphone(manager.context);
+    this._microphone.nodeObservable().subscribe(node => this._manager.updateSourceNode(node, false));
+    this._microphone.onContext(manager.context);
   }
 }

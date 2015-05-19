@@ -8,9 +8,11 @@
 /// <reference path="./ControlsView.ts"/>
 /// <reference path='./IControllerView.ts' />
 /// <reference path='../Models/AudioManager.ts' />
+/// <reference path='../Models/VideoManager.ts' />
 
 class Visualizer implements IControllerView {
   private _audioManager: AudioManager;
+  private _videoManager: VideoManager;
   private _videoController: VideoController;
   private _shadersController: ShadersController;
   private _controlsController: ControlsController;
@@ -26,9 +28,10 @@ class Visualizer implements IControllerView {
 
     window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
     this._audioManager = new AudioManager(new AudioContext());
+    this._videoManager = new VideoManager();
 
     var micController = new MicrophoneController(this._audioManager);
-    this._videoController = new VideoController();
+    this._videoController = new VideoController(this._videoManager);
     this._shadersController = new ShadersController();
     this._controlsController = new ControlsController();
     this._glController = new GLController(this._audioManager,
@@ -56,7 +59,7 @@ class Visualizer implements IControllerView {
   animate(): void {
     requestAnimationFrame(() => this.animate());
     this._audioManager.sampleAudio();
-    this._videoController.sampleVideo();
+    this._videoManager.sampleVideo();
     this._glView.animate();
   }
 }

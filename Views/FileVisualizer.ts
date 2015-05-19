@@ -1,4 +1,5 @@
 /// <reference path="./PlayerView.ts"/>
+/// <reference path="./PlaylistView.ts"/>
 /// <reference path="../Controllers/PlayerController.ts"/>
 /// <reference path="./GLView.ts"/>
 /// <reference path="../Controllers/GLController.ts"/>
@@ -9,6 +10,7 @@
 /// <reference path="./ControlsView.ts"/>
 /// <reference path='./IControllerView.ts' />
 /// <reference path='../Models/AudioManager.ts' />
+/// <reference path='../Models/Track.ts' />
 
 class FileVisualizer implements IControllerView {
   private _audioManager: AudioManager;
@@ -17,20 +19,22 @@ class FileVisualizer implements IControllerView {
   private _glController: GLController;
   private _glView: GLView;
   private _shadersView: ShadersView;
-  playerView: PlayerView;
+  private _playerView: PlayerView;
+  private _playlistView: PlaylistView;
   content: JQuery;
 
-  constructor(urls: Array<string>) {
+  constructor(tracks: Array<Track>) {
     this.content = $("<div>", { text: "Hello, world!" });
 
     window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
     this._audioManager = new AudioManager(new AudioContext());
 
-    this._playerController = new PlayerController(urls, this._audioManager);
+    this._playerController = new PlayerController(tracks, this._audioManager);
     this._shadersController = new ShadersController();
     this._glController = new GLController(this._audioManager, null, null);
 
-    this.playerView = new PlayerView(this._playerController);
+    this._playerView = new PlayerView(this._playerController);
+    this._playlistView = new PlaylistView(this._playerController);
     this._glView = new GLView(this._playerController.manager, this._glController);
     this._shadersView = new ShadersView(this._shadersController);
 
@@ -39,7 +43,8 @@ class FileVisualizer implements IControllerView {
   }
 
   render(el: HTMLElement): void {
-    this.playerView.render(this.content[0]);
+    this._playerView.render(this.content[0]);
+    this._playlistView.render(this.content[0]);
     this._glView.render(this.content[0]);
     this._shadersView.render(this.content[0]);
     $(el).append(this.content);
