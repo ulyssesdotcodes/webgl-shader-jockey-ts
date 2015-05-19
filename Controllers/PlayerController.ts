@@ -42,11 +42,16 @@ class PlayerController {
     return this._tracks;
   }
 
+  playTrack(track: number) {
+    if (track < this._tracks.length) {
+      this._currentTrackSubject.onNext(track);
+      this._urlSubject.onNext(this._tracks[track].url);
+      this._currentTrack = track;
+    }
+  }
+
   nextSong(): void {
     this._currentTrack++;
-    if (this._currentTrack < this._tracks.length) {
-      this._currentTrackSubject.onNext(this._currentTrack);
-      this._urlSubject.onNext(this._tracks[this._currentTrack].url);
-    }
+    this.playTrack(this._currentTrack);
   }
 }

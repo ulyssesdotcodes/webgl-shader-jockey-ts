@@ -39,6 +39,10 @@ body {
   bottom: 40px;
 }
 
+.playlist li {
+  cursor: pointer;
+}
+
 .soundcloud {
   position: relative;
   left: 12px;

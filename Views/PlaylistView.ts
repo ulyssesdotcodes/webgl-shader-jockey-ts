@@ -15,7 +15,16 @@ class PlaylistView implements IControllerView {
     this._list = $("<ol>");
 
     this._playerController.tracks().forEach(track => {
-      $("<li>", { html:  this.createText(track)}).appendTo(this._list);
+    });
+
+    this._playerController.tracks().forEach((track) => {
+      var trackLi = $("<li>", { html:  this.createText(track)});
+
+      trackLi.click((e) => {
+        this._playerController.playTrack(trackLi.index());
+      });
+
+      this._list.append(trackLi);
     });
 
     this._playerController.getTrackObservable()

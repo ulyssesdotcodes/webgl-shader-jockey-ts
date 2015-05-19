@@ -31,7 +31,13 @@ var PlaylistView = (function () {
         var _this = this;
         this._list = $("<ol>");
         this._playerController.tracks().forEach(function (track) {
-            $("<li>", { html: _this.createText(track) }).appendTo(_this._list);
+        });
+        this._playerController.tracks().forEach(function (track) {
+            var trackLi = $("<li>", { html: _this.createText(track) });
+            trackLi.click(function (e) {
+                _this._playerController.playTrack(trackLi.index());
+            });
+            _this._list.append(trackLi);
         });
         this._playerController.getTrackObservable()
             .doOnNext(function (__) {
@@ -223,12 +229,16 @@ var PlayerController = (function () {
         console.log(this._tracks);
         return this._tracks;
     };
+    PlayerController.prototype.playTrack = function (track) {
+        if (track < this._tracks.length) {
+            this._currentTrackSubject.onNext(track);
+            this._urlSubject.onNext(this._tracks[track].url);
+            this._currentTrack = track;
+        }
+    };
     PlayerController.prototype.nextSong = function () {
         this._currentTrack++;
-        if (this._currentTrack < this._tracks.length) {
-            this._currentTrackSubject.onNext(this._currentTrack);
-            this._urlSubject.onNext(this._tracks[this._currentTrack].url);
-        }
+        this.playTrack(this._currentTrack);
     };
     return PlayerController;
 })();
