@@ -38,7 +38,6 @@ class PlayerController {
   }
 
   tracks(): Array<Track> {
-    console.log(this._tracks);
     return this._tracks;
   }
 

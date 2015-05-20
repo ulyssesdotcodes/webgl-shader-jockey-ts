@@ -40,8 +40,6 @@ class GLView implements IControllerView {
     this.onWindowResize();
 
     window.addEventListener('resize', (__) => this.onWindowResize(), false);
-
-    this._glController.onShaderName("loudness_test");
   }
 
   onWindowResize() {

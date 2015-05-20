@@ -23,13 +23,16 @@ class GLController {
     this._resolutionProvider = new ResolutionProvider();
     this._timeProvider = new TimeProvider();
 
-    this._shaderLoader = new ShaderLoader(controlsProvider == null ? 'no_controls.frag' : 'controls_init.frag');
+    this._shaderLoader = new ShaderLoader(
+      controlsProvider == null ? '/shaders/no_controls.frag' : '/shaders/controls_init.frag',
+      '/shaders/util.frag'
+      );
 
     var audioUniformProvider = new AudioUniformProvider(audioManager);
 
     var loudnessAccumulator = new LoudnessAccumulator(audioManager);
 
-    var properties : Array<IPropertiesProvider<any>> = [
+    var properties: Array<IPropertiesProvider<any>> = [
       this._resolutionProvider, this._timeProvider,
       audioUniformProvider, loudnessAccumulator
     ];
@@ -62,8 +65,8 @@ class GLController {
     this._meshSubject.onNext(meshes);
   }
 
-  onShaderName(name: string) {
-    this._shaderLoader.getShaderFromServer(name)
+  onShaderUrl(url: string) {
+    this._shaderLoader.getShaderFromServer(url)
       .subscribe(shader => this._audioShaderPlane.onShaderText(shader))
   }
 

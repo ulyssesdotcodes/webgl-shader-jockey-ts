@@ -1,13 +1,29 @@
 class ShadersController {
-  private _shaderNameSubject: Rx.Subject<string>;
-  ShaderNameObservable: Rx.Observable<string>;
+  private _shaders: Array<Shader>;
+  private _shaderUrlSubject: Rx.Subject<string>;
+  ShaderUrlObservable: Rx.Observable<string>;
 
-  constructor() {
-    this._shaderNameSubject = new Rx.Subject<string>();
-    this.ShaderNameObservable = this._shaderNameSubject.asObservable();
+  constructor(shaders: Array<Shader>) {
+    this._shaders = shaders;
+    this._shaderUrlSubject = new Rx.Subject<string>();
+    this.ShaderUrlObservable = this._shaderUrlSubject.asObservable();
+  }
+
+  shaderNames() {
+    var shaderNames: Array<string> = [];
+    this._shaders.forEach((shader) => shaderNames.push(shader.name));
+    return shaderNames;
   }
 
   onShaderName(shaderName: string): void {
-    this._shaderNameSubject.onNext(shaderName);
+    var shaderUrl: string;
+    this._shaders.forEach((shader) => {
+      if (shader.name == shaderName) {
+        shaderUrl = shader.url;
+      }
+    });
+    if (shaderUrl != undefined) {
+      this._shaderUrlSubject.onNext(shaderUrl);
+    }
   }
 }
