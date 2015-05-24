@@ -9,8 +9,9 @@
 /// <reference path='./IControllerView.ts' />
 /// <reference path='../Models/AudioManager.ts' />
 /// <reference path='../Models/VideoManager.ts' />
+/// <reference path='../Models/Shader.ts' />
 
-export module GLVis {
+module GLVis {
   export class MicInput implements IControllerView {
     private _audioManager: AudioManager;
     private _videoManager: VideoManager;
@@ -24,16 +25,16 @@ export module GLVis {
     private _controlsView: ControlsView;
     content: JQuery;
 
-    constructor() {
+    constructor(shaders: Array<Shader>) {
       this.content = $("<div>");
-      
+
       window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
       this._audioManager = new AudioManager(new AudioContext());
       this._videoManager = new VideoManager();
 
       var micController = new MicrophoneController(this._audioManager);
       this._videoController = new VideoController(this._videoManager);
-      this._shadersController = new ShadersController();
+      this._shadersController = new ShadersController(shaders);
       this._controlsController = new ControlsController();
       this._glController = new GLController(this._audioManager,
         this._videoController.Manager, this._controlsController.UniformsProvider);
@@ -43,8 +44,10 @@ export module GLVis {
       this._controlsView = new ControlsView(this._controlsController);
       this._videoView = new VideoView(this._videoController);
 
-      this._shadersController.ShaderNameObservable.subscribe((name) =>
-        this._glController.onShaderName(name))
+      this._shadersController.ShaderUrlObservable.subscribe((url) =>
+        this._glController.onShaderUrl(url))
+
+      this._glController.onShaderUrl(shaders[0].url);
   }
 
     render(el: HTMLElement): void {

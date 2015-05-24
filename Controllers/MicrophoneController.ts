@@ -1,3 +1,5 @@
+/// <reference path='../Models/Microphone.ts' />
+
 class MicrophoneController {
   private _manager: AudioManager;
 
