@@ -24,8 +24,8 @@ class GLController {
     this._timeProvider = new TimeProvider();
 
     this._shaderLoader = new ShaderLoader(
-      controlsProvider == null ? '/shaders/no_controls.frag' : '/shaders/controls_init.frag',
-      '/shaders/util.frag'
+      controlsProvider == null ? 'shaders/no_controls.frag' : 'shaders/controls_init.frag',
+      'shaders/util.frag'
       );
 
     var audioUniformProvider = new AudioUniformProvider(audioManager);

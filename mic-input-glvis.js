@@ -338,7 +338,7 @@ var GLController = (function () {
         this.MeshObservable = this._meshSubject.asObservable();
         this._resolutionProvider = new ResolutionProvider();
         this._timeProvider = new TimeProvider();
-        this._shaderLoader = new ShaderLoader(controlsProvider == null ? '/shaders/no_controls.frag' : '/shaders/controls_init.frag', '/shaders/util.frag');
+        this._shaderLoader = new ShaderLoader(controlsProvider == null ? 'shaders/no_controls.frag' : 'shaders/controls_init.frag', 'shaders/util.frag');
         var audioUniformProvider = new AudioUniformProvider(audioManager);
         var loudnessAccumulator = new LoudnessAccumulator(audioManager);
         var properties = [
