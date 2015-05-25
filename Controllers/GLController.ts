@@ -14,19 +14,19 @@ class GLController {
   private _audioShaderPlane: PropertiesShaderPlane;
   private _resolutionProvider: ResolutionProvider;
   private _timeProvider: TimeProvider;
+  private _shadersUrl: string;
 
   constructor(audioManager: AudioManager, videoManager: VideoManager,
-    controlsProvider: IPropertiesProvider<any>) {
+    controlsProvider: IPropertiesProvider<any>, shadersUrl) {
     this._meshSubject = new Rx.Subject<Array<THREE.Mesh>>();
     this.MeshObservable = this._meshSubject.asObservable();
 
     this._resolutionProvider = new ResolutionProvider();
     this._timeProvider = new TimeProvider();
 
+    this._shadersUrl = shadersUrl;
     this._shaderLoader = new ShaderLoader(
-      controlsProvider == null ? 'shaders/no_controls.frag' : 'shaders/controls_init.frag',
-      'shaders/util.frag'
-      );
+      controlsProvider == null ? 'no_controls.frag' : 'controls_init.frag', 'util.frag' , shadersUrl);
 
     var audioUniformProvider = new AudioUniformProvider(audioManager);
 

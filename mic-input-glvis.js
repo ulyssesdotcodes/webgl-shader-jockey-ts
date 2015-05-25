@@ -167,7 +167,7 @@ var PropertiesShaderPlane = (function () {
             return new THREE.ShaderMaterial({
                 uniforms: uniforms,
                 fragmentShader: fragText,
-                vertexShader: shaderText.vertextShader
+                vertexShader: shaderText.vertexShader
             });
         })
             .map(function (shader) { return new ShaderPlane(shader).mesh; })
@@ -175,37 +175,38 @@ var PropertiesShaderPlane = (function () {
     }
     PropertiesShaderPlane.prototype.onShaderText = function (shader) {
         /* Calculate the uniforms after it's subscribed to*/
-        this._uniformsManager.calculateUniforms();
         this._shaderSubject.onNext(shader);
+        this._uniformsManager.calculateUniforms();
     };
     return PropertiesShaderPlane;
 })();
 var ShaderText = (function () {
     function ShaderText(fragment, vertex) {
         this.fragmentShader = fragment;
-        this.vertextShader = vertex;
+        this.vertexShader = vertex;
     }
     return ShaderText;
 })();
 /// <reference path="../typed/rx.jquery.d.ts"/>
 /// <reference path='./ShaderText.ts'/>
 var ShaderLoader = (function () {
-    function ShaderLoader(initialMethodsUrl, utilsUrl) {
+    function ShaderLoader(initialMethodsUrl, utilsUrl, shadersUrl) {
         var _this = this;
-        this._initialMethodsUrl = initialMethodsUrl;
-        this._utilsUrl = utilsUrl;
+        this._shadersUrl = shadersUrl;
+        this._initialMethodsUrl = shadersUrl + initialMethodsUrl;
+        this._utilsUrl = shadersUrl + utilsUrl;
         this.getVertex("plane").subscribe(function (vert) { return _this._regularVert = vert; });
     }
     ShaderLoader.prototype.getShaderFromServer = function (url) {
-        return Rx.Observable.combineLatest(this.getFragment(url), this.getVertex(url), function (frag, vert) { return new ShaderText(frag, vert); });
+        return Rx.Observable.zip(this.getFragment(url), this.getVertex(url), function (frag, vert) { return new ShaderText(frag, vert); });
     };
     ShaderLoader.prototype.getVertex = function (url) {
-        return $.getAsObservable(url + ".vert")
+        return $.getAsObservable(this._shadersUrl + url + ".vert")
             .map(function (shader) { return shader.data; })
             .onErrorResumeNext(Rx.Observable.just(this._regularVert));
     };
     ShaderLoader.prototype.getFragment = function (url) {
-        return $.getAsObservable(url + '.frag')
+        return $.getAsObservable(this._shadersUrl + url + '.frag')
             .map(function (shader) { return shader.data; })
             .combineLatest(this.utilFrag(), this.initialMethodsFrag(), function (frag, im, util) { return util.concat(im).concat(frag); });
     };
@@ -332,13 +333,14 @@ var LoudnessAccumulator = (function () {
 /// <reference path='../Models/AudioUniformProvider.ts'/>
 /// <reference path='../Models/LoudnessAccumulator.ts'/>
 var GLController = (function () {
-    function GLController(audioManager, videoManager, controlsProvider) {
+    function GLController(audioManager, videoManager, controlsProvider, shadersUrl) {
         var _this = this;
         this._meshSubject = new Rx.Subject();
         this.MeshObservable = this._meshSubject.asObservable();
         this._resolutionProvider = new ResolutionProvider();
         this._timeProvider = new TimeProvider();
-        this._shaderLoader = new ShaderLoader(controlsProvider == null ? 'shaders/no_controls.frag' : 'shaders/controls_init.frag', 'shaders/util.frag');
+        this._shadersUrl = shadersUrl;
+        this._shaderLoader = new ShaderLoader(controlsProvider == null ? 'no_controls.frag' : 'controls_init.frag', 'util.frag', shadersUrl);
         var audioUniformProvider = new AudioUniformProvider(audioManager);
         var loudnessAccumulator = new LoudnessAccumulator(audioManager);
         var properties = [
@@ -666,7 +668,7 @@ var AudioManager = (function () {
 var GLVis;
 (function (GLVis) {
     var MicInput = (function () {
-        function MicInput(shaders) {
+        function MicInput(shaders, shadersUrl) {
             var _this = this;
             this.content = $("<div>");
             window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
@@ -676,7 +678,7 @@ var GLVis;
             this._videoController = new VideoController(this._videoManager);
             this._shadersController = new ShadersController(shaders);
             this._controlsController = new ControlsController();
-            this._glController = new GLController(this._audioManager, this._videoController.Manager, this._controlsController.UniformsProvider);
+            this._glController = new GLController(this._audioManager, this._videoController.Manager, this._controlsController.UniformsProvider, shadersUrl);
             this._glView = new GLView(this._audioManager, this._glController);
             this._shadersView = new ShadersView(this._shadersController);
             this._controlsView = new ControlsView(this._controlsController);
