@@ -6,7 +6,7 @@ vec4 fromPos(vec2 uv, vec3 te) {
 
     // Rotating colors
     vec4 base = vec4(uv,0.5+0.5*sin(time),1.0);
-    return base * (sin(cuv.y * 64.0 * 3.1415 + time ) * fft);
+    return base * (sin(cuv.y * 64.0 * 3.1415 + accumulatedLoudness) * fft);
 }
 
 void main(void)
