@@ -6,7 +6,7 @@
   <script type="text/javascript" src="lib/jquery.js"></script>
   <script type="text/javascript" src="lib/rx.jquery.min.js"></script>
   <script type="text/javascript" src="lib/three.min.js"></script>
-  <script type="text/javascript" src="file-input-glvis.js"></script>
+  <script type="text/javascript" src="mic-input-glvis.js"></script>
 </head>
 
 <body>
@@ -14,13 +14,7 @@
 
   <script type="text/javascript">
   var app =
-    new GLVis.FileInput([
-      {
-        title: "FourTet",
-        artist: "FourTet",
-        url: "ignored/FourTetJamieXX.mp3"
-      }
-    ], [
+    new GLVis.MicInput([
       {
         name: "Circles",
         url: "shaders/circular_fft"
