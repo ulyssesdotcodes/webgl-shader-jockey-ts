@@ -25,7 +25,7 @@ module GLVis {
     private _playlistView: PlaylistView;
     content: JQuery;
 
-    constructor(tracks: Array<Track>, shaders: Array<Shader>) {
+    constructor(tracks: Array<Track>, shaders: Array<Shader>, shaderUrl) {
       this.content = $("<div>");
 
       window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
@@ -33,7 +33,7 @@ module GLVis {
 
       this._playerController = new PlayerController(tracks, this._audioManager);
       this._shadersController = new ShadersController(shaders);
-      this._glController = new GLController(this._audioManager, null, null);
+      this._glController = new GLController(this._audioManager, null, null, shaderUrl);
 
       this._playerView = new PlayerView(this._playerController);
       this._playlistView = new PlaylistView(this._playerController);

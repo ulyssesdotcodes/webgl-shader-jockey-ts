@@ -40,7 +40,7 @@ class PropertiesShaderPlane {
         return new THREE.ShaderMaterial({
           uniforms: uniforms,
           fragmentShader: fragText,
-          vertexShader: shaderText.vertextShader
+          vertexShader: shaderText.vertexShader
         });
       }
       )
@@ -50,7 +50,7 @@ class PropertiesShaderPlane {
 
   onShaderText(shader: ShaderText) {
     /* Calculate the uniforms after it's subscribed to*/
-    this._uniformsManager.calculateUniforms();
     this._shaderSubject.onNext(shader);
+    this._uniformsManager.calculateUniforms();
   }
 }

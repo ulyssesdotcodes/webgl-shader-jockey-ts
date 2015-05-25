@@ -2,6 +2,8 @@
 /// <reference path='./ShaderText.ts'/>
 
 class ShaderLoader {
+  private _shadersUrl: string;
+
   private _regularVert: string;
 
   private _utilsUrl: string
@@ -10,25 +12,26 @@ class ShaderLoader {
   private _initialMethodsUrl: string;
   private _initialMethodsFrag: string;
 
-  constructor(initialMethodsUrl: string, utilsUrl: string) {
-    this._initialMethodsUrl = initialMethodsUrl;
-    this._utilsUrl = utilsUrl;
+  constructor(initialMethodsUrl: string, utilsUrl: string, shadersUrl: string) {
+    this._shadersUrl = shadersUrl;
+    this._initialMethodsUrl = shadersUrl + initialMethodsUrl;
+    this._utilsUrl = shadersUrl + utilsUrl;
     this.getVertex("plane").subscribe((vert) => this._regularVert = vert);
   }
 
   getShaderFromServer(url: string): Rx.Observable<ShaderText> {
-    return Rx.Observable.combineLatest(this.getFragment(url), this.getVertex(url),
+    return Rx.Observable.zip(this.getFragment(url), this.getVertex(url),
       (frag, vert) => new ShaderText(frag, vert));
   }
 
   private getVertex(url: string): Rx.Observable<string> {
-    return $.getAsObservable<ShaderResponse>(url + ".vert")
+    return $.getAsObservable<ShaderResponse>(this._shadersUrl + url + ".vert")
       .map((shader) => shader.data )
       .onErrorResumeNext(Rx.Observable.just(this._regularVert));
   }
 
   private getFragment(url: string): Rx.Observable<string> {
-    return $.getAsObservable<ShaderResponse>(url + '.frag')
+    return $.getAsObservable<ShaderResponse>(this._shadersUrl + url + '.frag')
       .map((shader) => shader.data)
       .combineLatest(this.utilFrag(), this.initialMethodsFrag(), (frag, im, util) => util.concat(im).concat(frag));
   }
