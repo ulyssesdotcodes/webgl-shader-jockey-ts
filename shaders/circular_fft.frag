@@ -2,11 +2,11 @@ vec4 fromPos(vec2 uv, vec3 te) {
     vec2 cuv = toPolar(uv, te.xy);
 
     // FFT
-    float fft = texture2D(audioTexture, vec2(cuv.y, 0.25)).x * getVolume() * 0.75;
+    float fft = texture2D(audioTexture, vec2(cuv.y * 0.5, 0.25)).x * getVolume();
 
     // Rotating colors
     vec4 base = vec4(uv,0.5+0.5*sin(time),1.0);
-    return base * (sin(cuv.y * 64.0 * 3.1415 + accumulatedLoudness) * fft);
+    return base * (sin(cuv.y * 64.0 * 3.1415 - accumulatedLoudness / 5.0) * fft * fft);
 }
 
 void main(void)
