@@ -68,6 +68,14 @@ body {
   right: 268px;
 }
 
+.shaders label {
+  color: white;
+}
+
+.shaders label input {
+  vertical-align: bottom;
+}
+
 .queue-container {
   position: absolute;
   float: left;
