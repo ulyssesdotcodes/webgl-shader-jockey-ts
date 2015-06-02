@@ -7,7 +7,7 @@ class VideoView{
     this._video.setAttribute("class", "camera");
     this._video.setAttribute("autoplay", "true");
     this._video.setAttribute("muted", "true");
-    this._video.setAttribute("src", ".ignored/video.mp4")
+    // this._video.setAttribute("src", ".ignored/video.mp4")
 
     this._videoController = videoController;
 
@@ -19,17 +19,17 @@ class VideoView{
   }
 
   render(el: HTMLElement): void {
-    // var gotStream = (stream) => {
-    // 	if (window["URL"])
-    // 	{   this._video.src = window["URL"].createObjectURL(stream);   }
-    // 	else // Opera
-    // 	{   this._video.src = stream;   }
-    //
-    // 	this._video.onerror = function(e)
-    // 	{   stream.stop();   };
-    // }
+    var gotStream = (stream) => {
+    	if (window["URL"])
+    	{   this._video.src = window["URL"].createObjectURL(stream);   }
+    	else // Opera
+    	{   this._video.src = stream;   }
 
-    // navigator["getUserMedia"]({audio: false, video: true}, gotStream, console.log);
+    	this._video.onerror = function(e)
+    	{   stream.stop();   };
+    }
+
+    navigator["getUserMedia"]({audio: false, video: true}, gotStream, console.log);
 
     $(el).append(this._video);
 
