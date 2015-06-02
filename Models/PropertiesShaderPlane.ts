@@ -29,9 +29,14 @@ class PropertiesShaderPlane {
             case "v2":
               uniformType = "vec2";
               break;
+            case "v4":
+              uniformType = "vec4";
+              break;
             case "t":
               uniformType = "sampler2D";
               break;
+            default:
+              console.log("Unknown shader");
           }
 
           fragText = "uniform " + uniformType + " " + uniform.name + ";\n" + fragText;

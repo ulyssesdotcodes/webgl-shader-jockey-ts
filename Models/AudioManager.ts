@@ -40,10 +40,12 @@ class AudioManager {
 
     var frequencyBuffer: Uint8Array = this._audioAnalyser.getFrequencyData();
     var timeDomainBuffer: Uint8Array = this._audioAnalyser.getTimeDomainData();
+    var eqSegments: THREE.Vector4 = this._audioAnalyser.getEQSegments();
 
     this._audioEventSubject.onNext({
       frequencyBuffer: frequencyBuffer,
-      timeDomainBuffer: timeDomainBuffer
+      timeDomainBuffer: timeDomainBuffer,
+      eqSegments: eqSegments
     });
   }
 }
@@ -51,4 +53,5 @@ class AudioManager {
 interface IAudioEvent {
   frequencyBuffer: Uint8Array;
   timeDomainBuffer: Uint8Array;
+  eqSegments: THREE.Vector4;
 }
