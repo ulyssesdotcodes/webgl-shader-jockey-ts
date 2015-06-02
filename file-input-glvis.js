@@ -596,22 +596,52 @@ var ShadersController = (function () {
         this._shaders = shaders;
         this._shaderUrlSubject = new Rx.Subject();
         this.ShaderUrlObservable = this._shaderUrlSubject.asObservable();
+        this._currentShader = 0;
+        this._currentShaderSubject = new Rx.BehaviorSubject(this._currentShader);
+        this.startAutoplayTimer();
     }
     ShadersController.prototype.shaderNames = function () {
         var shaderNames = [];
         this._shaders.forEach(function (shader) { return shaderNames.push(shader.name); });
         return shaderNames;
     };
+    ShadersController.prototype.currentShaderObservable = function () {
+        return this._currentShaderSubject.asObservable();
+    };
     ShadersController.prototype.onShaderName = function (shaderName) {
         var shaderUrl;
-        this._shaders.forEach(function (shader) {
-            if (shader.name == shaderName) {
-                shaderUrl = shader.url;
+        for (var i = 0; i < this._shaders.length; i++) {
+            if (this._shaders[i].name == shaderName) {
+                this.updateShader(i);
+                break;
             }
-        });
-        if (shaderUrl != undefined) {
-            this._shaderUrlSubject.onNext(shaderUrl);
         }
+    };
+    ShadersController.prototype.updateShader = function (index) {
+        if (this._currentShader == index) {
+            return;
+        }
+        shader = this._shaders[index];
+        if (shader != undefined) {
+            this._currentShader = index;
+            this._currentShaderSubject.onNext(this._currentShader);
+            this._shaderUrlSubject.onNext(shader.url);
+        }
+    };
+    ShadersController.prototype.onAutoplayChanged = function (autoplay) {
+        if (autoplay) {
+            this.startAutoplayTimer();
+        }
+        else {
+            this._autoplaySub.unsubscribe();
+        }
+    };
+    ShadersController.prototype.startAutoplayTimer = function () {
+        var _this = this;
+        this._autoplaySub = Rx.Observable.timer(30000).subscribe(function (__) {
+            _this.updateShader(((1 + _this._currentShader) % _this._shaders.length));
+            _this.startAutoplayTimer();
+        });
     };
     return ShadersController;
 })();
@@ -623,6 +653,7 @@ var ShadersView = (function () {
     ShadersView.prototype.render = function (el) {
         var _this = this;
         var container = $("<div>", { class: "shaders" });
+        // Select for all of the shaders
         var select = $("<select />");
         select.change(function (__) {
             return _this._shadersController.onShaderName(select.find('option:selected').val());
@@ -631,6 +662,20 @@ var ShadersView = (function () {
             return select.append("<option value=\"" + shaderName + "\">" + shaderName + "</option>");
         });
         container.append(select);
+        // Autoplay to enable autoplay
+        var autoplay = $("<label>", { text: "Autoplay" });
+        var input = $("<input/>", {
+            type: "checkbox",
+            checked: true
+        });
+        input.change(function () {
+            _this._shadersController.onAutoplayChanged(autoplay.val());
+        });
+        this._shadersController.currentShaderObservable().subscribe(function (ind) {
+            select.children().eq(ind).prop('selected', true);
+        });
+        autoplay.prepend(input);
+        container.append(autoplay);
         $(el).append(container);
     };
     return ShadersView;
@@ -641,7 +686,7 @@ var VideoView = (function () {
         this._video.setAttribute("class", "camera");
         this._video.setAttribute("autoplay", "true");
         this._video.setAttribute("muted", "true");
-        this._video.setAttribute("src", ".ignored/video.mp4");
+        // this._video.setAttribute("src", ".ignored/video.mp4")
         this._videoController = videoController;
         navigator["getUserMedia"] = navigator["getUserMedia"] ||
             navigator["webkitGetUserMedia"] ||
@@ -649,16 +694,17 @@ var VideoView = (function () {
         window["URL"] = window["URL"] || window["webkitURL"];
     }
     VideoView.prototype.render = function (el) {
-        // var gotStream = (stream) => {
-        // 	if (window["URL"])
-        // 	{   this._video.src = window["URL"].createObjectURL(stream);   }
-        // 	else // Opera
-        // 	{   this._video.src = stream;   }
-        //
-        // 	this._video.onerror = function(e)
-        // 	{   stream.stop();   };
-        // }
-        // navigator["getUserMedia"]({audio: false, video: true}, gotStream, console.log);
+        var _this = this;
+        var gotStream = function (stream) {
+            if (window["URL"]) {
+                _this._video.src = window["URL"].createObjectURL(stream);
+            }
+            else {
+                _this._video.src = stream;
+            }
+            _this._video.onerror = function (e) { stream.stop(); };
+        };
+        navigator["getUserMedia"]({ audio: false, video: true }, gotStream, console.log);
         $(el).append(this._video);
         this._videoController.setVideoSource(this._video);
     };

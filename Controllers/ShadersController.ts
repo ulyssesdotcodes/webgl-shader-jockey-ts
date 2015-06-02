@@ -3,10 +3,20 @@ class ShadersController {
   private _shaderUrlSubject: Rx.Subject<string>;
   ShaderUrlObservable: Rx.Observable<string>;
 
+  private _autoplay: boolean;
+  private _autoplaySub: Rx.Subscription;
+
+  private _currentShader: number;
+  private _currentShaderSubject: Rx.BehaviorSubject<number>;
+
   constructor(shaders: Array<Shader>) {
     this._shaders = shaders;
     this._shaderUrlSubject = new Rx.Subject<string>();
     this.ShaderUrlObservable = this._shaderUrlSubject.asObservable();
+
+    this._currentShader = 0;
+    this._currentShaderSubject = new Rx.BehaviorSubject<number>(this._currentShader);
+    this.startAutoplayTimer();
   }
 
   shaderNames() {
@@ -15,15 +25,48 @@ class ShadersController {
     return shaderNames;
   }
 
+  currentShaderObservable(): Rx.Observable<number> {
+    return this._currentShaderSubject.asObservable();
+  }
+
   onShaderName(shaderName: string): void {
     var shaderUrl: string;
-    this._shaders.forEach((shader) => {
-      if (shader.name == shaderName) {
-        shaderUrl = shader.url;
+
+    for (var i = 0; i < this._shaders.length; i++) {
+      if (this._shaders[i].name == shaderName) {
+        this.updateShader(i);
+        break;
       }
-    });
-    if (shaderUrl != undefined) {
-      this._shaderUrlSubject.onNext(shaderUrl);
     }
+
+  }
+
+  updateShader(index: number) {
+    if(this._currentShader == index) {
+      return;
+    }
+
+    shader = this._shaders[index];
+    if (shader != undefined) {
+      this._currentShader = index;
+      this._currentShaderSubject.onNext(this._currentShader);
+      this._shaderUrlSubject.onNext(shader.url);
+    }
+  }
+
+  onAutoplayChanged(autoplay: boolean): void {
+    if (autoplay) {
+      this.startAutoplayTimer();
+    }
+    else {
+      this._autoplaySub.unsubscribe();
+    }
+  }
+
+  startAutoplayTimer(): void {
+      this._autoplaySub = Rx.Observable.timer(30000).subscribe(__ => {
+        this.updateShader(((1 + this._currentShader) % this._shaders.length));
+        this.startAutoplayTimer();
+      });
   }
 }
