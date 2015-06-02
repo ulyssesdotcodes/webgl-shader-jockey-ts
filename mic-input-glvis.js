@@ -437,7 +437,7 @@ var VideoView = (function () {
         this._video.setAttribute("class", "camera");
         this._video.setAttribute("autoplay", "true");
         this._video.setAttribute("muted", "true");
-        this._video.setAttribute("src", ".ignored/video.mp4");
+        // this._video.setAttribute("src", ".ignored/video.mp4")
         this._videoController = videoController;
         navigator["getUserMedia"] = navigator["getUserMedia"] ||
             navigator["webkitGetUserMedia"] ||
@@ -445,16 +445,17 @@ var VideoView = (function () {
         window["URL"] = window["URL"] || window["webkitURL"];
     }
     VideoView.prototype.render = function (el) {
-        // var gotStream = (stream) => {
-        // 	if (window["URL"])
-        // 	{   this._video.src = window["URL"].createObjectURL(stream);   }
-        // 	else // Opera
-        // 	{   this._video.src = stream;   }
-        //
-        // 	this._video.onerror = function(e)
-        // 	{   stream.stop();   };
-        // }
-        // navigator["getUserMedia"]({audio: false, video: true}, gotStream, console.log);
+        var _this = this;
+        var gotStream = function (stream) {
+            if (window["URL"]) {
+                _this._video.src = window["URL"].createObjectURL(stream);
+            }
+            else {
+                _this._video.src = stream;
+            }
+            _this._video.onerror = function (e) { stream.stop(); };
+        };
+        navigator["getUserMedia"]({ audio: false, video: true }, gotStream, console.log);
         $(el).append(this._video);
         this._videoController.setVideoSource(this._video);
     };
