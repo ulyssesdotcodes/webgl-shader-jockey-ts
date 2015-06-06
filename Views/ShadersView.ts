@@ -30,7 +30,7 @@ class ShadersView {
     });
 
     input.change(() => {
-      this._shadersController.onAutoplayChanged(autoplay.val());
+      this._shadersController.onAutoplayChanged(input.is(":checked"));
     });
 
     this._shadersController.currentShaderObservable().subscribe((ind) => {

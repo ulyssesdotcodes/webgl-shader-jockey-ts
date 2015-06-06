@@ -591,6 +591,7 @@ var GLController = (function () {
     };
     return GLController;
 })();
+/// <reference path='../typed/rx.time-lite.d.ts'/>
 var ShadersController = (function () {
     function ShadersController(shaders) {
         this._shaders = shaders;
@@ -621,7 +622,7 @@ var ShadersController = (function () {
         if (this._currentShader == index) {
             return;
         }
-        shader = this._shaders[index];
+        var shader = this._shaders[index];
         if (shader != undefined) {
             this._currentShader = index;
             this._currentShaderSubject.onNext(this._currentShader);
@@ -633,7 +634,7 @@ var ShadersController = (function () {
             this.startAutoplayTimer();
         }
         else {
-            this._autoplaySub.unsubscribe();
+            this._autoplaySub.dispose();
         }
     };
     ShadersController.prototype.startAutoplayTimer = function () {
@@ -669,7 +670,7 @@ var ShadersView = (function () {
             checked: true
         });
         input.change(function () {
-            _this._shadersController.onAutoplayChanged(autoplay.val());
+            _this._shadersController.onAutoplayChanged(input.is(":checked"));
         });
         this._shadersController.currentShaderObservable().subscribe(function (ind) {
             select.children().eq(ind).prop('selected', true);

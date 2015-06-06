@@ -1,10 +1,12 @@
+/// <reference path='../typed/rx.time-lite.d.ts'/>
+
 class ShadersController {
   private _shaders: Array<Shader>;
   private _shaderUrlSubject: Rx.Subject<string>;
   ShaderUrlObservable: Rx.Observable<string>;
 
   private _autoplay: boolean;
-  private _autoplaySub: Rx.Subscription;
+  private _autoplaySub: Rx.IDisposable;
 
   private _currentShader: number;
   private _currentShaderSubject: Rx.BehaviorSubject<number>;
@@ -46,7 +48,7 @@ class ShadersController {
       return;
     }
 
-    shader = this._shaders[index];
+    var shader = this._shaders[index];
     if (shader != undefined) {
       this._currentShader = index;
       this._currentShaderSubject.onNext(this._currentShader);
@@ -59,7 +61,7 @@ class ShadersController {
       this.startAutoplayTimer();
     }
     else {
-      this._autoplaySub.unsubscribe();
+      this._autoplaySub.dispose();
     }
   }
 
