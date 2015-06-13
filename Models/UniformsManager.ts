@@ -14,11 +14,11 @@ class UniformsManager {
 
   calculateUniforms() {
     Rx.Observable.from(this._propertiesProviders)
-      .flatMap((provider) => provider.glProperties())
-      .scan({}, (acc, properties) => {
-        properties.forEach((property) => acc[property.name] = property);
-        return acc;
-      })
+      .map((provider) => provider.uniforms())
+      .scan((acc, properties) => {
+      properties.forEach((property) => acc[property.name] = property, {});
+      return acc;
+    })
       .subscribe((properties) => this._uniformsSubject.onNext(properties));
   }
 }

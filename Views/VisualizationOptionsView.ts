@@ -1,9 +1,9 @@
-/// <reference path='../Controllers/ShadersController'/>
+/// <reference path="../Controllers/VisualizationOptionsController"/>
 
-class ShadersView {
-  private _shadersController: ShadersController;
+class VisualizationOptionsView {
+  private _shadersController: VisualizationOptionsController;
 
-  constructor(shadersController: ShadersController) {
+  constructor(shadersController: VisualizationOptionsController) {
     this._shadersController = shadersController;
   }
 
@@ -14,7 +14,7 @@ class ShadersView {
     var select: JQuery = $("<select />");
 
     select.change((__) =>
-      this._shadersController.onShaderName(select.find('option:selected').val()));
+      this._shadersController.onOptionName(select.find('option:selected').val()));
 
     this._shadersController.shaderNames().forEach((shaderName) =>
       select.append("<option value=\"" + shaderName + "\">" + shaderName + "</option>"));

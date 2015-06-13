@@ -16,40 +16,7 @@ class PropertiesShaderPlane {
     this._uniformsManager = new UniformsManager(glProperties);
 
     Rx.Observable.combineLatest(this._shaderSubject, this._uniformsManager.UniformsObservable,
-      (shaderText, uniforms) => {
-        var fragText: string = shaderText.fragmentShader;
-
-        Object.keys(uniforms).forEach((key) => {
-          var uniform: IUniform<any> = uniforms[key];
-          var uniformType: string;
-          switch (uniform.type) {
-            case "f":
-              uniformType = "float";
-              break;
-            case "v2":
-              uniformType = "vec2";
-              break;
-            case "v4":
-              uniformType = "vec4";
-              break;
-            case "t":
-              uniformType = "sampler2D";
-              break;
-            default:
-              console.log("Unknown shader");
-          }
-
-          fragText = "uniform " + uniformType + " " + uniform.name + ";\n" + fragText;
-        });
-
-        return new THREE.ShaderMaterial({
-          uniforms: uniforms,
-          fragmentShader: fragText,
-          vertexShader: shaderText.vertexShader
-        });
-      }
-      )
-      .map((shader) => new ShaderPlane(shader).mesh)
+      (shaderText, uniforms) => new ShaderPlane(shaderText, uniforms).mesh)
       .subscribe(this._meshSubject);
   }
 

@@ -9,8 +9,8 @@ class ResolutionProvider implements IPropertiesProvider<THREE.Vector2> {
     }
   }
 
-  glProperties() {
-    return Rx.Observable.just([this._resolutionProperty]);
+  uniforms(): Array<IUniform<any>> {
+    return [this._resolutionProperty];
   }
 
   updateResolution(resolution: THREE.Vector2) {

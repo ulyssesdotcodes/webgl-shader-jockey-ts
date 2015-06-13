@@ -10,8 +10,8 @@ class ControlsProvider implements IPropertiesProvider<any> {
     this._hueControl = new HueControl();
   }
 
-  glProperties(): Rx.Observable<Array<IUniform<any>>> {
-    return Rx.Observable.just([this._volumeControl.VolumeLevel, this._hueControl.HueShift]);
+  uniforms(): Array<IUniform<any>> {
+    return [this._volumeControl.VolumeLevel, this._hueControl.HueShift];
   }
 
   updateVolume(volume: number) {

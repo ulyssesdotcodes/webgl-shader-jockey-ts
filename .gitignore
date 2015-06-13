@@ -1,8 +1,8 @@
 ignored/*
 
-Views/*.js
-Models/*.js
-Controllers/*.js
+Views/**/*.js
+Models/**/*.js
+Controllers/**/*.js
 
 files.html
 

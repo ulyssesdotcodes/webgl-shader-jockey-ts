@@ -1,11 +1,11 @@
-/// <reference path="../Models/AudioManager.ts"/>
+/// <reference path="../Models/AudioSource.ts"/>
 /// <reference path="../Models/Microphone.ts"/>
 /// <reference path="../Models/SoundCloudLoader.ts"/>
 /// <reference path="../typed/rx.binding-lite.d.ts"/>
 
 class PlayerController {
-  private _manager: AudioManager;
-  get manager(): AudioManager { return this._manager; }
+  private _manager: AudioSource;
+  get manager(): AudioSource { return this._manager; }
   private microphone: Microphone;
 
   private _urlSubject: Rx.BehaviorSubject<string>;
@@ -13,7 +13,7 @@ class PlayerController {
   private _tracks: Array<Track>;
   private _currentTrack: number;
 
-  constructor(tracks: Array<Track>, manager: AudioManager) {
+  constructor(tracks: Array<Track>, manager: AudioSource) {
     this._tracks = tracks;
     this._currentTrack = 0;
     this._manager = manager;
@@ -24,7 +24,7 @@ class PlayerController {
   }
 
   setPlayerSource(source: HTMLMediaElement) {
-    var playerSource = this.manager.context.createMediaElementSource(source); this.manager.updateSourceNode(playerSource, true);
+    var playerSource = this.manager.usePlayerSource(source);
 
     source.onended = (ev: Event): void => this.nextSong();
   }

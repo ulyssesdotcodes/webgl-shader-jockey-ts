@@ -16,11 +16,11 @@ module GLVis {
     private _audioManager: AudioManager;
     private _videoManager: VideoManager;
     private _videoController: VideoController;
-    private _shadersController: ShadersController;
+    private _shadersController: VisualizationController;
     private _controlsController: ControlsController;
     private _glController: GLController;
     private _glView: GLView;
-    private _shadersView: ShadersView;
+    private _shadersView: VisualizationOptionsView;
     private _videoView: VideoView;
     private _controlsView: ControlsView;
     content: JQuery;
@@ -34,13 +34,13 @@ module GLVis {
 
       var micController = new MicrophoneController(this._audioManager);
       this._videoController = new VideoController(this._videoManager);
-      this._shadersController = new ShadersController(shaders);
+      this._shadersController = new VisualizationController(shaders);
       this._controlsController = new ControlsController();
       this._glController = new GLController(this._audioManager,
         this._videoController.Manager, this._controlsController.UniformsProvider, shadersUrl);
 
       this._glView = new GLView(this._audioManager, this._glController);
-      this._shadersView = new ShadersView(this._shadersController);
+      this._shadersView = new VisualizationOptionsView(this._shadersController);
       this._controlsView = new ControlsView(this._controlsController);
       this._videoView = new VideoView(this._videoController);
 

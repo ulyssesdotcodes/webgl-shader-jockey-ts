@@ -4,36 +4,37 @@
 /// <reference path="./IPropertiesProvider.ts" />
 /// <reference path='./AudioAnalyser.ts'/>
 /// <reference path="../typed/three.d.ts"/>
+/// <reference path="./Source"/>
 
-class AudioManager {
+class AudioSource implements Source<AudioEvent> {
   static FFT_SIZE = 1024;
   private _audioContext: AudioContext;
   private _audioAnalyser: AudioAnalyser;
 
-  private _audioEventSubject: Rx.Subject<IAudioEvent>;
-  AudioEventObservable: Rx.Observable<IAudioEvent>;
+  private _audioEventSubject: Rx.Subject<AudioEvent>;
+  SourceObservable: Rx.Observable<AudioEvent>;
 
   constructor(audioContext: AudioContext) {
     this._audioContext = audioContext;
-    this._audioAnalyser = new AudioAnalyser(this._audioContext, AudioManager.FFT_SIZE);
+    this._audioAnalyser = new AudioAnalyser(this._audioContext, AudioSource.FFT_SIZE);
 
-    this._audioEventSubject = new Rx.Subject<IAudioEvent>();
-    this.AudioEventObservable = this._audioEventSubject.asObservable();
+    this._audioEventSubject = new Rx.Subject<AudioEvent>();
+    this.SourceObservable = this._audioEventSubject.asObservable();
   }
 
-  updateSourceNode(sourceNode: AudioSourceNode, connectToDestination: boolean) {
+  updateSourceNode(sourceNode: AudioSourceNode) {
     this._audioAnalyser.connectSource(sourceNode);
-
-    if(connectToDestination) {
-      this._audioAnalyser.connectDestination(this._audioContext.destination);
-    }
   }
 
-  get context(): AudioContext {
-    return this._audioContext;
+  usePlayerSource(source: HTMLMediaElement) {
+    var mediaElement = this._audioContext.createMediaElementSource(source);
+    this.updateSourceNode(mediaElement);
+    this._audioAnalyser.connectDestination(this._audioContext.destination);
+
+    return mediaElement;
   }
 
-  sampleAudio(): void {
+  animate(): void {
     if (this._audioAnalyser === undefined) {
       return;
     }
@@ -44,14 +45,12 @@ class AudioManager {
 
     this._audioEventSubject.onNext({
       frequencyBuffer: frequencyBuffer,
-      timeDomainBuffer: timeDomainBuffer,
-      eqSegments: eqSegments
+      timeDomainBuffer: timeDomainBuffer
     });
   }
 }
 
-interface IAudioEvent {
+interface AudioEvent {
   frequencyBuffer: Uint8Array;
   timeDomainBuffer: Uint8Array;
-  eqSegments: THREE.Vector4;
 }
