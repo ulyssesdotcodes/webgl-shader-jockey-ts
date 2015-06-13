@@ -10,6 +10,6 @@ class TimeSource implements Source<number> {
   }
 
   animate() {
-    this._timeSubject.onNext((this._startTime - Date.now()) / 1000.0);
+    this._timeSubject.onNext((Date.now() - this._startTime) / 1000.0);
   }
 }

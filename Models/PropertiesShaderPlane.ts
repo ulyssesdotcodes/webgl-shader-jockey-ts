@@ -8,7 +8,7 @@ class PropertiesShaderPlane {
   private _uniformsManager: UniformsManager;
   MeshObservable: Rx.Observable<THREE.Mesh>;
 
-  constructor(glProperties: Array<IPropertiesProvider<any>>) {
+  constructor(glProperties: Array<UniformProvider<any>>) {
     this._shaderSubject = new Rx.Subject<ShaderText>();
     this._meshSubject = new Rx.Subject<THREE.Mesh>();
     this.MeshObservable = this._meshSubject.asObservable();

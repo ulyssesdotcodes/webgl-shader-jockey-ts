@@ -1,4 +1,4 @@
-class LoudnessAccumulator implements IPropertiesProvider<number> {
+class LoudnessAccumulator implements UniformProvider<number> {
   private _accumulatedUniform: IUniform<number>;
   private _loudnessUniform: IUniform<number>;
   private _volume: IUniform<number>;

@@ -1,7 +1,7 @@
 /// <reference path='./VolumeControl.ts'/>
 /// <reference path='./HueControl.ts'/>
 
-class ControlsProvider implements IPropertiesProvider<any> {
+class ControlsProvider implements UniformProvider<any> {
   private _volumeControl: VolumeControl;
   private _hueControl: HueControl;
 

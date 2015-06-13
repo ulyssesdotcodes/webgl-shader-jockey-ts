@@ -4,9 +4,9 @@
 class UniformsManager {
   private _uniformsSubject: Rx.Subject<any>;
   UniformsObservable: Rx.Observable<any>;
-  private _propertiesProviders: Array<IPropertiesProvider<any>>;
+  private _propertiesProviders: Array<UniformProvider<any>>;
 
-  constructor(propertiesProviders: Array<IPropertiesProvider<any>>) {
+  constructor(propertiesProviders: Array<UniformProvider<any>>) {
     this._uniformsSubject = new Rx.Subject();
     this.UniformsObservable = this._uniformsSubject.asObservable();
     this._propertiesProviders = propertiesProviders;

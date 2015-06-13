@@ -3,8 +3,8 @@
 class ControlsController {
   UniformsProvider: ControlsProvider;
 
-  constructor() {
-    this.UniformsProvider = new ControlsProvider();
+  constructor(controlsProvider:ControlsProvider) {
+    this.UniformsProvider = controlsProvider;
   }
 
   onVolumeChange(volume: string) {
@@ -13,5 +13,4 @@ class ControlsController {
 
   onHueShiftChange(shift: string) {
     this.UniformsProvider.updateHueShift(parseFloat(shift));
-  }
-}
+  }}

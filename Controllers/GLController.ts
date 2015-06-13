@@ -1,10 +1,10 @@
 /// <reference path='../typed/three.d.ts'/>
-/// <reference path='../Models/IPropertiesProvider.ts'/>
+/// <reference path="../Models/Sources/UniformProvider"/>
 /// <reference path='../Models/PropertiesShaderPlane.ts'/>
 /// <reference path='../Models/ShaderLoader.ts'/>
-/// <reference path='../Models/ResolutionProvider.ts'/>
-/// <reference path="../Models/TimeSource"/>
-/// <reference path='../Models/AudioUniformProvider.ts'/>
+/// <reference path='../Models/Sources/ResolutionProvider.ts'/>
+/// <reference path="../Models/Sources/TimeSource"/>
+/// <reference path='../Models/Sources/AudioUniformProvider.ts'/>
 /// <reference path='../Models/LoudnessAccumulator.ts'/>
 /// <reference path="../Models/Visualizations/VisualizationManager"/>
 

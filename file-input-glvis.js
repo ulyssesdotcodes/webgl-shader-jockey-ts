@@ -287,6 +287,7 @@ var GLView = (function () {
     };
     return GLView;
 })();
+/// <reference path="../IUniform.ts"/>
 var ShaderPlane = (function () {
     function ShaderPlane(shader, uniforms) {
         var fragText = shader.fragmentShader;
@@ -447,7 +448,7 @@ var TimeSource = (function () {
         this.SourceObservable = this._timeSubject.asObservable();
     }
     TimeSource.prototype.animate = function () {
-        this._timeSubject.onNext((this._startTime - Date.now()) / 1000.0);
+        this._timeSubject.onNext((Date.now() - this._startTime) / 1000.0);
     };
     return TimeSource;
 })();
@@ -624,7 +625,9 @@ var ShaderVisualization = (function (_super) {
     }
     ShaderVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
-        this.addDisposable(this._timeSource.SourceObservable.subscribe(function (time) { return _this._timeUniform.value = time; }));
+        this.addDisposable(this._timeSource.SourceObservable.subscribe(function (time) {
+            _this._timeUniform.value = time;
+        }));
     };
     ShaderVisualization.prototype.addUniforms = function (uniforms) {
         this._uniforms = this._uniforms.concat(uniforms);
@@ -659,6 +662,7 @@ var AudioTextureShaderVisualization = (function (_super) {
     }
     AudioTextureShaderVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
+        _super.prototype.setupVisualizerChain.call(this);
         this.addDisposable(this._audioSource.SourceObservable
             .subscribe(function (e) {
             AudioUniformFunctions.updateAudioBuffer(e, _this._audioTextureBuffer);
@@ -673,19 +677,19 @@ var AudioTextureShaderVisualization = (function (_super) {
 /// <reference path="./AudioTextureShaderVisualization"/>
 var SimpleVisualization = (function (_super) {
     __extends(SimpleVisualization, _super);
-    function SimpleVisualization(audioSource, resolutionProvider, timeSource, options, shaderLoader) {
-        _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "simple");
-        var colorUniform = {
+    function SimpleVisualization(audiosource, resolutionprovider, timesource, options, shaderloader) {
+        _super.call(this, audiosource, resolutionprovider, timesource, shaderloader, "simple");
+        var coloruniform = {
             name: "color",
             type: "v3",
             value: options && options.color || new THREE.Vector3(1.0, 1.0, 1.0)
         };
-        this.addUniforms([colorUniform]);
+        this.addUniforms([coloruniform]);
     }
-    SimpleVisualization.prototype.setupVisualizerChain = function () {
+    SimpleVisualization.prototype.setupvisualizerchain = function () {
         _super.prototype.setupVisualizerChain.call(this);
     };
-    SimpleVisualization.prototype.meshObservable = function () {
+    SimpleVisualization.prototype.meshobservable = function () {
         return _super.prototype.meshObservable.call(this);
     };
     SimpleVisualization.ID = "simple";
@@ -731,9 +735,40 @@ var DotsVisualization = (function (_super) {
     DotsVisualization.ID = "dots";
     return DotsVisualization;
 })(ShaderVisualization);
+/// <reference path="./AudioTextureShaderVisualization"/>
+var CirclesVisualization = (function (_super) {
+    __extends(CirclesVisualization, _super);
+    function CirclesVisualization(audioSource, resolutionProvider, timeSource, shaderLoader, controlsProvider) {
+        _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "circular_fft");
+        this._accumulatedLoudness = {
+            name: "accumulatedLoudness",
+            type: "f",
+            value: 0.0
+        };
+        if (controlsProvider) {
+            this.addUniforms(controlsProvider.uniforms());
+        }
+        this.addUniforms([this._accumulatedLoudness]);
+    }
+    CirclesVisualization.prototype.setupVisualizerChain = function () {
+        var _this = this;
+        _super.prototype.setupVisualizerChain.call(this);
+        this.addDisposable(this._audioSource.SourceObservable
+            .map(AudioUniformFunctions.calculateLoudness)
+            .subscribe(function (loudness) {
+            _this._accumulatedLoudness.value += loudness;
+        }));
+    };
+    CirclesVisualization.prototype.meshObservable = function () {
+        return _super.prototype.meshObservable.call(this);
+    };
+    CirclesVisualization.ID = "circles";
+    return CirclesVisualization;
+})(AudioTextureShaderVisualization);
 /// <reference path="./BaseVisualization"/>
 /// <reference path="./SimpleVisualization"/>
 /// <reference path="./DotsVisualization"/>
+/// <reference path="./CirclesVisualization"/>
 var VisualizationManager = (function () {
     function VisualizationManager(audioSource, resolutionProvider, shaderBaseUrl) {
         this._visualizationSubject = new Rx.BehaviorSubject(null);
@@ -756,8 +791,11 @@ var VisualizationManager = (function () {
             .subscribe(this._visualizationSubject);
         optionObservable
             .filter(function (visualization) { return visualization.id == DotsVisualization.ID; })
-            .map(function (visualizationOption) { return visualizationOption.options; })
-            .map(function (options) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); })
+            .map(function (__) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); })
+            .subscribe(this._visualizationSubject);
+        optionObservable
+            .filter(function (visualization) { return visualization.id == CirclesVisualization.ID; })
+            .map(function (__) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); })
             .subscribe(this._visualizationSubject);
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.meshObservable(); });
     };
@@ -767,12 +805,12 @@ var VisualizationManager = (function () {
     return VisualizationManager;
 })();
 /// <reference path='../typed/three.d.ts'/>
-/// <reference path='../Models/IPropertiesProvider.ts'/>
+/// <reference path="../Models/Sources/UniformProvider"/>
 /// <reference path='../Models/PropertiesShaderPlane.ts'/>
 /// <reference path='../Models/ShaderLoader.ts'/>
-/// <reference path='../Models/ResolutionProvider.ts'/>
-/// <reference path="../Models/TimeSource"/>
-/// <reference path='../Models/AudioUniformProvider.ts'/>
+/// <reference path='../Models/Sources/ResolutionProvider.ts'/>
+/// <reference path="../Models/Sources/TimeSource"/>
+/// <reference path='../Models/Sources/AudioUniformProvider.ts'/>
 /// <reference path='../Models/LoudnessAccumulator.ts'/>
 /// <reference path="../Models/Visualizations/VisualizationManager"/>
 var GLController = (function () {
@@ -944,8 +982,8 @@ var ControlsProvider = (function () {
 })();
 /// <reference path='../Models/ControlsProvider.ts'/>
 var ControlsController = (function () {
-    function ControlsController() {
-        this.UniformsProvider = new ControlsProvider();
+    function ControlsController(controlsProvider) {
+        this.UniformsProvider = controlsProvider;
     }
     ControlsController.prototype.onVolumeChange = function (volume) {
         this.UniformsProvider.updateVolume(parseFloat(volume));

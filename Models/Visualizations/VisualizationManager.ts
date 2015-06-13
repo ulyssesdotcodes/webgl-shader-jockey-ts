@@ -1,6 +1,7 @@
 /// <reference path="./BaseVisualization"/>
 /// <reference path="./SimpleVisualization"/>
 /// <reference path="./DotsVisualization"/>
+/// <reference path="./CirclesVisualization"/>
 
 class VisualizationManager {
   private _visualizationSubject: Rx.BehaviorSubject<BaseVisualization>;
@@ -37,8 +38,12 @@ class VisualizationManager {
 
     optionObservable
       .filter((visualization) => visualization.id == DotsVisualization.ID)
-      .map((visualizationOption) => visualizationOption.options)
-      .map((options) => new DotsVisualization(this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader))
+      .map((__) => new DotsVisualization(this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader))
+      .subscribe(this._visualizationSubject);
+
+    optionObservable
+      .filter((visualization) => visualization.id == CirclesVisualization.ID)
+      .map((__) => new CirclesVisualization(this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader))
       .subscribe(this._visualizationSubject);
 
     return this._visualizationSubject.asObservable().filter(vis => vis != null).flatMap((visualization) => visualization.meshObservable());

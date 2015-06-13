@@ -1,7 +1,7 @@
 /// <reference path="./ShaderVisualization"/>
 
 class AudioTextureShaderVisualization extends ShaderVisualization {
-  private _audioSource: AudioSource;
+  protected _audioSource: AudioSource;
 
   private _audioTextureBuffer = new Uint8Array(AudioSource.FFT_SIZE * 4);
   private _audioTextureUniform: IUniform<THREE.DataTexture>;
@@ -35,6 +35,8 @@ class AudioTextureShaderVisualization extends ShaderVisualization {
   }
 
   protected setupVisualizerChain(): void {
+    super.setupVisualizerChain();
+
     this.addDisposable(
       this._audioSource.SourceObservable
         .subscribe((e) => {
