@@ -1,4 +1,5 @@
 /// <reference path="./AudioTextureShaderVisualization"/>
+/// <reference path="../Sources/TimeSource"/>
 
 
 class CirclesVisualization extends AudioTextureShaderVisualization {
@@ -26,7 +27,7 @@ class CirclesVisualization extends AudioTextureShaderVisualization {
     super.setupVisualizerChain();
 
     this.addDisposable(
-      this._audioSource.SourceObservable
+      this._audioSource.observable()
         .map(AudioUniformFunctions.calculateLoudness)
         .subscribe((loudness) => {
         this._accumulatedLoudness.value += loudness;

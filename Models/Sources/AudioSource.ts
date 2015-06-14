@@ -1,25 +1,18 @@
-/// <reference path="../typed/rx.d.ts" />
-/// <reference path="../typed/waa.d.ts" />
-/// <reference path='./IUniform.ts'/>
-/// <reference path="./IPropertiesProvider.ts" />
-/// <reference path='./AudioAnalyser.ts'/>
-/// <reference path="../typed/three.d.ts"/>
 /// <reference path="./Source"/>
+/// <reference path="../AudioAnalyser"/>
 
 class AudioSource implements Source<AudioEvent> {
   static FFT_SIZE = 1024;
-  private _audioContext: AudioContext;
+  protected _audioContext: AudioContext;
   private _audioAnalyser: AudioAnalyser;
 
   private _audioEventSubject: Rx.Subject<AudioEvent>;
-  SourceObservable: Rx.Observable<AudioEvent>;
 
   constructor(audioContext: AudioContext) {
     this._audioContext = audioContext;
     this._audioAnalyser = new AudioAnalyser(this._audioContext, AudioSource.FFT_SIZE);
 
     this._audioEventSubject = new Rx.Subject<AudioEvent>();
-    this.SourceObservable = this._audioEventSubject.asObservable();
   }
 
   updateSourceNode(sourceNode: AudioSourceNode) {
@@ -32,6 +25,10 @@ class AudioSource implements Source<AudioEvent> {
     this._audioAnalyser.connectDestination(this._audioContext.destination);
 
     return mediaElement;
+  }
+
+  observable(): Rx.Observable<AudioEvent> {
+    return this._audioEventSubject.asObservable();
   }
 
   animate(): void {

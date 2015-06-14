@@ -11,7 +11,7 @@
 /// <reference path="./VisualizationOptionsView.ts"/>
 /// <reference path="./ControlsView.ts"/>
 /// <reference path='./IControllerView.ts' />
-/// <reference path='../Models/AudioSource.ts' />
+/// <reference path='../Models/Sources/AudioSource.ts' />
 /// <reference path='../Models/Track.ts' />
 /// <reference path="../Models/VisualizationOption"/>
 
@@ -31,9 +31,10 @@ module GLVis {
       this.content = $("<div>");
 
       window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
+      var videoSource = new VideoSource();
       var audioSource = new AudioSource(new AudioContext());
       var resolutionProvider = new ResolutionProvider();
-      this._visualizationManager = new VisualizationManager(audioSource, resolutionProvider, shaderUrl)
+      this._visualizationManager = new VisualizationManager(videoSource, audioSource, resolutionProvider, shaderUrl);
 
       this._playerController = new PlayerController(tracks, audioSource);
       this._visualizationOptionsController = new VisualizationOptionsController(shaders);

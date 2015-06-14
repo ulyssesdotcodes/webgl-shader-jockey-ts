@@ -1,4 +1,4 @@
-/// <reference path='../Models/ControlsProvider.ts'/>
+/// <reference path='../Models/Sources/ControlsProvider.ts'/>
 
 class ControlsController {
   UniformsProvider: ControlsProvider;

@@ -7,7 +7,6 @@ class VideoView{
     this._video.setAttribute("class", "camera");
     this._video.setAttribute("autoplay", "true");
     this._video.setAttribute("muted", "true");
-    // this._video.setAttribute("src", ".ignored/video.mp4")
 
     this._videoController = videoController;
 
@@ -30,8 +29,6 @@ class VideoView{
     }
 
     navigator["getUserMedia"]({audio: false, video: true}, gotStream, console.log);
-
-    $(el).append(this._video);
 
     this._videoController.setVideoSource(this._video);
   }

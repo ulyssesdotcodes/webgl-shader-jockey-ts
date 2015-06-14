@@ -1,4 +1,4 @@
 interface Source<T> {
-  SourceObservable: Rx.Observable<T>;
+  observable(): Rx.Observable<T>;
   animate(): void;
 }

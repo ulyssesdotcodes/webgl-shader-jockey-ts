@@ -1,5 +1,5 @@
-/// <reference path='./VolumeControl.ts'/>
-/// <reference path='./HueControl.ts'/>
+/// <reference path='../VolumeControl.ts'/>
+/// <reference path='../HueControl.ts'/>
 
 class ControlsProvider implements UniformProvider<any> {
   private _volumeControl: VolumeControl;

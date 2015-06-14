@@ -39,13 +39,13 @@ class DotsVisualization extends ShaderVisualization {
   protected setupVisualizerChain(): void {
     super.setupVisualizerChain();
     this.addDisposable(
-      this._audioSource.SourceObservable
+      this._audioSource.observable()
         .map((e) => AudioUniformFunctions.calculateEqs(e, 4))
         .subscribe((eqs) => this._eqSegments.value = eqs)
       );
 
     this.addDisposable(
-      this._audioSource.SourceObservable
+      this._audioSource.observable()
         .map(AudioUniformFunctions.calculateLoudness)
         .subscribe((loudness) => {
         this._loudness.value = loudness;

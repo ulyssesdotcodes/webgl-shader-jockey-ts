@@ -16,7 +16,7 @@ class LoudnessAccumulator implements UniformProvider<number> {
       value: 0.0
     };
 
-    audioManager.SourceObservable.subscribe(ae => this.onAudioEvent(ae))
+    audioManager.observable().subscribe(ae => this.onAudioEvent(ae))
   }
 
   setVolumeUniform(volumeUniform: IUniform<number>) {

@@ -38,7 +38,7 @@ class AudioTextureShaderVisualization extends ShaderVisualization {
     super.setupVisualizerChain();
 
     this.addDisposable(
-      this._audioSource.SourceObservable
+      this._audioSource.observable()
         .subscribe((e) => {
         AudioUniformFunctions.updateAudioBuffer(e, this._audioTextureBuffer);
         this._audioTextureUniform.value.needsUpdate = true;

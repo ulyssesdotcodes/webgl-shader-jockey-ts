@@ -30,7 +30,7 @@ class ShaderVisualization extends BaseVisualization {
   }
 
   protected setupVisualizerChain(): void {
-    this.addDisposable(this._timeSource.SourceObservable.subscribe((time) => {
+    this.addDisposable(this._timeSource.observable().subscribe((time) => {
       this._timeUniform.value = time;
     })
       );

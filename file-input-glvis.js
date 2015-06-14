@@ -57,7 +57,6 @@ var PlaylistView = (function () {
     };
     return PlaylistView;
 })();
-/// <reference path="./IUniform.ts"/>
 var AudioAnalyser = (function () {
     function AudioAnalyser(context, fftSize) {
         this._analyser = context.createAnalyser();
@@ -98,19 +97,13 @@ var AudioAnalyser = (function () {
     };
     return AudioAnalyser;
 })();
-/// <reference path="../typed/rx.d.ts" />
-/// <reference path="../typed/waa.d.ts" />
-/// <reference path='./IUniform.ts'/>
-/// <reference path="./IPropertiesProvider.ts" />
-/// <reference path='./AudioAnalyser.ts'/>
-/// <reference path="../typed/three.d.ts"/>
 /// <reference path="./Source"/>
+/// <reference path="../AudioAnalyser"/>
 var AudioSource = (function () {
     function AudioSource(audioContext) {
         this._audioContext = audioContext;
         this._audioAnalyser = new AudioAnalyser(this._audioContext, AudioSource.FFT_SIZE);
         this._audioEventSubject = new Rx.Subject();
-        this.SourceObservable = this._audioEventSubject.asObservable();
     }
     AudioSource.prototype.updateSourceNode = function (sourceNode) {
         this._audioAnalyser.connectSource(sourceNode);
@@ -120,6 +113,9 @@ var AudioSource = (function () {
         this.updateSourceNode(mediaElement);
         this._audioAnalyser.connectDestination(this._audioContext.destination);
         return mediaElement;
+    };
+    AudioSource.prototype.observable = function () {
+        return this._audioEventSubject.asObservable();
     };
     AudioSource.prototype.animate = function () {
         if (this._audioAnalyser === undefined) {
@@ -137,17 +133,25 @@ var AudioSource = (function () {
     return AudioSource;
 })();
 var Microphone = (function () {
-    function Microphone(context) {
-        this.created = false;
+    function Microphone() {
+        this._created = false;
         this.nodeSubject = new Rx.Subject();
     }
+    Microphone.prototype.isCreatingOrCreated = function () {
+        return this._created || this._creating;
+    };
     Microphone.prototype.onContext = function (audioContext) {
         var _this = this;
-        if (this.created) {
+        if (this._created) {
             this.nodeSubject.onNext(this.node);
             return;
         }
+        if (this._creating) {
+            return;
+        }
+        this._creating = true;
         var gotStream = function (stream) {
+            _this._created = true;
             _this.node = audioContext.createMediaStreamSource(stream);
             _this.nodeSubject.onNext(_this.node);
         };
@@ -167,10 +171,9 @@ var Microphone = (function () {
             });
         }
         else {
-            this.created = false;
+            this._creating = false;
             return (alert("Error: getUserMedia not supported!"));
         }
-        this.created = true;
     };
     Microphone.prototype.nodeObservable = function () {
         return this.nodeSubject;
@@ -206,7 +209,7 @@ var SoundCloudLoader = (function () {
     SoundCloudLoader.CLIENT_ID = "384835fc6e109a2533f83591ae3713e9";
     return SoundCloudLoader;
 })();
-/// <reference path="../Models/AudioSource.ts"/>
+/// <reference path="../Models/Sources/AudioSource.ts"/>
 /// <reference path="../Models/Microphone.ts"/>
 /// <reference path="../Models/SoundCloudLoader.ts"/>
 /// <reference path="../typed/rx.binding-lite.d.ts"/>
@@ -441,12 +444,15 @@ var ResolutionProvider = (function () {
     };
     return ResolutionProvider;
 })();
+/// <reference path="./Source"/>
 var TimeSource = (function () {
     function TimeSource() {
         this._startTime = Date.now();
         this._timeSubject = new Rx.Subject();
-        this.SourceObservable = this._timeSubject.asObservable();
     }
+    TimeSource.prototype.observable = function () {
+        return this._timeSubject.asObservable();
+    };
     TimeSource.prototype.animate = function () {
         this._timeSubject.onNext((Date.now() - this._startTime) / 1000.0);
     };
@@ -522,7 +528,7 @@ var LoudnessAccumulator = (function () {
             type: "f",
             value: 0.0
         };
-        audioManager.SourceObservable.subscribe(function (ae) { return _this.onAudioEvent(ae); });
+        audioManager.observable().subscribe(function (ae) { return _this.onAudioEvent(ae); });
     }
     LoudnessAccumulator.prototype.setVolumeUniform = function (volumeUniform) {
         this._volume = volumeUniform;
@@ -625,7 +631,7 @@ var ShaderVisualization = (function (_super) {
     }
     ShaderVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
-        this.addDisposable(this._timeSource.SourceObservable.subscribe(function (time) {
+        this.addDisposable(this._timeSource.observable().subscribe(function (time) {
             _this._timeUniform.value = time;
         }));
     };
@@ -663,7 +669,7 @@ var AudioTextureShaderVisualization = (function (_super) {
     AudioTextureShaderVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
         _super.prototype.setupVisualizerChain.call(this);
-        this.addDisposable(this._audioSource.SourceObservable
+        this.addDisposable(this._audioSource.observable()
             .subscribe(function (e) {
             AudioUniformFunctions.updateAudioBuffer(e, _this._audioTextureBuffer);
             _this._audioTextureUniform.value.needsUpdate = true;
@@ -722,10 +728,10 @@ var DotsVisualization = (function (_super) {
     DotsVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
         _super.prototype.setupVisualizerChain.call(this);
-        this.addDisposable(this._audioSource.SourceObservable
+        this.addDisposable(this._audioSource.observable()
             .map(function (e) { return AudioUniformFunctions.calculateEqs(e, 4); })
             .subscribe(function (eqs) { return _this._eqSegments.value = eqs; }));
-        this.addDisposable(this._audioSource.SourceObservable
+        this.addDisposable(this._audioSource.observable()
             .map(AudioUniformFunctions.calculateLoudness)
             .subscribe(function (loudness) {
             _this._loudness.value = loudness;
@@ -736,6 +742,7 @@ var DotsVisualization = (function (_super) {
     return DotsVisualization;
 })(ShaderVisualization);
 /// <reference path="./AudioTextureShaderVisualization"/>
+/// <reference path="../Sources/TimeSource"/>
 var CirclesVisualization = (function (_super) {
     __extends(CirclesVisualization, _super);
     function CirclesVisualization(audioSource, resolutionProvider, timeSource, shaderLoader, controlsProvider) {
@@ -753,7 +760,7 @@ var CirclesVisualization = (function (_super) {
     CirclesVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
         _super.prototype.setupVisualizerChain.call(this);
-        this.addDisposable(this._audioSource.SourceObservable
+        this.addDisposable(this._audioSource.observable()
             .map(AudioUniformFunctions.calculateLoudness)
             .subscribe(function (loudness) {
             _this._accumulatedLoudness.value += loudness;
@@ -770,10 +777,11 @@ var CirclesVisualization = (function (_super) {
 /// <reference path="./DotsVisualization"/>
 /// <reference path="./CirclesVisualization"/>
 var VisualizationManager = (function () {
-    function VisualizationManager(audioSource, resolutionProvider, shaderBaseUrl) {
+    function VisualizationManager(videoSource, audioSource, resolutionProvider, shaderBaseUrl) {
         this._visualizationSubject = new Rx.BehaviorSubject(null);
         this._shaderLoader = new ShaderLoader("no_controls.frag", "util.frag", shaderBaseUrl);
         this._audioSource = audioSource;
+        this._videoSource = videoSource;
         this._timeSource = new TimeSource();
         this._resolutionProvider = resolutionProvider;
     }
@@ -784,11 +792,7 @@ var VisualizationManager = (function () {
                 _this._visualizationSubject.getValue().unsubscribe();
             }
         });
-        optionObservable
-            .filter(function (visualization) { return visualization.id == SimpleVisualization.ID; })
-            .map(function (visualizationOption) { return visualizationOption.options; })
-            .map(function (options) { return new SimpleVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, options, _this._shaderLoader); })
-            .subscribe(this._visualizationSubject);
+        this.addVisualization(optionObservable, SimpleVisualization.ID, function (options) { return new SimpleVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, options, _this._shaderLoader); });
         optionObservable
             .filter(function (visualization) { return visualization.id == DotsVisualization.ID; })
             .map(function (__) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); })
@@ -798,6 +802,14 @@ var VisualizationManager = (function () {
             .map(function (__) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); })
             .subscribe(this._visualizationSubject);
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.meshObservable(); });
+    };
+    VisualizationManager.prototype.addVisualization = function (optionObservable, id, f) {
+        var _this = this;
+        optionObservable
+            .filter(function (visualization) { return visualization.id == SimpleVisualization.ID; })
+            .map(function (visualizationOption) { return visualizationOption.options; })
+            .map(function (options) { return f.call(_this, options); })
+            .subscribe(this._visualizationSubject);
     };
     VisualizationManager.prototype.animate = function () {
         this._visualizationSubject.getValue().animate();
@@ -891,8 +903,8 @@ var VideoView = (function () {
     };
     return VideoView;
 })();
-var VideoManager = (function () {
-    function VideoManager() {
+var VideoSource = (function () {
+    function VideoSource() {
         this._videoCanvas = document.createElement("canvas");
         this._videoCanvas.width = window.innerWidth;
         this._videoCanvas.height = window.innerHeight;
@@ -904,22 +916,25 @@ var VideoManager = (function () {
             value: texture
         };
     }
-    VideoManager.prototype.updateVideoElement = function (videoElement) {
+    VideoSource.prototype.useVideoSource = function (videoElement) {
         this._videoElement = videoElement;
     };
-    VideoManager.prototype.glProperties = function () {
-        return Rx.Observable.just([this._videoTexture]);
+    VideoSource.prototype.uniforms = function () {
+        return [this._videoTexture];
     };
-    VideoManager.prototype.sampleVideo = function () {
+    VideoSource.prototype.observable = function () {
+        return Rx.Observable.just(this._videoTexture.value);
+    };
+    VideoSource.prototype.animate = function () {
         if (this._videoElement == undefined) {
             return;
         }
         this._videoContext.drawImage(this._videoElement, 0, 0, this._videoCanvas.width, this._videoCanvas.height);
         this._videoTexture.value.needsUpdate = true;
     };
-    return VideoManager;
+    return VideoSource;
 })();
-/// <reference path='../Models/VideoManager.ts'/>
+/// <reference path='../Models/Sources/VideoSource.ts'/>
 var VideoController = (function () {
     function VideoController(videoManger) {
         this._videoManager = videoManger;
@@ -932,7 +947,7 @@ var VideoController = (function () {
         configurable: true
     });
     VideoController.prototype.setVideoSource = function (videoElement) {
-        this._videoManager.updateVideoElement(videoElement);
+        this._videoManager.useVideoSource(videoElement);
     };
     return VideoController;
 })();
@@ -962,8 +977,8 @@ var HueControl = (function () {
     };
     return HueControl;
 })();
-/// <reference path='./VolumeControl.ts'/>
-/// <reference path='./HueControl.ts'/>
+/// <reference path='../VolumeControl.ts'/>
+/// <reference path='../HueControl.ts'/>
 var ControlsProvider = (function () {
     function ControlsProvider() {
         this._volumeControl = new VolumeControl();
@@ -980,7 +995,7 @@ var ControlsProvider = (function () {
     };
     return ControlsProvider;
 })();
-/// <reference path='../Models/ControlsProvider.ts'/>
+/// <reference path='../Models/Sources/ControlsProvider.ts'/>
 var ControlsController = (function () {
     function ControlsController(controlsProvider) {
         this.UniformsProvider = controlsProvider;
@@ -1129,7 +1144,7 @@ var VisualizationOptionsView = (function () {
 /// <reference path="./VisualizationOptionsView.ts"/>
 /// <reference path="./ControlsView.ts"/>
 /// <reference path='./IControllerView.ts' />
-/// <reference path='../Models/AudioSource.ts' />
+/// <reference path='../Models/Sources/AudioSource.ts' />
 /// <reference path='../Models/Track.ts' />
 /// <reference path="../Models/VisualizationOption"/>
 var GLVis;
@@ -1138,9 +1153,10 @@ var GLVis;
         function FileInput(tracks, shaders, shaderUrl) {
             this.content = $("<div>");
             window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
+            var videoSource = new VideoSource();
             var audioSource = new AudioSource(new AudioContext());
             var resolutionProvider = new ResolutionProvider();
-            this._visualizationManager = new VisualizationManager(audioSource, resolutionProvider, shaderUrl);
+            this._visualizationManager = new VisualizationManager(videoSource, audioSource, resolutionProvider, shaderUrl);
             this._playerController = new PlayerController(tracks, audioSource);
             this._visualizationOptionsController = new VisualizationOptionsController(shaders);
             this._glController =
