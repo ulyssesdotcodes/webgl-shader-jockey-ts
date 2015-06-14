@@ -596,109 +596,6 @@ var GLController = (function () {
     };
     return GLController;
 })();
-var VideoView = (function () {
-    function VideoView(videoController) {
-        this._video = document.createElement("video");
-        this._video.setAttribute("class", "camera");
-        this._video.setAttribute("autoplay", "true");
-        this._video.setAttribute("muted", "true");
-        this._videoController = videoController;
-        navigator["getUserMedia"] = navigator["getUserMedia"] ||
-            navigator["webkitGetUserMedia"] ||
-            navigator["mozGetUserMedia"];
-        window["URL"] = window["URL"] || window["webkitURL"];
-    }
-    VideoView.prototype.render = function (el) {
-        var _this = this;
-        var gotStream = function (stream) {
-            if (window["URL"]) {
-                _this._video.src = window["URL"].createObjectURL(stream);
-            }
-            else {
-                _this._video.src = stream;
-            }
-            _this._video.onerror = function (e) { stream.stop(); };
-        };
-        navigator["getUserMedia"]({ audio: false, video: true }, gotStream, console.log);
-        this._videoController.setVideoSource(this._video);
-    };
-    return VideoView;
-})();
-var VideoSource = (function () {
-    function VideoSource() {
-        this._creating = false;
-        this._created = false;
-        this._videoCanvas = document.createElement("canvas");
-        this._videoCanvas.width = window.innerWidth;
-        this._videoCanvas.height = window.innerHeight;
-        this._videoContext = this._videoCanvas.getContext("2d");
-        this._videoElement = document.createElement("video");
-        this._videoElement.setAttribute("class", "camera");
-        this._videoElement.setAttribute("autoplay", "true");
-        this._videoElement.setAttribute("muted", "true");
-        var texture = new THREE.Texture(this._videoCanvas);
-        this._videoTexture = {
-            name: "camera",
-            type: "t",
-            value: texture
-        };
-        navigator["getUserMedia"] = navigator["getUserMedia"] ||
-            navigator["webkitGetUserMedia"] ||
-            navigator["mozGetUserMedia"];
-        window["URL"] = window["URL"] || window["webkitURL"];
-    }
-    VideoSource.prototype.createVideoSource = function () {
-        var _this = this;
-        this._creating = true;
-        var gotStream = function (stream) {
-            _this._creating = false;
-            _this._created = true;
-            if (window["URL"]) {
-                _this._videoElement.src = window["URL"].createObjectURL(stream);
-            }
-            else {
-                _this._videoElement.src = stream;
-            }
-            _this._videoElement.onerror = function (e) { stream.stop(); };
-        };
-        navigator["getUserMedia"]({ audio: false, video: true }, gotStream, console.log);
-    };
-    VideoSource.prototype.uniforms = function () {
-        return [this._videoTexture];
-    };
-    VideoSource.prototype.observable = function () {
-        return Rx.Observable.just(this._videoTexture.value);
-    };
-    VideoSource.prototype.animate = function () {
-        if (!(this._created || this._creating)) {
-            this.createVideoSource();
-            return;
-        }
-        if (this._creating) {
-            return;
-        }
-        this._videoContext.drawImage(this._videoElement, 0, 0, this._videoCanvas.width, this._videoCanvas.height);
-        this._videoTexture.value.needsUpdate = true;
-    };
-    return VideoSource;
-})();
-/// <reference path='../Models/Sources/VideoSource.ts'/>
-var VideoController = (function () {
-    function VideoController(videoManger) {
-        this._videoManager = videoManger;
-    }
-    Object.defineProperty(VideoController.prototype, "Manager", {
-        get: function () {
-            return this._videoManager;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    VideoController.prototype.setVideoSource = function (videoElement) {
-        this._videoManager.useVideoSource(videoElement);
-    };
-    return VideoController;
-})();
 var VolumeControl = (function () {
     function VolumeControl() {
         this.VolumeLevel = {
@@ -1042,7 +939,7 @@ var GLVis;
             var videoSource = new VideoSource();
             var resolutionProvider = new ResolutionProvider();
             var controlsProvider = new ControlsProvider();
-            this._visualizationManager = new VisualizationManager(videoSource, audioSource, resolutionProvider, shadersUrl);
+            this._visualizationManager = new VisualizationManager(videoSource, audioSource, resolutionProvider, shadersUrl, controlsProvider);
             // this._videoController = new VideoController(videoSource);
             this._visualizationOptionsController = new VisualizationOptionsController(visualizationOptions);
             this._controlsController = new ControlsController(controlsProvider);

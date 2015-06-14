@@ -772,14 +772,25 @@ var CirclesVisualization = (function (_super) {
     CirclesVisualization.ID = "circles";
     return CirclesVisualization;
 })(AudioTextureShaderVisualization);
+var VideoDistortionVisualization = (function (_super) {
+    __extends(VideoDistortionVisualization, _super);
+    function VideoDistortionVisualization(videoSource, audioSource, resolutionProvider, timeSource, shaderLoader) {
+        _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "video_audio_distortion");
+        this.addSources([videoSource]);
+        this.addUniforms(videoSource.uniforms());
+    }
+    VideoDistortionVisualization.ID = "videoDistortion";
+    return VideoDistortionVisualization;
+})(AudioTextureShaderVisualization);
 /// <reference path="./BaseVisualization"/>
 /// <reference path="./SimpleVisualization"/>
 /// <reference path="./DotsVisualization"/>
 /// <reference path="./CirclesVisualization"/>
+/// <reference path="./VideoDistortionVisualization"/>
 var VisualizationManager = (function () {
-    function VisualizationManager(videoSource, audioSource, resolutionProvider, shaderBaseUrl) {
+    function VisualizationManager(videoSource, audioSource, resolutionProvider, shaderBaseUrl, controlsProvider) {
         this._visualizationSubject = new Rx.BehaviorSubject(null);
-        this._shaderLoader = new ShaderLoader("no_controls.frag", "util.frag", shaderBaseUrl);
+        this._shaderLoader = new ShaderLoader(controlsProvider ? "controls.frag" : "no_controls.frag", "util.frag", shaderBaseUrl);
         this._audioSource = audioSource;
         this._videoSource = videoSource;
         this._timeSource = new TimeSource();
@@ -793,20 +804,15 @@ var VisualizationManager = (function () {
             }
         });
         this.addVisualization(optionObservable, SimpleVisualization.ID, function (options) { return new SimpleVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, options, _this._shaderLoader); });
-        optionObservable
-            .filter(function (visualization) { return visualization.id == DotsVisualization.ID; })
-            .map(function (__) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); })
-            .subscribe(this._visualizationSubject);
-        optionObservable
-            .filter(function (visualization) { return visualization.id == CirclesVisualization.ID; })
-            .map(function (__) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); })
-            .subscribe(this._visualizationSubject);
+        this.addVisualization(optionObservable, DotsVisualization.ID, function (options) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); });
+        this.addVisualization(optionObservable, CirclesVisualization.ID, function (options) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); });
+        this.addVisualization(optionObservable, VideoDistortionVisualization.ID, function (options) { return new VideoDistortionVisualization(_this._videoSource, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); });
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.meshObservable(); });
     };
     VisualizationManager.prototype.addVisualization = function (optionObservable, id, f) {
         var _this = this;
         optionObservable
-            .filter(function (visualization) { return visualization.id == SimpleVisualization.ID; })
+            .filter(function (visualization) { return visualization.id == id; })
             .map(function (visualizationOption) { return visualizationOption.options; })
             .map(function (options) { return f.call(_this, options); })
             .subscribe(this._visualizationSubject);
@@ -817,6 +823,9 @@ var VisualizationManager = (function () {
     return VisualizationManager;
 })();
 /// <reference path='../typed/three.d.ts'/>
+/// <reference path="../typed/rx.d.ts"/>
+/// <reference path="../typed/rx-lite.d.ts"/>
+/// <reference path="../typed/rx.binding-lite.d.ts"/>
 /// <reference path="../Models/Sources/UniformProvider"/>
 /// <reference path='../Models/PropertiesShaderPlane.ts'/>
 /// <reference path='../Models/ShaderLoader.ts'/>
@@ -830,37 +839,6 @@ var GLController = (function () {
         var _this = this;
         this._meshSubject = new Rx.BehaviorSubject([]);
         this.MeshObservable = this._meshSubject.asObservable();
-        //
-        // this._resolutionProvider = new ResolutionProvider();
-        // this._timeProvider = new TimeProvider();
-        // this._shadersUrl = shadersUrl;
-        // this._shaderLoader = new ShaderLoader(
-        //   controlsProvider == null ? 'no_controls.frag' : 'controls_init.frag', 'util.frag' , shadersUrl);
-        // var audioUniformProvider = new AudioUniformProvider(audioManager);
-        //
-        // var loudnessAccumulator = new LoudnessAccumulator(audioManager);
-        //
-        // var properties: Array<IPropertiesProvider<any>> = [
-        //   this._resolutionProvider, this._timeProvider,
-        //   audioUniformProvider, loudnessAccumulator
-        // ];
-        //
-        // if (videoManager != null) {
-        //   properties.push(videoManager);
-        // }
-        //
-        // if (controlsProvider != null) {
-        //   controlsProvider.glProperties()
-        //     .flatMap(Rx.Observable.from)
-        //     .filter((uniform: IUniform<any>) => uniform.name == "volume")
-        //     .subscribe(
-        //     (volumeUniform: IUniform<number>) => loudnessAccumulator.setVolumeUniform(volumeUniform));
-        //
-        //   properties.push(controlsProvider);
-        // }
-        // this._audioShaderPlane = new PropertiesShaderPlane(properties);
-        //
-        // this._audioShaderPlane.MeshObservable.subscribe((mesh) => this.onNewMeshes([mesh]));
         this._resolutionProvider = resolutionProvider;
         this._visualizationManager = visualizationManager;
         this._visualizationManager.meshObservable(visualizationOptionObservable)
@@ -879,7 +857,6 @@ var VideoView = (function () {
         this._video.setAttribute("class", "camera");
         this._video.setAttribute("autoplay", "true");
         this._video.setAttribute("muted", "true");
-        // this._video.setAttribute("src", ".ignored/video.mp4")
         this._videoController = videoController;
         navigator["getUserMedia"] = navigator["getUserMedia"] ||
             navigator["webkitGetUserMedia"] ||
@@ -898,26 +875,48 @@ var VideoView = (function () {
             _this._video.onerror = function (e) { stream.stop(); };
         };
         navigator["getUserMedia"]({ audio: false, video: true }, gotStream, console.log);
-        $(el).append(this._video);
         this._videoController.setVideoSource(this._video);
     };
     return VideoView;
 })();
 var VideoSource = (function () {
     function VideoSource() {
+        this._creating = false;
+        this._created = false;
         this._videoCanvas = document.createElement("canvas");
         this._videoCanvas.width = window.innerWidth;
         this._videoCanvas.height = window.innerHeight;
         this._videoContext = this._videoCanvas.getContext("2d");
+        this._videoElement = document.createElement("video");
+        this._videoElement.setAttribute("class", "camera");
+        this._videoElement.setAttribute("autoplay", "true");
+        this._videoElement.setAttribute("muted", "true");
         var texture = new THREE.Texture(this._videoCanvas);
         this._videoTexture = {
             name: "camera",
             type: "t",
             value: texture
         };
+        navigator["getUserMedia"] = navigator["getUserMedia"] ||
+            navigator["webkitGetUserMedia"] ||
+            navigator["mozGetUserMedia"];
+        window["URL"] = window["URL"] || window["webkitURL"];
     }
-    VideoSource.prototype.useVideoSource = function (videoElement) {
-        this._videoElement = videoElement;
+    VideoSource.prototype.createVideoSource = function () {
+        var _this = this;
+        this._creating = true;
+        var gotStream = function (stream) {
+            _this._creating = false;
+            _this._created = true;
+            if (window["URL"]) {
+                _this._videoElement.src = window["URL"].createObjectURL(stream);
+            }
+            else {
+                _this._videoElement.src = stream;
+            }
+            _this._videoElement.onerror = function (e) { stream.stop(); };
+        };
+        navigator["getUserMedia"]({ audio: false, video: true }, gotStream, console.log);
     };
     VideoSource.prototype.uniforms = function () {
         return [this._videoTexture];
@@ -926,7 +925,11 @@ var VideoSource = (function () {
         return Rx.Observable.just(this._videoTexture.value);
     };
     VideoSource.prototype.animate = function () {
-        if (this._videoElement == undefined) {
+        if (!(this._created || this._creating)) {
+            this.createVideoSource();
+            return;
+        }
+        if (this._creating) {
             return;
         }
         this._videoContext.drawImage(this._videoElement, 0, 0, this._videoCanvas.width, this._videoCanvas.height);

@@ -33,7 +33,7 @@ module GLVis {
       var resolutionProvider = new ResolutionProvider();
       var controlsProvider = new ControlsProvider();
 
-      this._visualizationManager = new VisualizationManager(videoSource, audioSource, resolutionProvider, shadersUrl);
+      this._visualizationManager = new VisualizationManager(videoSource, audioSource, resolutionProvider, shadersUrl, controlsProvider);
 
       // this._videoController = new VideoController(videoSource);
       this._visualizationOptionsController = new VisualizationOptionsController(visualizationOptions);
