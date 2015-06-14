@@ -1,4 +1,5 @@
 /// <reference path="./AudioUniformFunctions" />
+/// <reference path="../ShaderPlane"/>
 
 class ShaderVisualization extends BaseVisualization {
   protected _timeSource: TimeSource;
@@ -10,7 +11,7 @@ class ShaderVisualization extends BaseVisualization {
 
   private _shaderUrl: string;
 
-  constructor(resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, shaderUrl: string) {
+  constructor(resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, shaderUrl: string, controlsProvider?: ControlsProvider) {
     super();
 
     this.addSources([timeSource]);
@@ -27,6 +28,10 @@ class ShaderVisualization extends BaseVisualization {
     };
 
     this._uniforms = [<IUniform<any>> this._timeUniform].concat(resolutionProvider.uniforms());
+
+    if(controlsProvider) {
+      this.addUniforms(controlsProvider.uniforms());
+    }
   }
 
   protected setupVisualizerChain(): void {

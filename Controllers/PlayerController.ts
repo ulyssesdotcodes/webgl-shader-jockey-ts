@@ -1,6 +1,5 @@
 /// <reference path="../Models/Sources/AudioSource.ts"/>
 /// <reference path="../Models/Microphone.ts"/>
-/// <reference path="../Models/SoundCloudLoader.ts"/>
 /// <reference path="../typed/rx.binding-lite.d.ts"/>
 
 class PlayerController {

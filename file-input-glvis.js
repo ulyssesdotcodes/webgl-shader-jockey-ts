@@ -180,38 +180,8 @@ var Microphone = (function () {
     };
     return Microphone;
 })();
-/// <reference path="../typed/soundcloud.d.ts" />
-var SoundCloudLoader = (function () {
-    function SoundCloudLoader() {
-        this.urlSubject = new Rx.Subject();
-        SC.initialize({
-            client_id: SoundCloudLoader.CLIENT_ID
-        });
-    }
-    SoundCloudLoader.prototype.getUrlObservable = function () {
-        return this.urlSubject.asObservable();
-    };
-    SoundCloudLoader.prototype.loadStream = function (url) {
-        var _this = this;
-        if (!SC) {
-            return; // No internet
-        }
-        SC.get('/resolve', { url: url, test: "two" }, function (sound) {
-            if (sound.errors) {
-                console.log("error: ", sound.errors);
-                _this.urlSubject.onError("Invalid URL");
-                return;
-            }
-            var url = sound.kind == 'playlist' ? sound.tracks[0].stream_url : sound.stream_url;
-            _this.urlSubject.onNext(url + '?client_id=' + SoundCloudLoader.CLIENT_ID);
-        });
-    };
-    SoundCloudLoader.CLIENT_ID = "384835fc6e109a2533f83591ae3713e9";
-    return SoundCloudLoader;
-})();
 /// <reference path="../Models/Sources/AudioSource.ts"/>
 /// <reference path="../Models/Microphone.ts"/>
-/// <reference path="../Models/SoundCloudLoader.ts"/>
 /// <reference path="../typed/rx.binding-lite.d.ts"/>
 var PlayerController = (function () {
     function PlayerController(tracks, manager) {
@@ -291,91 +261,6 @@ var GLView = (function () {
     return GLView;
 })();
 /// <reference path="../IUniform.ts"/>
-var ShaderPlane = (function () {
-    function ShaderPlane(shader, uniforms) {
-        var fragText = shader.fragmentShader;
-        var uniformObject = {};
-        uniforms.forEach(function (uniform) { return uniformObject[uniform.name] = uniform; });
-        Object.keys(uniformObject).forEach(function (key) {
-            var uniform = uniformObject[key];
-            var uniformType;
-            switch (uniform.type) {
-                case "f":
-                    uniformType = "float";
-                    break;
-                case "v2":
-                    uniformType = "vec2";
-                    break;
-                case "v3":
-                    uniformType = "vec3";
-                    break;
-                case "v4":
-                    uniformType = "vec4";
-                    break;
-                case "t":
-                    uniformType = "sampler2D";
-                    break;
-                default:
-                    console.log("Unknown shader");
-            }
-            fragText = "uniform " + uniformType + " " + uniform.name + ";\n" + fragText;
-        });
-        var shaderMaterial = new THREE.ShaderMaterial({
-            uniforms: uniformObject,
-            fragmentShader: fragText,
-            vertexShader: shader.vertexShader
-        });
-        var geometry = new THREE.PlaneBufferGeometry(2, 2);
-        this._mesh = new THREE.Mesh(geometry, shaderMaterial);
-    }
-    Object.defineProperty(ShaderPlane.prototype, "mesh", {
-        get: function () {
-            return this._mesh;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    return ShaderPlane;
-})();
-/// <reference path="../typed/rx.d.ts"/>
-/// <reference path="../typed/three.d.ts"/>
-var UniformsManager = (function () {
-    function UniformsManager(propertiesProviders) {
-        this._uniformsSubject = new Rx.Subject();
-        this.UniformsObservable = this._uniformsSubject.asObservable();
-        this._propertiesProviders = propertiesProviders;
-    }
-    UniformsManager.prototype.calculateUniforms = function () {
-        var _this = this;
-        Rx.Observable.from(this._propertiesProviders)
-            .map(function (provider) { return provider.uniforms(); })
-            .scan(function (acc, properties) {
-            properties.forEach(function (property) { return acc[property.name] = property; }, {});
-            return acc;
-        })
-            .subscribe(function (properties) { return _this._uniformsSubject.onNext(properties); });
-    };
-    return UniformsManager;
-})();
-/// <reference path="../typed/rx.d.ts"/>
-/// <reference path="./ShaderPlane.ts"/>
-/// <reference path="./UniformsManager.ts"/>
-var PropertiesShaderPlane = (function () {
-    function PropertiesShaderPlane(glProperties) {
-        this._shaderSubject = new Rx.Subject();
-        this._meshSubject = new Rx.Subject();
-        this.MeshObservable = this._meshSubject.asObservable();
-        this._uniformsManager = new UniformsManager(glProperties);
-        Rx.Observable.combineLatest(this._shaderSubject, this._uniformsManager.UniformsObservable, function (shaderText, uniforms) { return new ShaderPlane(shaderText, uniforms).mesh; })
-            .subscribe(this._meshSubject);
-    }
-    PropertiesShaderPlane.prototype.onShaderText = function (shader) {
-        /* Calculate the uniforms after it's subscribed to*/
-        this._shaderSubject.onNext(shader);
-        this._uniformsManager.calculateUniforms();
-    };
-    return PropertiesShaderPlane;
-})();
 var ShaderText = (function () {
     function ShaderText(fragment, vertex) {
         this.fragmentShader = fragment;
@@ -458,63 +343,6 @@ var TimeSource = (function () {
     };
     return TimeSource;
 })();
-// class AudioUniformProvider implements IPropertiesProvider<THREE.DataTexture>{
-//   private _audioManager: AudioManager;
-//
-//   private _audioTexture: IUniform<THREE.DataTexture>;
-//   private _audioTextureBuffer = new Uint8Array(AudioManager.FFT_SIZE * 4);
-//
-//   private _eqSegments: IUniform<THREE.Vector4>;
-//
-//   constructor(audioManager: AudioManager) {
-//     this._audioManager = audioManager;
-//
-//     var dataTexture = new THREE.DataTexture(
-//       this._audioTextureBuffer,
-//       AudioManager.FFT_SIZE,
-//       1,
-//       THREE.RGBAFormat,
-//       THREE.UnsignedByteType,
-//       THREE.UVMapping,
-//       THREE.ClampToEdgeWrapping,
-//       THREE.ClampToEdgeWrapping,
-//       THREE.LinearFilter,
-//       THREE.LinearMipMapLinearFilter,
-//       1);
-//
-//     this._audioTexture = {
-//       name: "audioTexture",
-//       type: "t",
-//       value: dataTexture
-//     }
-//
-//     this._eqSegments = {
-//       name: "eqSegments",
-//       type: "v4",
-//       value: new THREE.Vector4(0.0, 0.0, 0.0, 0.0)
-//     }
-//
-//     this._audioManager.AudioEventObservable.subscribe((ae) => this.onAudioEvent(ae));
-//   }
-//
-//   glProperties(): Rx.Observable<Array<IUniform<any>>> {
-//     return Rx.Observable.just([this._audioTexture, this._eqSegments]);
-//   }
-//
-//   onAudioEvent(audioEvent: IAudioEvent) {
-//     for (var i = 0; i < audioEvent.frequencyBuffer.length; i++) {
-//       this._audioTextureBuffer[i * 4] = audioEvent.frequencyBuffer[i];
-//     }
-//
-//     for (var i = 0; i < audioEvent.timeDomainBuffer.length; i++) {
-//       this._audioTextureBuffer[i * 4 + 1] = audioEvent.frequencyBuffer[i];
-//     }
-//
-//     this._audioTexture.value.needsUpdate = true;
-//
-//     this._eqSegments.value = audioEvent.eqSegments;
-//   }
-// }
 var LoudnessAccumulator = (function () {
     function LoudnessAccumulator(audioManager) {
         var _this = this;
@@ -607,7 +435,54 @@ var AudioUniformFunctions;
     }
     AudioUniformFunctions.calculateLoudness = calculateLoudness;
 })(AudioUniformFunctions || (AudioUniformFunctions = {}));
+var ShaderPlane = (function () {
+    function ShaderPlane(shader, uniforms) {
+        var fragText = shader.fragmentShader;
+        var uniformObject = {};
+        uniforms.forEach(function (uniform) { return uniformObject[uniform.name] = uniform; });
+        Object.keys(uniformObject).forEach(function (key) {
+            var uniform = uniformObject[key];
+            var uniformType;
+            switch (uniform.type) {
+                case "f":
+                    uniformType = "float";
+                    break;
+                case "v2":
+                    uniformType = "vec2";
+                    break;
+                case "v3":
+                    uniformType = "vec3";
+                    break;
+                case "v4":
+                    uniformType = "vec4";
+                    break;
+                case "t":
+                    uniformType = "sampler2D";
+                    break;
+                default:
+                    console.log("Unknown shader");
+            }
+            fragText = "uniform " + uniformType + " " + uniform.name + ";\n" + fragText;
+        });
+        var shaderMaterial = new THREE.ShaderMaterial({
+            uniforms: uniformObject,
+            fragmentShader: fragText,
+            vertexShader: shader.vertexShader
+        });
+        var geometry = new THREE.PlaneBufferGeometry(2, 2);
+        this._mesh = new THREE.Mesh(geometry, shaderMaterial);
+    }
+    Object.defineProperty(ShaderPlane.prototype, "mesh", {
+        get: function () {
+            return this._mesh;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return ShaderPlane;
+})();
 /// <reference path="./AudioUniformFunctions" />
+/// <reference path="../ShaderPlane"/>
 var __extends = this.__extends || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
@@ -772,113 +647,6 @@ var CirclesVisualization = (function (_super) {
     CirclesVisualization.ID = "circles";
     return CirclesVisualization;
 })(AudioTextureShaderVisualization);
-var VideoDistortionVisualization = (function (_super) {
-    __extends(VideoDistortionVisualization, _super);
-    function VideoDistortionVisualization(videoSource, audioSource, resolutionProvider, timeSource, shaderLoader) {
-        _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "video_audio_distortion");
-        this.addSources([videoSource]);
-        this.addUniforms(videoSource.uniforms());
-    }
-    VideoDistortionVisualization.ID = "videoDistortion";
-    return VideoDistortionVisualization;
-})(AudioTextureShaderVisualization);
-/// <reference path="./BaseVisualization"/>
-/// <reference path="./SimpleVisualization"/>
-/// <reference path="./DotsVisualization"/>
-/// <reference path="./CirclesVisualization"/>
-/// <reference path="./VideoDistortionVisualization"/>
-var VisualizationManager = (function () {
-    function VisualizationManager(videoSource, audioSource, resolutionProvider, shaderBaseUrl, controlsProvider) {
-        this._visualizationSubject = new Rx.BehaviorSubject(null);
-        this._shaderLoader = new ShaderLoader(controlsProvider ? "controls.frag" : "no_controls.frag", "util.frag", shaderBaseUrl);
-        this._audioSource = audioSource;
-        this._videoSource = videoSource;
-        this._timeSource = new TimeSource();
-        this._resolutionProvider = resolutionProvider;
-    }
-    VisualizationManager.prototype.meshObservable = function (optionObservable) {
-        var _this = this;
-        optionObservable.subscribe(function (__) {
-            if (_this._visualizationSubject.getValue() != null) {
-                _this._visualizationSubject.getValue().unsubscribe();
-            }
-        });
-        this.addVisualization(optionObservable, SimpleVisualization.ID, function (options) { return new SimpleVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, options, _this._shaderLoader); });
-        this.addVisualization(optionObservable, DotsVisualization.ID, function (options) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); });
-        this.addVisualization(optionObservable, CirclesVisualization.ID, function (options) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); });
-        this.addVisualization(optionObservable, VideoDistortionVisualization.ID, function (options) { return new VideoDistortionVisualization(_this._videoSource, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); });
-        return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.meshObservable(); });
-    };
-    VisualizationManager.prototype.addVisualization = function (optionObservable, id, f) {
-        var _this = this;
-        optionObservable
-            .filter(function (visualization) { return visualization.id == id; })
-            .map(function (visualizationOption) { return visualizationOption.options; })
-            .map(function (options) { return f.call(_this, options); })
-            .subscribe(this._visualizationSubject);
-    };
-    VisualizationManager.prototype.animate = function () {
-        this._visualizationSubject.getValue().animate();
-    };
-    return VisualizationManager;
-})();
-/// <reference path='../typed/three.d.ts'/>
-/// <reference path="../typed/rx.d.ts"/>
-/// <reference path="../typed/rx-lite.d.ts"/>
-/// <reference path="../typed/rx.binding-lite.d.ts"/>
-/// <reference path="../Models/Sources/UniformProvider"/>
-/// <reference path='../Models/PropertiesShaderPlane.ts'/>
-/// <reference path='../Models/ShaderLoader.ts'/>
-/// <reference path='../Models/Sources/ResolutionProvider.ts'/>
-/// <reference path="../Models/Sources/TimeSource"/>
-/// <reference path='../Models/Sources/AudioUniformProvider.ts'/>
-/// <reference path='../Models/LoudnessAccumulator.ts'/>
-/// <reference path="../Models/Visualizations/VisualizationManager"/>
-var GLController = (function () {
-    function GLController(visualizationManager, visualizationOptionObservable, resolutionProvider) {
-        var _this = this;
-        this._meshSubject = new Rx.BehaviorSubject([]);
-        this.MeshObservable = this._meshSubject.asObservable();
-        this._resolutionProvider = resolutionProvider;
-        this._visualizationManager = visualizationManager;
-        this._visualizationManager.meshObservable(visualizationOptionObservable)
-            .subscribe(function (meshes) {
-            _this._meshSubject.onNext(meshes);
-        });
-    }
-    GLController.prototype.onNewResolution = function (resolution) {
-        this._resolutionProvider.updateResolution(new THREE.Vector2(resolution.width, resolution.height));
-    };
-    return GLController;
-})();
-var VideoView = (function () {
-    function VideoView(videoController) {
-        this._video = document.createElement("video");
-        this._video.setAttribute("class", "camera");
-        this._video.setAttribute("autoplay", "true");
-        this._video.setAttribute("muted", "true");
-        this._videoController = videoController;
-        navigator["getUserMedia"] = navigator["getUserMedia"] ||
-            navigator["webkitGetUserMedia"] ||
-            navigator["mozGetUserMedia"];
-        window["URL"] = window["URL"] || window["webkitURL"];
-    }
-    VideoView.prototype.render = function (el) {
-        var _this = this;
-        var gotStream = function (stream) {
-            if (window["URL"]) {
-                _this._video.src = window["URL"].createObjectURL(stream);
-            }
-            else {
-                _this._video.src = stream;
-            }
-            _this._video.onerror = function (e) { stream.stop(); };
-        };
-        navigator["getUserMedia"]({ audio: false, video: true }, gotStream, console.log);
-        this._videoController.setVideoSource(this._video);
-    };
-    return VideoView;
-})();
 var VideoSource = (function () {
     function VideoSource() {
         this._creating = false;
@@ -937,22 +705,83 @@ var VideoSource = (function () {
     };
     return VideoSource;
 })();
-/// <reference path='../Models/Sources/VideoSource.ts'/>
-var VideoController = (function () {
-    function VideoController(videoManger) {
-        this._videoManager = videoManger;
+/// <reference path="../Sources/VideoSource"/>
+var VideoDistortionVisualization = (function (_super) {
+    __extends(VideoDistortionVisualization, _super);
+    function VideoDistortionVisualization(videoSource, audioSource, resolutionProvider, timeSource, shaderLoader) {
+        _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "video_audio_distortion");
+        this.addSources([videoSource]);
+        this.addUniforms(videoSource.uniforms());
     }
-    Object.defineProperty(VideoController.prototype, "Manager", {
-        get: function () {
-            return this._videoManager;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    VideoController.prototype.setVideoSource = function (videoElement) {
-        this._videoManager.useVideoSource(videoElement);
+    VideoDistortionVisualization.ID = "videoDistortion";
+    return VideoDistortionVisualization;
+})(AudioTextureShaderVisualization);
+/// <reference path="./BaseVisualization"/>
+/// <reference path="./SimpleVisualization"/>
+/// <reference path="./DotsVisualization"/>
+/// <reference path="./CirclesVisualization"/>
+/// <reference path="./VideoDistortionVisualization"/>
+var VisualizationManager = (function () {
+    function VisualizationManager(videoSource, audioSource, resolutionProvider, shaderBaseUrl, controlsProvider) {
+        this._visualizationSubject = new Rx.BehaviorSubject(null);
+        this._shaderLoader = new ShaderLoader(controlsProvider ? "controls.frag" : "no_controls.frag", "util.frag", shaderBaseUrl);
+        this._audioSource = audioSource;
+        this._videoSource = videoSource;
+        this._timeSource = new TimeSource();
+        this._resolutionProvider = resolutionProvider;
+    }
+    VisualizationManager.prototype.meshObservable = function (optionObservable) {
+        var _this = this;
+        optionObservable.subscribe(function (__) {
+            if (_this._visualizationSubject.getValue() != null) {
+                _this._visualizationSubject.getValue().unsubscribe();
+            }
+        });
+        this.addVisualization(optionObservable, SimpleVisualization.ID, function (options) { return new SimpleVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, options, _this._shaderLoader); });
+        this.addVisualization(optionObservable, DotsVisualization.ID, function (options) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); });
+        this.addVisualization(optionObservable, CirclesVisualization.ID, function (options) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); });
+        this.addVisualization(optionObservable, VideoDistortionVisualization.ID, function (options) { return new VideoDistortionVisualization(_this._videoSource, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); });
+        return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.meshObservable(); });
     };
-    return VideoController;
+    VisualizationManager.prototype.addVisualization = function (optionObservable, id, f) {
+        var _this = this;
+        optionObservable
+            .filter(function (visualization) { return visualization.id == id; })
+            .map(function (visualizationOption) { return visualizationOption.options; })
+            .map(function (options) { return f.call(_this, options); })
+            .subscribe(this._visualizationSubject);
+    };
+    VisualizationManager.prototype.animate = function () {
+        this._visualizationSubject.getValue().animate();
+    };
+    return VisualizationManager;
+})();
+/// <reference path='../typed/three.d.ts'/>
+/// <reference path="../typed/rx.d.ts"/>
+/// <reference path="../typed/rx-lite.d.ts"/>
+/// <reference path="../typed/rx.binding-lite.d.ts"/>
+/// <reference path="../Models/Sources/UniformProvider"/>
+/// <reference path='../Models/ShaderLoader.ts'/>
+/// <reference path='../Models/Sources/ResolutionProvider.ts'/>
+/// <reference path="../Models/Sources/TimeSource"/>
+/// <reference path='../Models/LoudnessAccumulator.ts'/>
+/// <reference path="../Models/Visualizations/VisualizationManager"/>
+var GLController = (function () {
+    function GLController(visualizationManager, visualizationOptionObservable, resolutionProvider) {
+        var _this = this;
+        this._meshSubject = new Rx.BehaviorSubject([]);
+        this.MeshObservable = this._meshSubject.asObservable();
+        this._resolutionProvider = resolutionProvider;
+        this._visualizationManager = visualizationManager;
+        this._visualizationManager.meshObservable(visualizationOptionObservable)
+            .subscribe(function (meshes) {
+            _this._meshSubject.onNext(meshes);
+        });
+    }
+    GLController.prototype.onNewResolution = function (resolution) {
+        this._resolutionProvider.updateResolution(new THREE.Vector2(resolution.width, resolution.height));
+    };
+    return GLController;
 })();
 var VolumeControl = (function () {
     function VolumeControl() {
@@ -1139,8 +968,6 @@ var VisualizationOptionsView = (function () {
 /// <reference path="../Controllers/PlayerController.ts"/>
 /// <reference path="./GLView.ts"/>
 /// <reference path="../Controllers/GLController.ts"/>
-/// <reference path="./VideoView.ts"/>
-/// <reference path="../Controllers/VideoController.ts"/>
 /// <reference path="../Controllers/ControlsController.ts"/>
 /// <reference path="./ControlsView.ts"/>
 /// <reference path="../Controllers/VisualizationOptionsController.ts"/>

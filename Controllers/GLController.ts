@@ -3,18 +3,15 @@
 /// <reference path="../typed/rx-lite.d.ts"/>
 /// <reference path="../typed/rx.binding-lite.d.ts"/>
 /// <reference path="../Models/Sources/UniformProvider"/>
-/// <reference path='../Models/PropertiesShaderPlane.ts'/>
 /// <reference path='../Models/ShaderLoader.ts'/>
 /// <reference path='../Models/Sources/ResolutionProvider.ts'/>
 /// <reference path="../Models/Sources/TimeSource"/>
-/// <reference path='../Models/Sources/AudioUniformProvider.ts'/>
 /// <reference path='../Models/LoudnessAccumulator.ts'/>
 /// <reference path="../Models/Visualizations/VisualizationManager"/>
 
 class GLController {
   private _meshSubject: Rx.BehaviorSubject<Array<THREE.Mesh>>;
   MeshObservable: Rx.Observable<Array<THREE.Mesh>>;
-  private _audioShaderPlane: PropertiesShaderPlane;
   private _resolutionProvider: ResolutionProvider;
   private _shadersUrl: string;
 

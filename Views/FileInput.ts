@@ -3,8 +3,6 @@
 /// <reference path="../Controllers/PlayerController.ts"/>
 /// <reference path="./GLView.ts"/>
 /// <reference path="../Controllers/GLController.ts"/>
-/// <reference path="./VideoView.ts"/>
-/// <reference path="../Controllers/VideoController.ts"/>
 /// <reference path="../Controllers/ControlsController.ts"/>
 /// <reference path="./ControlsView.ts"/>
 /// <reference path="../Controllers/VisualizationOptionsController.ts"/>

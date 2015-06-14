@@ -8,17 +8,13 @@ class CirclesVisualization extends AudioTextureShaderVisualization {
   private _accumulatedLoudness: IUniform<number>;
 
   constructor(audioSource: AudioSource, resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, controlsProvider?: ControlsProvider) {
-    super(audioSource, resolutionProvider, timeSource, shaderLoader, "circular_fft");
+    super(audioSource, resolutionProvider, timeSource, shaderLoader, "circular_fft", controlsProvider);
 
     this._accumulatedLoudness = {
       name: "accumulatedLoudness",
       type: "f",
       value: 0.0
     };
-
-    if (controlsProvider) {
-      this.addUniforms(controlsProvider.uniforms());
-    }
 
     this.addUniforms([this._accumulatedLoudness]);
   }
