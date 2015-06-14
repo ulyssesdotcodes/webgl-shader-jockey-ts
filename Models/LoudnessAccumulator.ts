@@ -1,9 +1,9 @@
-class LoudnessAccumulator implements IPropertiesProvider<number> {
+class LoudnessAccumulator implements UniformProvider<number> {
   private _accumulatedUniform: IUniform<number>;
   private _loudnessUniform: IUniform<number>;
   private _volume: IUniform<number>;
 
-  constructor(audioManager: AudioManager) {
+  constructor(audioManager: AudioSource) {
     this._accumulatedUniform = {
       name: "accumulatedLoudness",
       type: "f",
@@ -16,16 +16,16 @@ class LoudnessAccumulator implements IPropertiesProvider<number> {
       value: 0.0
     };
 
-    audioManager.AudioEventObservable.subscribe(ae => this.onAudioEvent(ae))
+    audioManager.observable().subscribe(ae => this.onAudioEvent(ae))
   }
 
   setVolumeUniform(volumeUniform: IUniform<number>) {
     this._volume = volumeUniform;
   }
 
-  onAudioEvent(audioEvent: IAudioEvent): void {
+  onAudioEvent(audioEvent: AudioEvent): void {
     var sum = 0.0;
-    for(var i = 0; i < audioEvent.frequencyBuffer.length; i++) {
+    for (var i = 0; i < audioEvent.frequencyBuffer.length; i++) {
       sum += audioEvent.frequencyBuffer[i];
     }
 
@@ -39,7 +39,7 @@ class LoudnessAccumulator implements IPropertiesProvider<number> {
     this._loudnessUniform.value = average;
   }
 
-  glProperties(): Rx.Observable<Array<IUniform<number>>> {
-    return Rx.Observable.just([this._accumulatedUniform, this._loudnessUniform]);
+  uniforms(): Array<IUniform<number>> {
+    return [this._accumulatedUniform, this._loudnessUniform];
   }
 }

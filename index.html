@@ -2,7 +2,7 @@
 
 <head>
   <link rel="stylesheet" type="text/css" href="styles/styles.css" />
-  <script type="text/javascript" src="lib/rx.all.min.js"></script>
+  <script type="text/javascript" src="lib/rx.all.js"></script>
   <script type="text/javascript" src="lib/jquery.js"></script>
   <script type="text/javascript" src="lib/rx.jquery.min.js"></script>
   <script type="text/javascript" src="lib/three.min.js"></script>
@@ -16,20 +16,23 @@
   var app =
     new GLVis.MicInput([
       {
+        name: "Simple",
+        id: "simple",
+        options: {
+          color: new THREE.Vector3(1.0, 0.0, 0.0)
+        }
+      },
+      {
         name: "Dots",
-        url: "dots"
+        id: "dots"
       },
       {
         name: "Circles",
-        url: "circular_fft"
+        id: "circles"
       },
       {
-        name: "Video audio distortion",
-        url: "video_audio_distortion"
-      },
-      {
-        name: "Central square",
-        url: "fft_matrix_product"
+        name: "Camera Distortion",
+        id: "videoDistortion"
       }
     ], 'shaders/');
   app.render($("#content")[0]);

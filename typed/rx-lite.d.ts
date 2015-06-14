@@ -291,7 +291,7 @@ declare module Rx {
 		do(onNext?: (value: T) => void, onError?: (exception: any) => void, onCompleted?: () => void): Observable<T>;
 		doAction(onNext?: (value: T) => void, onError?: (exception: any) => void, onCompleted?: () => void): Observable<T>;	// alias for do
 		tap(onNext?: (value: T) => void, onError?: (exception: any) => void, onCompleted?: () => void): Observable<T>;	// alias for do
-		
+
 		doOnNext(onNext: (value: T) => void, thisArg?: any): Observable<T>;
 		doOnError(onError: (exception: any) => void, thisArg?: any): Observable<T>;
 		doOnCompleted(onCompleted: () => void, thisArg?: any): Observable<T>;
@@ -305,7 +305,7 @@ declare module Rx {
 		materialize(): Observable<Notification<T>>;
 		repeat(repeatCount?: number): Observable<T>;
 		retry(retryCount?: number): Observable<T>;
-		scan<TAcc>(seed: TAcc, accumulator: (acc: TAcc, value: T) => TAcc): Observable<TAcc>;
+		scan<TAcc>(accumulator: (acc: TAcc, value: T) => TAcc, seed: TAcc): Observable<TAcc>;
 		scan(accumulator: (acc: T, value: T) => T): Observable<T>;
 		skipLast(count: number): Observable<T>;
 		startWith(...values: T[]): Observable<T>;

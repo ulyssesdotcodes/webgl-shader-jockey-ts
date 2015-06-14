@@ -1,14 +1,11 @@
-/// <reference path='../Models/ConstPropertiesProvider.ts'/>
-
 class GLView implements IControllerView {
   private _glController: GLController;
   private _currentPlaneMesh: THREE.Mesh;
   private _renderer: THREE.WebGLRenderer;
-  private _windowDimensPropertyProvider: ConstPropertiesProvider;
   private _camera: THREE.Camera;
   private _scene: THREE.Scene;
 
-  constructor(audioManager: AudioManager, glController: GLController) {
+  constructor(glController: GLController) {
     this._glController = glController;
   }
 
@@ -22,18 +19,18 @@ class GLView implements IControllerView {
     var sceneContainer = new THREE.Object3D();
     this._scene.add(sceneContainer);
     this._glController.MeshObservable
-      .scan(new THREE.Object3D(),
+      .scan(
       (obj, meshes) => {
         obj = new THREE.Object3D();
         meshes.forEach((mesh) => obj.add(mesh));
         obj.position = new THREE.Vector3(0, 0, 0);
         return obj;
-      })
+      }, new THREE.Object3D())
       .subscribe((obj) => {
-        this._scene.remove(sceneContainer);
-        sceneContainer = obj;
-        this._scene.add(sceneContainer);
-      });
+      this._scene.remove(sceneContainer);
+      sceneContainer = obj;
+      this._scene.add(sceneContainer);
+    });
 
     el.appendChild(this._renderer.domElement);
 
@@ -48,7 +45,6 @@ class GLView implements IControllerView {
   }
 
   animate() {
-    this._glController.update();
     this._renderer.render(this._scene, this._camera);
   }
 }

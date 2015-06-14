@@ -16,7 +16,9 @@ class ShaderLoader {
     this._shadersUrl = shadersUrl;
     this._initialMethodsUrl = shadersUrl + initialMethodsUrl;
     this._utilsUrl = shadersUrl + utilsUrl;
-    this.getVertex("plane").subscribe((vert) => this._regularVert = vert);
+    this.getVertex("plane").filter((vert) => vert != null).subscribe((vert) => {
+      this._regularVert = vert
+    });
   }
 
   getShaderFromServer(url: string): Rx.Observable<ShaderText> {
