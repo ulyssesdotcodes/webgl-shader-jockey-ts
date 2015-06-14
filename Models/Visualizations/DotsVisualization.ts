@@ -9,8 +9,8 @@ class DotsVisualization extends ShaderVisualization {
   private _accumulatedLoudness: IUniform<number>;
   private _loudness: IUniform<number>;
 
-  constructor(audioSource: AudioSource, resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader) {
-    super(resolutionProvider, timeSource, shaderLoader, "dots");
+  constructor(audioSource: AudioSource, resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, controlsProvider?: ControlsProvider) {
+    super(resolutionProvider, timeSource, shaderLoader, "dots", controlsProvider);
 
     this._audioSource = audioSource;
     this.addSources([this._audioSource]);

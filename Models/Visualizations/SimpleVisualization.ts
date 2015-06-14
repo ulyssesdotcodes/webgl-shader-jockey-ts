@@ -3,8 +3,8 @@
 class SimpleVisualization extends AudioTextureShaderVisualization {
   static ID = "simple";
 
-  constructor(audiosource: AudioSource, resolutionprovider: ResolutionProvider, timesource: TimeSource, options: any, shaderloader: ShaderLoader) {
-    super(audiosource, resolutionprovider, timesource, shaderloader, "simple");
+  constructor(audiosource: AudioSource, resolutionprovider: ResolutionProvider, timesource: TimeSource, options: any, shaderloader: ShaderLoader, controlsProvider?: ControlsProvider) {
+    super(audiosource, resolutionprovider, timesource, shaderloader, "simple", controlsProvider);
 
 
     var coloruniform = {

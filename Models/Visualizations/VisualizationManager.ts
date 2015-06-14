@@ -14,6 +14,7 @@ class VisualizationManager {
   private _timeSource: TimeSource;
 
   private _resolutionProvider: ResolutionProvider;
+  private _controlsProvider: ControlsProvider;
 
   constructor(videoSource: VideoSource, audioSource: AudioSource, resolutionProvider: ResolutionProvider, shaderBaseUrl: string, controlsProvider?: ControlsProvider) {
     this._visualizationSubject = new Rx.BehaviorSubject(null);
@@ -24,6 +25,7 @@ class VisualizationManager {
     this._videoSource = videoSource;
     this._timeSource = new TimeSource();
     this._resolutionProvider = resolutionProvider;
+    this._controlsProvider = controlsProvider;
   }
 
   meshObservable(optionObservable: Rx.Observable<VisualizationOption>): Rx.Observable<Array<THREE.Mesh>> {
@@ -34,16 +36,16 @@ class VisualizationManager {
     });
 
     this.addVisualization(optionObservable, SimpleVisualization.ID,
-      (options) => new SimpleVisualization(this._audioSource, this._resolutionProvider, this._timeSource, options, this._shaderLoader));
+      (options) => new SimpleVisualization(this._audioSource, this._resolutionProvider, this._timeSource, options, this._shaderLoader, this._controlsProvider));
 
     this.addVisualization(optionObservable, DotsVisualization.ID,
-      (options) => new DotsVisualization(this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader));
+      (options) => new DotsVisualization(this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));
 
     this.addVisualization(optionObservable, CirclesVisualization.ID,
-      (options) => new CirclesVisualization(this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader));
+      (options) => new CirclesVisualization(this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));
 
     this.addVisualization(optionObservable, VideoDistortionVisualization.ID,
-      (options) => new VideoDistortionVisualization(this._videoSource, this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader));
+      (options) => new VideoDistortionVisualization(this._videoSource, this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));
 
     return this._visualizationSubject.asObservable().filter(vis => vis != null).flatMap((visualization) => visualization.meshObservable());
   }
