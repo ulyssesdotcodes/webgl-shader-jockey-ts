@@ -491,7 +491,7 @@ var __extends = this.__extends || function (d, b) {
 };
 var ShaderVisualization = (function (_super) {
     __extends(ShaderVisualization, _super);
-    function ShaderVisualization(resolutionProvider, timeSource, shaderLoader, shaderUrl) {
+    function ShaderVisualization(resolutionProvider, timeSource, shaderLoader, shaderUrl, controlsProvider) {
         _super.call(this);
         this.addSources([timeSource]);
         this._shaderUrl = shaderUrl;
@@ -503,6 +503,9 @@ var ShaderVisualization = (function (_super) {
             value: 0.0
         };
         this._uniforms = [this._timeUniform].concat(resolutionProvider.uniforms());
+        if (controlsProvider) {
+            this.addUniforms(controlsProvider.uniforms());
+        }
     }
     ShaderVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
@@ -528,8 +531,8 @@ var ShaderVisualization = (function (_super) {
 /// <reference path="./ShaderVisualization"/>
 var AudioTextureShaderVisualization = (function (_super) {
     __extends(AudioTextureShaderVisualization, _super);
-    function AudioTextureShaderVisualization(audioSource, resolutionProvider, timeSource, shaderLoader, shaderUrl) {
-        _super.call(this, resolutionProvider, timeSource, shaderLoader, shaderUrl);
+    function AudioTextureShaderVisualization(audioSource, resolutionProvider, timeSource, shaderLoader, shaderUrl, controlsProvider) {
+        _super.call(this, resolutionProvider, timeSource, shaderLoader, shaderUrl, controlsProvider);
         this._audioTextureBuffer = new Uint8Array(AudioSource.FFT_SIZE * 4);
         this._audioSource = audioSource;
         this.addSources([this._audioSource]);
@@ -558,8 +561,8 @@ var AudioTextureShaderVisualization = (function (_super) {
 /// <reference path="./AudioTextureShaderVisualization"/>
 var SimpleVisualization = (function (_super) {
     __extends(SimpleVisualization, _super);
-    function SimpleVisualization(audiosource, resolutionprovider, timesource, options, shaderloader) {
-        _super.call(this, audiosource, resolutionprovider, timesource, shaderloader, "simple");
+    function SimpleVisualization(audiosource, resolutionprovider, timesource, options, shaderloader, controlsProvider) {
+        _super.call(this, audiosource, resolutionprovider, timesource, shaderloader, "simple", controlsProvider);
         var coloruniform = {
             name: "color",
             type: "v3",
@@ -579,8 +582,8 @@ var SimpleVisualization = (function (_super) {
 /// <reference path="./ShaderVisualization"/>
 var DotsVisualization = (function (_super) {
     __extends(DotsVisualization, _super);
-    function DotsVisualization(audioSource, resolutionProvider, timeSource, shaderLoader) {
-        _super.call(this, resolutionProvider, timeSource, shaderLoader, "dots");
+    function DotsVisualization(audioSource, resolutionProvider, timeSource, shaderLoader, controlsProvider) {
+        _super.call(this, resolutionProvider, timeSource, shaderLoader, "dots", controlsProvider);
         this._audioSource = audioSource;
         this.addSources([this._audioSource]);
         this._eqSegments = {
@@ -621,15 +624,12 @@ var DotsVisualization = (function (_super) {
 var CirclesVisualization = (function (_super) {
     __extends(CirclesVisualization, _super);
     function CirclesVisualization(audioSource, resolutionProvider, timeSource, shaderLoader, controlsProvider) {
-        _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "circular_fft");
+        _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "circular_fft", controlsProvider);
         this._accumulatedLoudness = {
             name: "accumulatedLoudness",
             type: "f",
             value: 0.0
         };
-        if (controlsProvider) {
-            this.addUniforms(controlsProvider.uniforms());
-        }
         this.addUniforms([this._accumulatedLoudness]);
     }
     CirclesVisualization.prototype.setupVisualizerChain = function () {
@@ -708,19 +708,31 @@ var VideoSource = (function () {
 /// <reference path="../Sources/VideoSource"/>
 var VideoDistortionVisualization = (function (_super) {
     __extends(VideoDistortionVisualization, _super);
-    function VideoDistortionVisualization(videoSource, audioSource, resolutionProvider, timeSource, shaderLoader) {
+    function VideoDistortionVisualization(videoSource, audioSource, resolutionProvider, timeSource, shaderLoader, controlsProvider) {
         _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "video_audio_distortion");
         this.addSources([videoSource]);
         this.addUniforms(videoSource.uniforms());
+        if (controlsProvider) {
+            this.addUniforms(controlsProvider.uniforms());
+        }
     }
     VideoDistortionVisualization.ID = "videoDistortion";
     return VideoDistortionVisualization;
+})(AudioTextureShaderVisualization);
+var SquareVisualization = (function (_super) {
+    __extends(SquareVisualization, _super);
+    function SquareVisualization(audioSource, resolutionProvider, timeSource, shaderLoader, controlsProvider) {
+        _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "fft_matrix_product", controlsProvider);
+    }
+    SquareVisualization.ID = "squared";
+    return SquareVisualization;
 })(AudioTextureShaderVisualization);
 /// <reference path="./BaseVisualization"/>
 /// <reference path="./SimpleVisualization"/>
 /// <reference path="./DotsVisualization"/>
 /// <reference path="./CirclesVisualization"/>
 /// <reference path="./VideoDistortionVisualization"/>
+/// <reference path="./SquareVisualization"/>
 var VisualizationManager = (function () {
     function VisualizationManager(videoSource, audioSource, resolutionProvider, shaderBaseUrl, controlsProvider) {
         this._visualizationSubject = new Rx.BehaviorSubject(null);
@@ -729,6 +741,7 @@ var VisualizationManager = (function () {
         this._videoSource = videoSource;
         this._timeSource = new TimeSource();
         this._resolutionProvider = resolutionProvider;
+        this._controlsProvider = controlsProvider;
     }
     VisualizationManager.prototype.meshObservable = function (optionObservable) {
         var _this = this;
@@ -737,10 +750,11 @@ var VisualizationManager = (function () {
                 _this._visualizationSubject.getValue().unsubscribe();
             }
         });
-        this.addVisualization(optionObservable, SimpleVisualization.ID, function (options) { return new SimpleVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, options, _this._shaderLoader); });
-        this.addVisualization(optionObservable, DotsVisualization.ID, function (options) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); });
-        this.addVisualization(optionObservable, CirclesVisualization.ID, function (options) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); });
-        this.addVisualization(optionObservable, VideoDistortionVisualization.ID, function (options) { return new VideoDistortionVisualization(_this._videoSource, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader); });
+        this.addVisualization(optionObservable, SimpleVisualization.ID, function (options) { return new SimpleVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, options, _this._shaderLoader, _this._controlsProvider); });
+        this.addVisualization(optionObservable, DotsVisualization.ID, function (options) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
+        this.addVisualization(optionObservable, CirclesVisualization.ID, function (options) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
+        this.addVisualization(optionObservable, VideoDistortionVisualization.ID, function (options) { return new VideoDistortionVisualization(_this._videoSource, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
+        this.addVisualization(optionObservable, SquareVisualization.ID, function (options) { return new SquareVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.meshObservable(); });
     };
     VisualizationManager.prototype.addVisualization = function (optionObservable, id, f) {

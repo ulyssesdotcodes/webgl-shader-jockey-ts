@@ -494,11 +494,20 @@ var VideoDistortionVisualization = (function (_super) {
     VideoDistortionVisualization.ID = "videoDistortion";
     return VideoDistortionVisualization;
 })(AudioTextureShaderVisualization);
+var SquareVisualization = (function (_super) {
+    __extends(SquareVisualization, _super);
+    function SquareVisualization(audioSource, resolutionProvider, timeSource, shaderLoader, controlsProvider) {
+        _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "fft_matrix_product", controlsProvider);
+    }
+    SquareVisualization.ID = "squared";
+    return SquareVisualization;
+})(AudioTextureShaderVisualization);
 /// <reference path="./BaseVisualization"/>
 /// <reference path="./SimpleVisualization"/>
 /// <reference path="./DotsVisualization"/>
 /// <reference path="./CirclesVisualization"/>
 /// <reference path="./VideoDistortionVisualization"/>
+/// <reference path="./SquareVisualization"/>
 var VisualizationManager = (function () {
     function VisualizationManager(videoSource, audioSource, resolutionProvider, shaderBaseUrl, controlsProvider) {
         this._visualizationSubject = new Rx.BehaviorSubject(null);
@@ -520,6 +529,7 @@ var VisualizationManager = (function () {
         this.addVisualization(optionObservable, DotsVisualization.ID, function (options) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, CirclesVisualization.ID, function (options) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, VideoDistortionVisualization.ID, function (options) { return new VideoDistortionVisualization(_this._videoSource, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
+        this.addVisualization(optionObservable, SquareVisualization.ID, function (options) { return new SquareVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.meshObservable(); });
     };
     VisualizationManager.prototype.addVisualization = function (optionObservable, id, f) {

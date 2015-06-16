@@ -48,6 +48,7 @@
         "./Models/Visualizations/DotsVisualization.ts",
         "./Models/Visualizations/ShaderVisualization.ts",
         "./Models/Visualizations/SimpleVisualization.ts",
+        "./Models/Visualizations/SquareVisualization.ts",
         "./Models/Visualizations/VideoDistortionVisualization.ts",
         "./Models/Visualizations/VisualizationManager.ts",
         "./Models/VolumeControl.ts",
