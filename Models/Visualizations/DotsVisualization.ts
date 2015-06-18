@@ -41,6 +41,7 @@ class DotsVisualization extends ShaderVisualization {
     this.addDisposable(
       this._audioSource.observable()
         .map((e) => AudioUniformFunctions.calculateEqs(e, 4))
+        .map((eqs) => new THREE.Vector4(eqs[0], eqs[1], eqs[2], eqs[3]))
         .subscribe((eqs) => this._eqSegments.value = eqs)
       );
 

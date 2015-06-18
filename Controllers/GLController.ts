@@ -10,15 +10,15 @@
 /// <reference path="../Models/Visualizations/VisualizationManager"/>
 
 class GLController {
-  private _meshSubject: Rx.BehaviorSubject<Array<THREE.Mesh>>;
-  MeshObservable: Rx.Observable<Array<THREE.Mesh>>;
+  private _meshSubject: Rx.BehaviorSubject<Array<THREE.Object3D>>;
+  MeshObservable: Rx.Observable<Array<THREE.Object3D>>;
   private _resolutionProvider: ResolutionProvider;
   private _shadersUrl: string;
 
   private _visualizationManager: VisualizationManager;
 
   constructor(visualizationManager: VisualizationManager, visualizationOptionObservable: Rx.Observable<VisualizationOption>, resolutionProvider: ResolutionProvider) {
-    this._meshSubject = new Rx.BehaviorSubject<Array<THREE.Mesh>>([]);
+    this._meshSubject = new Rx.BehaviorSubject<Array<THREE.Object3D>>([]);
     this.MeshObservable = this._meshSubject.asObservable();
 
     this._resolutionProvider = resolutionProvider;

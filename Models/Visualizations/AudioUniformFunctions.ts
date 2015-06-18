@@ -9,23 +9,28 @@ module AudioUniformFunctions {
     }
   }
 
-  export function calculateEqs(e: AudioEvent, segmentSize: number): THREE.Vector4 {
-    if (e.frequencyBuffer != undefined) {
-      var vec = [0.0, 0.0, 0.0, 0.0];
+  export function calculateEqs(e: AudioEvent, segments: number): Array<number> {
+    if (e.frequencyBuffer !== undefined) {
+      var vec: Array<number> = [];
 
-      for(var i = 0; i < segmentSize * 4; i++) {
-        var val = e.frequencyBuffer[i];
-        vec[Math.floor(i/segmentSize)] += val * val / (255 - ((255 - val) * i / (segmentSize * 4.0)));
+      for(var i = 0; i < segments; i++) {
+        vec.push(0);
       }
 
-      return new  THREE.Vector4(
-        vec[0] / (256.0 * segmentSize),
-        vec[1] / (256.0 * segmentSize),
-        vec[2] / (256.0 * segmentSize),
-        vec[3] / (256.0 * segmentSize)
-      );
+      var segmentSize = e.frequencyBuffer.length * 0.5 / segments;
+
+      for(var i = 0; i < segmentSize * segments; i++) {
+        var val = e.frequencyBuffer[i];
+        vec[Math.floor(i/segmentSize)] += val * val / (255 - ((255 - val) * i / (segmentSize * segments)));
+      }
+
+      for(i = 0; i < vec.length; i++) {
+        vec[i] = vec[i] / (256.0 * segmentSize);
+      }
+
+      return vec;
     }
-    return new THREE.Vector4(0.0, 0.0, 0.0, 0.0);
+    return new Array(e.frequencyBuffer.length);
   }
 
   export function calculateLoudness(e: AudioEvent) {

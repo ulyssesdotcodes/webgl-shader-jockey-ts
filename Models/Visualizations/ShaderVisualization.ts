@@ -45,12 +45,13 @@ class ShaderVisualization extends BaseVisualization {
     this._uniforms = this._uniforms.concat(uniforms);
   }
 
-  meshObservable(): Rx.Observable<Array<THREE.Mesh>> {
+  object3DObservable(): Rx.Observable<Array<THREE.Mesh>> {
     return Rx.Observable.create<Array<THREE.Mesh>>((observer) => {
       this.setupVisualizerChain();
 
       this._shaderLoader.getShaderFromServer(this._shaderUrl)
         .map((shader) => new ShaderPlane(shader, this._uniforms))
+        .doOnNext(__ => this.onCreated())
         .map((shaderplane) => [shaderplane.mesh])
         .subscribe(observer);
     });
