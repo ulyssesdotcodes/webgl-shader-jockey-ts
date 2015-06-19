@@ -16,9 +16,6 @@ class ShaderLoader {
     this._shadersUrl = shadersUrl;
     this._initialMethodsUrl = shadersUrl + initialMethodsUrl;
     this._utilsUrl = shadersUrl + utilsUrl;
-    this.getVertex("plane").filter((vert) => vert != null).subscribe((vert) => {
-      this._regularVert = vert
-    });
   }
 
   getShaderFromServer(url: string): Rx.Observable<ShaderText> {
@@ -28,8 +25,8 @@ class ShaderLoader {
 
   private getVertex(url: string): Rx.Observable<string> {
     return $.getAsObservable<ShaderResponse>(this._shadersUrl + url + ".vert")
-      .map((shader) => shader.data )
-      .onErrorResumeNext(Rx.Observable.just(this._regularVert));
+      .map((shader) => shader.data)
+      .onErrorResumeNext(this.getPlane());
   }
 
   private getFragment(url: string): Rx.Observable<string> {
@@ -38,8 +35,20 @@ class ShaderLoader {
       .combineLatest(this.utilFrag(), this.initialMethodsFrag(), (frag, im, util) => util.concat(im).concat(frag));
   }
 
+  private getPlane(): Rx.Observable<string> {
+    if (this._regularVert) {
+      return Rx.Observable.just(this._regularVert);
+    }
+
+    return $.getAsObservable<ShaderResponse>(this._shadersUrl + "plane.vert")
+      .map((shader) => shader.data)
+      .doOnNext((vert) => {
+      this._regularVert = vert
+    });
+  }
+
   private utilFrag(): Rx.Observable<string> {
-    if(this._utilFrag === undefined) {
+    if (this._utilFrag === undefined) {
       return $.getAsObservable<ShaderResponse>(this._utilsUrl)
         .map((shader) => shader.data)
         .doOnNext((util) => this._utilFrag = util);
@@ -49,7 +58,7 @@ class ShaderLoader {
   }
 
   private initialMethodsFrag(): Rx.Observable<string> {
-    if(this._initialMethodsFrag === undefined) {
+    if (this._initialMethodsFrag === undefined) {
       return $.getAsObservable<ShaderResponse>(this._initialMethodsUrl)
         .map((shader) => shader.data)
         .doOnNext((util) => this._initialMethodsFrag = util);
