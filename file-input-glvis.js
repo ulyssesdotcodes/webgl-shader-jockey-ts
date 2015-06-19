@@ -265,22 +265,27 @@ var ShaderText = (function () {
 /// <reference path='./ShaderText.ts'/>
 var ShaderLoader = (function () {
     function ShaderLoader(initialMethodsUrl, utilsUrl, shadersUrl) {
-        var _this = this;
         this._shadersUrl = shadersUrl;
         this._initialMethodsUrl = shadersUrl + initialMethodsUrl;
         this._utilsUrl = shadersUrl + utilsUrl;
-        this.getVertex("plane").filter(function (vert) { return vert != null; }).subscribe(function (vert) {
-            _this._regularVert = vert;
-        });
     }
     ShaderLoader.prototype.getShaderFromServer = function (url) {
         return Rx.Observable.zip(this.getFragment(url), this.getVertex(url), function (frag, vert) { return new ShaderText(frag, vert); });
     };
     ShaderLoader.prototype.getVertex = function (url) {
-        return $.getAsObservable(this._shadersUrl + url + ".vert").map(function (shader) { return shader.data; }).onErrorResumeNext(Rx.Observable.just(this._regularVert));
+        return $.getAsObservable(this._shadersUrl + url + ".vert").map(function (shader) { return shader.data; }).onErrorResumeNext(this.getPlane());
     };
     ShaderLoader.prototype.getFragment = function (url) {
         return $.getAsObservable(this._shadersUrl + url + '.frag').map(function (shader) { return shader.data; }).combineLatest(this.utilFrag(), this.initialMethodsFrag(), function (frag, im, util) { return util.concat(im).concat(frag); });
+    };
+    ShaderLoader.prototype.getPlane = function () {
+        var _this = this;
+        if (this._regularVert) {
+            return Rx.Observable.just(this._regularVert);
+        }
+        return $.getAsObservable(this._shadersUrl + "plane.vert").map(function (shader) { return shader.data; }).doOnNext(function (vert) {
+            _this._regularVert = vert;
+        });
     };
     ShaderLoader.prototype.utilFrag = function () {
         var _this = this;
