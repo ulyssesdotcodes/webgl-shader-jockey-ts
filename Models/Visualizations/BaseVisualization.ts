@@ -1,4 +1,5 @@
 class BaseVisualization {
+  private _created = false;
   private _sources: Array<Source<any>>;
 
   private _disposable: Rx.CompositeDisposable;
@@ -16,11 +17,17 @@ class BaseVisualization {
     this._disposable.add(disposable);
   }
 
-  animate() {
-    this._sources.forEach(source => source.animate());
+  onCreated() {
+    this._created = true;
   }
 
-  meshObservable(): Rx.Observable<Array<THREE.Mesh>> {
+  animate() {
+    if(this._created) {
+      this._sources.forEach(source => source.animate());
+    }
+  }
+
+  object3DObservable(): Rx.Observable<Array<THREE.Object3D>> {
     console.log("Yo, you forgot to implement meshObservable().")
     return null;
   }

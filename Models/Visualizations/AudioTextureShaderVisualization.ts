@@ -46,7 +46,7 @@ class AudioTextureShaderVisualization extends ShaderVisualization {
     );
   }
 
-  meshObservable(): Rx.Observable<Array<THREE.Mesh>> {
-    return super.meshObservable();
+  object3DObservable(): Rx.Observable<Array<THREE.Mesh>> {
+    return super.object3DObservable();
   }
 }

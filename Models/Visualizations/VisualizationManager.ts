@@ -3,6 +3,8 @@
 /// <reference path="./DotsVisualization"/>
 /// <reference path="./CirclesVisualization"/>
 /// <reference path="./VideoDistortionVisualization"/>
+/// <reference path="./SquareVisualization"/>
+/// <reference path="./EqPointCloud"/>
 
 class VisualizationManager {
   private _visualizationSubject: Rx.BehaviorSubject<BaseVisualization>;
@@ -28,7 +30,7 @@ class VisualizationManager {
     this._controlsProvider = controlsProvider;
   }
 
-  meshObservable(optionObservable: Rx.Observable<VisualizationOption>): Rx.Observable<Array<THREE.Mesh>> {
+  meshObservable(optionObservable: Rx.Observable<VisualizationOption>): Rx.Observable<Array<THREE.Object3D>> {
     optionObservable.subscribe((__) => {
       if (this._visualizationSubject.getValue() != null) {
         this._visualizationSubject.getValue().unsubscribe();
@@ -47,7 +49,13 @@ class VisualizationManager {
     this.addVisualization(optionObservable, VideoDistortionVisualization.ID,
       (options) => new VideoDistortionVisualization(this._videoSource, this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));
 
-    return this._visualizationSubject.asObservable().filter(vis => vis != null).flatMap((visualization) => visualization.meshObservable());
+    this.addVisualization(optionObservable, SquareVisualization.ID,
+      (options) => new SquareVisualization(this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));
+
+    this.addVisualization(optionObservable, EqPointCloud.ID,
+      (options) => new EqPointCloud(this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));
+
+    return this._visualizationSubject.asObservable().filter(vis => vis != null).flatMap((visualization) => visualization.object3DObservable());
   }
 
   addVisualization(optionObservable: Rx.Observable<VisualizationOption>, id: string,

@@ -1,7 +1,5 @@
 /// <reference path="./GLView.ts"/>
 /// <reference path="../Controllers/GLController.ts"/>
-/// <reference path="./VideoView.ts"/>
-/// <reference path="../Controllers/VideoController.ts"/>
 /// <reference path="../Controllers/ControlsController.ts"/>
 /// <reference path="./ControlsView.ts"/>
 /// <reference path='./IControllerView.ts' />
@@ -14,13 +12,11 @@
 module GLVis {
   export class MicInput implements IControllerView {
     private _visualizationManager: VisualizationManager;
-    private _videoController: VideoController;
     private _visualizationOptionsController: VisualizationOptionsController;
     private _controlsController: ControlsController;
     private _glController: GLController;
     private _glView: GLView;
     private _shadersView: VisualizationOptionsView;
-    private _videoView: VideoView;
     private _controlsView: ControlsView;
     content: JQuery;
 

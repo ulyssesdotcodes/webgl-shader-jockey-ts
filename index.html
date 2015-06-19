@@ -13,29 +13,30 @@
   <div id="content"></div>
 
   <script type="text/javascript">
-  var app =
-    new GLVis.MicInput([
-      {
-        name: "Simple",
+    var app =
+      new GLVis.MicInput([{
+        name: "EQ Point Cloud",
+        id: "eqPointCloud"
+      }, {
+        name: "simple",
         id: "simple",
         options: {
           color: new THREE.Vector3(1.0, 0.0, 0.0)
         }
-      },
-      {
+      }, {
         name: "Dots",
         id: "dots"
-      },
-      {
+      }, {
         name: "Circles",
         id: "circles"
-      },
-      {
+      }, {
         name: "Camera Distortion",
         id: "videoDistortion"
-      }
-    ], 'shaders/');
-  app.render($("#content")[0]);
+      }, {
+        name: "Squared",
+        id: "squared"
+      }], 'shaders/');
+    app.render($("#content")[0]);
   </script>
 </body>
 
