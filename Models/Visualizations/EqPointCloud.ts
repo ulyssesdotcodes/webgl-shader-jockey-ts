@@ -127,14 +127,15 @@ class EqPointCloud extends PointCloudVisualization {
       this._pc.rotateY(this._loudness / 128.0);
       this._pc.rotateX(this._loudness / 256.0);
 
-      this.updateEqWithVelocity(this._eq1, this._eq1Vel);
-      this.updateEqWithVelocity(this._eq2, this._eq2Vel);
-      this.updateEqWithVelocity(this._eq3, this._eq3Vel);
+      this.updateEqWithVelocity(this._eq1, this._eq1Vel, this._eqs.value.x);
+      this.updateEqWithVelocity(this._eq2, this._eq2Vel, this._eqs.value.y);
+      this.updateEqWithVelocity(this._eq3, this._eq3Vel, this._eqs.value.z);
     }
   }
 
-  updateEqWithVelocity(eq: IUniform<THREE.Vector3>, eqVel: THREE.Vector3): void {
-    eq.value.add(eqVel);
+  updateEqWithVelocity(eq: IUniform<THREE.Vector3>, eqVel: THREE.Vector3, mult: number): void {
+
+    eq.value.add(eqVel.clone().multiplyScalar(mult * mult * 4.0));
 
     if (eq.value.x > EqPointCloud.CUBE_SIZE * 0.5 || eq.value.x < -EqPointCloud.CUBE_SIZE * 0.5) {
       eqVel.setX(-eqVel.x);
