@@ -3,8 +3,6 @@
 
 
 class CirclesVisualization extends AudioTextureShaderVisualization {
-  static ID = "circles";
-
   private _accumulatedLoudness: IUniform<number>;
 
   constructor(audioSource: AudioSource, resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, controlsProvider?: ControlsProvider) {
@@ -33,5 +31,9 @@ class CirclesVisualization extends AudioTextureShaderVisualization {
 
   object3DObservable(): Rx.Observable<Array<THREE.Mesh>> {
     return super.object3DObservable();
+  }
+
+  id() {
+    return IDs.circles;
   }
 }

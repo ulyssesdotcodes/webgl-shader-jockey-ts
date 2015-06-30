@@ -175,6 +175,9 @@ var BaseVisualization = (function () {
     BaseVisualization.prototype.unsubscribe = function () {
         this._disposable.dispose();
     };
+    BaseVisualization.prototype.id = function () {
+        return "";
+    };
     return BaseVisualization;
 })();
 var AudioUniformFunctions;
@@ -344,6 +347,13 @@ var ShaderVisualization = (function (_super) {
     ShaderVisualization.prototype.addUniforms = function (uniforms) {
         this._uniforms = this._uniforms.concat(uniforms);
     };
+    ShaderVisualization.prototype.animate = function () {
+        _super.prototype.animate.call(this);
+        return {
+            type: this.id(),
+            uniforms: this._uniforms
+        };
+    };
     ShaderVisualization.prototype.object3DObservable = function () {
         var _this = this;
         return Rx.Observable.create(function (observer) {
@@ -403,6 +413,14 @@ var SimpleVisualization = (function (_super) {
     SimpleVisualization.ID = "simple";
     return SimpleVisualization;
 })(AudioTextureShaderVisualization);
+var IDs = (function () {
+    function IDs() {
+    }
+    IDs.dots = "dots";
+    IDs.circles = "circles";
+    return IDs;
+})();
+/// <reference path="./IDs"/>
 /// <reference path="./ShaderVisualization"/>
 var DotsVisualization = (function (_super) {
     __extends(DotsVisualization, _super);
@@ -436,7 +454,10 @@ var DotsVisualization = (function (_super) {
             _this._accumulatedLoudness.value += loudness;
         }));
     };
-    DotsVisualization.ID = "dots";
+    DotsVisualization.prototype.id = function () {
+        return IDs.dots;
+    };
+    DotsVisualization.ID = IDs.dots;
     return DotsVisualization;
 })(ShaderVisualization);
 /// <reference path="./AudioTextureShaderVisualization"/>
@@ -462,7 +483,9 @@ var CirclesVisualization = (function (_super) {
     CirclesVisualization.prototype.object3DObservable = function () {
         return _super.prototype.object3DObservable.call(this);
     };
-    CirclesVisualization.ID = "circles";
+    CirclesVisualization.prototype.id = function () {
+        return IDs.circles;
+    };
     return CirclesVisualization;
 })(AudioTextureShaderVisualization);
 var VideoSource = (function () {
@@ -700,6 +723,7 @@ var EqPointCloud = (function (_super) {
 var VisualizationManager = (function () {
     function VisualizationManager(videoSource, audioSource, resolutionProvider, shaderBaseUrl, controlsProvider) {
         this._visualizationSubject = new Rx.BehaviorSubject(null);
+        this._visualizations = [];
         this._shaderLoader = new ShaderLoader(controlsProvider ? "controls.frag" : "no_controls.frag", "util.frag", shaderBaseUrl);
         this._audioSource = audioSource;
         this._videoSource = videoSource;
@@ -715,19 +739,33 @@ var VisualizationManager = (function () {
             }
         });
         this.addVisualization(optionObservable, SimpleVisualization.ID, function (options) { return new SimpleVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, options, _this._shaderLoader, _this._controlsProvider); });
-        this.addVisualization(optionObservable, DotsVisualization.ID, function (options) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
-        this.addVisualization(optionObservable, CirclesVisualization.ID, function (options) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
+        this.addVisualization(optionObservable, IDs.dots, function (options) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
+        this.addVisualization(optionObservable, IDs.circles, function (options) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, VideoDistortionVisualization.ID, function (options) { return new VideoDistortionVisualization(_this._videoSource, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, SquareVisualization.ID, function (options) { return new SquareVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, EqPointCloud.ID, function (options) { return new EqPointCloud(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.object3DObservable(); });
     };
+    VisualizationManager.prototype.observableSubject = function () {
+        return this._visualizationSubject.asObservable().flatMap(function (vis) { return vis.object3DObservable().map(function (newVis) {
+            var objs = [];
+            newVis.forEach(function (obj) {
+                objs.push(obj.toJSON());
+            });
+            return { type: vis.id(), objects: objs };
+        }); });
+    };
     VisualizationManager.prototype.addVisualization = function (optionObservable, id, f) {
         var _this = this;
-        optionObservable.filter(function (visualization) { return visualization.id == id; }).map(function (visualizationOption) { return visualizationOption.options; }).map(function (options) { return f.call(_this, options); }).subscribe(this._visualizationSubject);
+        optionObservable.filter(function (visualization) { return visualization.id == id; }).map(function (visOpt) {
+            if (!_this._visualizations[visOpt.id]) {
+                _this._visualizations[visOpt.id] = f(visOpt.options);
+            }
+            return _this._visualizations[visOpt.id];
+        }).map(function (visualizationOption) { return visualizationOption.options; }).map(function (options) { return f.call(_this, options); }).subscribe(this._visualizationSubject);
     };
     VisualizationManager.prototype.animate = function () {
-        this._visualizationSubject.getValue().animate();
+        return this._visualizationSubject.getValue().animate();
     };
     return VisualizationManager;
 })();
@@ -904,8 +942,9 @@ var VisualizationOptionsController = (function () {
 })();
 /// <reference path="../Controllers/VisualizationOptionsController"/>
 var VisualizationOptionsView = (function () {
-    function VisualizationOptionsView(shadersController) {
+    function VisualizationOptionsView(shadersController, autoplay) {
         this._shadersController = shadersController;
+        this._autoplay = autoplay;
     }
     VisualizationOptionsView.prototype.render = function (el) {
         var _this = this;
@@ -915,20 +954,25 @@ var VisualizationOptionsView = (function () {
         select.change(function (__) { return _this._shadersController.onOptionName(select.find('option:selected').val()); });
         this._shadersController.shaderNames().forEach(function (shaderName) { return select.append("<option value=\"" + shaderName + "\">" + shaderName + "</option>"); });
         container.append(select);
-        // Autoplay to enable autoplay
-        var autoplay = $("<label>", { text: "Autoplay" });
-        var input = $("<input/>", {
-            type: "checkbox",
-            checked: true
-        });
-        input.change(function () {
-            _this._shadersController.onAutoplayChanged(input.is(":checked"));
-        });
-        this._shadersController.currentShaderObservable().subscribe(function (ind) {
-            select.children().eq(ind).prop('selected', true);
-        });
-        autoplay.prepend(input);
-        container.append(autoplay);
+        if (this._autoplay) {
+            // Autoplay to enable autoplay
+            var autoplay = $("<label>", { text: "Autoplay" });
+            var input = $("<input/>", {
+                type: "checkbox",
+                checked: true
+            });
+            input.change(function () {
+                _this._shadersController.onAutoplayChanged(input.is(":checked"));
+            });
+            this._shadersController.currentShaderObservable().subscribe(function (ind) {
+                select.children().eq(ind).prop('selected', true);
+            });
+            autoplay.prepend(input);
+            container.append(autoplay);
+        }
+        else {
+            this._shadersController.onAutoplayChanged(false);
+        }
         $(el).append(container);
     };
     return VisualizationOptionsView;
@@ -1078,10 +1122,12 @@ var MicSource = (function (_super) {
 /// <reference path="../Models/VisualizationOption"/>
 /// <reference path="../Models/Sources/MicSource"/>
 /// <reference path="../Models/Sources/AudioSource"/>
+/// <reference path="../Models/Window"/>
 var GLVis;
 (function (GLVis) {
     var MicInput = (function () {
         function MicInput(visualizationOptions, shadersUrl) {
+            var _this = this;
             this.content = $("<div>");
             window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
             var audioSource = new MicSource(new AudioContext());
@@ -1089,14 +1135,22 @@ var GLVis;
             var resolutionProvider = new ResolutionProvider();
             var controlsProvider = new ControlsProvider();
             this._visualizationManager = new VisualizationManager(videoSource, audioSource, resolutionProvider, shadersUrl, controlsProvider);
-            // this._videoController = new VideoController(videoSource);
             this._visualizationOptionsController = new VisualizationOptionsController(visualizationOptions);
             this._controlsController = new ControlsController(controlsProvider);
             this._glController = new GLController(this._visualizationManager, this._visualizationOptionsController.VisualizationOptionObservable, resolutionProvider);
             this._glView = new GLView(this._glController);
-            this._shadersView = new VisualizationOptionsView(this._visualizationOptionsController);
+            this._shadersView = new VisualizationOptionsView(this._visualizationOptionsController, false);
             this._controlsView = new ControlsView(this._controlsController);
-            // this._videoView = new VideoView(this._videoController);
+            window.addEventListener('keypress', function (e) {
+                // console.log(e.keyCode);
+                // 'f' key
+                if (e.keyCode == 102) {
+                    _this._otherWindow = window.open("window.html", "_new", undefined, true);
+                    _this._otherWindow.onload = function () {
+                        _this._visualizationManager.observableSubject().subscribe(function (objs) { return _this._otherWindow.newVis(objs); });
+                    };
+                }
+            });
         }
         MicInput.prototype.render = function (el) {
             var _this = this;
@@ -1110,7 +1164,10 @@ var GLVis;
         MicInput.prototype.animate = function () {
             var _this = this;
             requestAnimationFrame(function () { return _this.animate(); });
-            this._visualizationManager.animate();
+            var update = this._visualizationManager.animate();
+            if (this._otherWindow) {
+                this._otherWindow.update(update);
+            }
             this._glView.animate();
         };
         return MicInput;

@@ -622,6 +622,13 @@ var SimpleVisualization = (function (_super) {
     SimpleVisualization.ID = "simple";
     return SimpleVisualization;
 })(AudioTextureShaderVisualization);
+var IDs = (function () {
+    function IDs() {
+    }
+    IDs.dots = "dots";
+    return IDs;
+})();
+/// <reference path="./IDs"/>
 /// <reference path="./ShaderVisualization"/>
 var DotsVisualization = (function (_super) {
     __extends(DotsVisualization, _super);
@@ -655,7 +662,14 @@ var DotsVisualization = (function (_super) {
             _this._accumulatedLoudness.value += loudness;
         }));
     };
-    DotsVisualization.ID = "dots";
+    DotsVisualization.prototype.animate = function () {
+        _super.prototype.animate.call(this);
+        return {
+            type: DotsVisualization.ID,
+            uniforms: this._uniforms
+        };
+    };
+    DotsVisualization.ID = IDs.dots;
     return DotsVisualization;
 })(ShaderVisualization);
 /// <reference path="./AudioTextureShaderVisualization"/>
@@ -941,12 +955,20 @@ var VisualizationManager = (function () {
         this.addVisualization(optionObservable, EqPointCloud.ID, function (options) { return new EqPointCloud(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.object3DObservable(); });
     };
+    VisualizationManager.prototype.observableSubject = function () {
+        return this._visualizationSubject.asObservable();
+    };
     VisualizationManager.prototype.addVisualization = function (optionObservable, id, f) {
         var _this = this;
-        optionObservable.filter(function (visualization) { return visualization.id == id; }).map(function (visualizationOption) { return visualizationOption.options; }).map(function (options) { return f.call(_this, options); }).subscribe(this._visualizationSubject);
+        optionObservable.filter(function (visualization) { return visualization.id == id; }).map(function (visOpt) {
+            if (!_this._visualizations[visOpt.id]) {
+                _this._visualizations[visOpt.id] = f(options);
+            }
+            return _this._visualizations[visOpt.id];
+        }).map(function (visualizationOption) { return visualizationOption.options; }).map(function (options) { return f.call(_this, options); }).subscribe(this._visualizationSubject);
     };
     VisualizationManager.prototype.animate = function () {
-        this._visualizationSubject.getValue().animate();
+        return this._visualizationSubject.getValue().animate();
     };
     return VisualizationManager;
 })();

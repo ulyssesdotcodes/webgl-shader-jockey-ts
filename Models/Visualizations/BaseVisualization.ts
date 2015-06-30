@@ -21,7 +21,7 @@ class BaseVisualization {
     this._created = true;
   }
 
-  animate() {
+  animate(): any {
     if(this._created) {
       this._sources.forEach(source => source.animate());
     }
@@ -34,5 +34,9 @@ class BaseVisualization {
 
   unsubscribe(): void {
     this._disposable.dispose();
+  }
+
+  id(): string {
+    return "";
   }
 }

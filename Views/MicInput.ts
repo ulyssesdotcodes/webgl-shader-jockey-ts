@@ -8,6 +8,7 @@
 /// <reference path="../Models/VisualizationOption"/>
 /// <reference path="../Models/Sources/MicSource"/>
 /// <reference path="../Models/Sources/AudioSource"/>
+/// <reference path="../Models/Window"/>
 
 module GLVis {
   export class MicInput implements IControllerView {
@@ -18,6 +19,7 @@ module GLVis {
     private _glView: GLView;
     private _shadersView: VisualizationOptionsView;
     private _controlsView: ControlsView;
+    private _otherWindow: Window;
     content: JQuery;
 
     constructor(visualizationOptions: Array<VisualizationOption>, shadersUrl) {
@@ -31,15 +33,25 @@ module GLVis {
 
       this._visualizationManager = new VisualizationManager(videoSource, audioSource, resolutionProvider, shadersUrl, controlsProvider);
 
-      // this._videoController = new VideoController(videoSource);
       this._visualizationOptionsController = new VisualizationOptionsController(visualizationOptions);
       this._controlsController = new ControlsController(controlsProvider);
       this._glController = new GLController(this._visualizationManager, this._visualizationOptionsController.VisualizationOptionObservable, resolutionProvider);
 
       this._glView = new GLView(this._glController);
-      this._shadersView = new VisualizationOptionsView(this._visualizationOptionsController);
+      this._shadersView = new VisualizationOptionsView(this._visualizationOptionsController, false);
       this._controlsView = new ControlsView(this._controlsController);
-      // this._videoView = new VideoView(this._videoController);
+
+      window.addEventListener('keypress', (e) => {
+        // console.log(e.keyCode);
+        // 'f' key
+        if(e.keyCode == 102) {
+          this._otherWindow = window.open("window.html", "_new", undefined, true);
+          this._otherWindow.onload = () => {
+            this._visualizationManager.observableSubject()
+              .subscribe((objs)=>  this._otherWindow.newVis(objs));
+          }
+        }
+      })
   }
 
     render(el: HTMLElement): void {
@@ -54,7 +66,10 @@ module GLVis {
 
     animate(): void {
       requestAnimationFrame(() => this.animate());
-      this._visualizationManager.animate();
+      var update = this._visualizationManager.animate();
+      if(this._otherWindow) {
+        this._otherWindow.update(update);
+      }
       this._glView.animate();
     }
   }

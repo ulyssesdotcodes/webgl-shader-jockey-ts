@@ -7,7 +7,7 @@ class ShaderVisualization extends BaseVisualization {
 
   private _timeUniform: IUniform<number>;
 
-  private _uniforms: Array<IUniform<any>>;
+  protected _uniforms: Array<IUniform<any>>;
 
   private _shaderUrl: string;
 
@@ -43,6 +43,15 @@ class ShaderVisualization extends BaseVisualization {
 
   protected addUniforms(uniforms: Array<IUniform<any>>) {
     this._uniforms = this._uniforms.concat(uniforms);
+  }
+
+  animate(): any {
+    super.animate();
+
+    return {
+      type: this.id(),
+      uniforms: this._uniforms
+    };
   }
 
   object3DObservable(): Rx.Observable<Array<THREE.Mesh>> {

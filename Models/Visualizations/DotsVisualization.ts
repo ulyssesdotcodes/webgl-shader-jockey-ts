@@ -1,7 +1,8 @@
+/// <reference path="./IDs"/>
 /// <reference path="./ShaderVisualization"/>
 
 class DotsVisualization extends ShaderVisualization {
-  static ID = "dots";
+  static ID = IDs.dots;
 
   private _audioSource: AudioSource;
 
@@ -53,5 +54,9 @@ class DotsVisualization extends ShaderVisualization {
         this._accumulatedLoudness.value += loudness;
       })
     );
+  }
+
+  id(): string {
+    return IDs.dots;
   }
 }
