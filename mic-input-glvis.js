@@ -175,7 +175,7 @@ var BaseVisualization = (function () {
     BaseVisualization.prototype.unsubscribe = function () {
         this._disposable.dispose();
     };
-    BaseVisualization.prototype.id = function () {
+    BaseVisualization.prototype.rendererId = function () {
         return "";
     };
     return BaseVisualization;
@@ -350,7 +350,7 @@ var ShaderVisualization = (function (_super) {
     ShaderVisualization.prototype.animate = function () {
         _super.prototype.animate.call(this);
         return {
-            type: this.id(),
+            type: this.rendererId(),
             uniforms: this._uniforms
         };
     };
@@ -410,6 +410,9 @@ var SimpleVisualization = (function (_super) {
     SimpleVisualization.prototype.object3DObservable = function () {
         return _super.prototype.object3DObservable.call(this);
     };
+    SimpleVisualization.prototype.rendererId = function () {
+        return IDs.shader;
+    };
     SimpleVisualization.ID = "simple";
     return SimpleVisualization;
 })(AudioTextureShaderVisualization);
@@ -418,6 +421,8 @@ var IDs = (function () {
     }
     IDs.dots = "dots";
     IDs.circles = "circles";
+    IDs.shader = "shader";
+    IDs.eqPointCloud = "eqPointCloud";
     return IDs;
 })();
 /// <reference path="./IDs"/>
@@ -454,8 +459,8 @@ var DotsVisualization = (function (_super) {
             _this._accumulatedLoudness.value += loudness;
         }));
     };
-    DotsVisualization.prototype.id = function () {
-        return IDs.dots;
+    DotsVisualization.prototype.rendererId = function () {
+        return IDs.shader;
     };
     DotsVisualization.ID = IDs.dots;
     return DotsVisualization;
@@ -483,8 +488,8 @@ var CirclesVisualization = (function (_super) {
     CirclesVisualization.prototype.object3DObservable = function () {
         return _super.prototype.object3DObservable.call(this);
     };
-    CirclesVisualization.prototype.id = function () {
-        return IDs.circles;
+    CirclesVisualization.prototype.rendererId = function () {
+        return IDs.shader;
     };
     return CirclesVisualization;
 })(AudioTextureShaderVisualization);
@@ -695,6 +700,15 @@ var EqPointCloud = (function (_super) {
             this.updateEqWithVelocity(this._eq2, this._eq2Vel, this._eqs.value.y);
             this.updateEqWithVelocity(this._eq3, this._eq3Vel, this._eqs.value.z);
         }
+        return {
+            type: this.rendererId(),
+            loudness: this._loudness,
+            attributes: this._attributes,
+            uniforms: this._uniforms
+        };
+    };
+    EqPointCloud.prototype.rendererId = function () {
+        return IDs.eqPointCloud;
     };
     EqPointCloud.prototype.updateEqWithVelocity = function (eq, eqVel, mult) {
         eq.value.add(eqVel.clone().multiplyScalar(mult * mult * 4.0));
@@ -748,11 +762,7 @@ var VisualizationManager = (function () {
     };
     VisualizationManager.prototype.observableSubject = function () {
         return this._visualizationSubject.asObservable().flatMap(function (vis) { return vis.object3DObservable().map(function (newVis) {
-            var objs = [];
-            newVis.forEach(function (obj) {
-                objs.push(obj.toJSON());
-            });
-            return { type: vis.id(), objects: objs };
+            return { type: vis.rendererId(), objects: newVis };
         }); });
     };
     VisualizationManager.prototype.addVisualization = function (optionObservable, id, f) {

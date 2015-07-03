@@ -56,7 +56,7 @@ class DotsVisualization extends ShaderVisualization {
     );
   }
 
-  id(): string {
-    return IDs.dots;
+  rendererId(): string {
+    return IDs.shader;
   }
 }

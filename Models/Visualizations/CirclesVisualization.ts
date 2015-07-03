@@ -33,7 +33,7 @@ class CirclesVisualization extends AudioTextureShaderVisualization {
     return super.object3DObservable();
   }
 
-  id() {
-    return IDs.circles;
+  rendererId() {
+    return IDs.shader;
   }
 }

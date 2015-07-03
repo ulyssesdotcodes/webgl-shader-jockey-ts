@@ -65,11 +65,7 @@ class VisualizationManager {
     return this._visualizationSubject.asObservable()
       .flatMap((vis) => vis.object3DObservable()
           .map((newVis) => {
-            var objs = [];
-            newVis.forEach(obj => {
-              objs.push(obj.toJSON());
-            });
-            return { type: vis.id(), objects: objs };
+            return { type: vis.rendererId(), objects: newVis };
           }));
   }
 

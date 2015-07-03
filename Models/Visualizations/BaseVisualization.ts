@@ -36,7 +36,7 @@ class BaseVisualization {
     this._disposable.dispose();
   }
 
-  id(): string {
+  rendererId(): string {
     return "";
   }
 }

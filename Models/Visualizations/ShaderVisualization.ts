@@ -49,7 +49,7 @@ class ShaderVisualization extends BaseVisualization {
     super.animate();
 
     return {
-      type: this.id(),
+      type: this.rendererId(),
       uniforms: this._uniforms
     };
   }

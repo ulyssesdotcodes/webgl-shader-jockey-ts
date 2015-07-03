@@ -23,4 +23,8 @@ class SimpleVisualization extends AudioTextureShaderVisualization {
   object3DObservable(): Rx.Observable<Array<THREE.Mesh>> {
     return super.object3DObservable();
   }
+
+  rendererId(): string{
+    return IDs.shader;
+  }
 }

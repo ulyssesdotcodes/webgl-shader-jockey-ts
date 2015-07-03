@@ -1,3 +1,3 @@
 interface VisualizationRenderer {
-  update(update: any);
+  update(update: any, resolution: THREE.Vector2);
 }

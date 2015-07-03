@@ -117,7 +117,7 @@ class EqPointCloud extends PointCloudVisualization {
     return [this._pc];
   }
 
-  animate() {
+  animate(): any {
     super.animate();
     if (this._material) {
       this._material.attributes.color.needsUpdate = true;
@@ -131,6 +131,17 @@ class EqPointCloud extends PointCloudVisualization {
       this.updateEqWithVelocity(this._eq2, this._eq2Vel, this._eqs.value.y);
       this.updateEqWithVelocity(this._eq3, this._eq3Vel, this._eqs.value.z);
     }
+
+    return {
+      type: this.rendererId(),
+      loudness: this._loudness,
+      attributes: this._attributes,
+      uniforms: this._uniforms
+    }
+  }
+
+  rendererId(): string {
+    return IDs.eqPointCloud;
   }
 
   updateEqWithVelocity(eq: IUniform<THREE.Vector3>, eqVel: THREE.Vector3, mult: number): void {

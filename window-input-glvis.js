@@ -3,6 +3,8 @@ var IDs = (function () {
     }
     IDs.dots = "dots";
     IDs.circles = "circles";
+    IDs.shader = "shader";
+    IDs.eqPointCloud = "eqPointCloud";
     return IDs;
 })();
 var AudioAnalyser = (function () {
@@ -80,54 +82,120 @@ var AudioSource = (function () {
     AudioSource.FFT_SIZE = 1024;
     return AudioSource;
 })();
-/// <reference path="./VisualizationRenderer"/>
-/// <reference path="../Sources/AudioSource"/>
-var ShaderRenderer = (function () {
-    function ShaderRenderer(plane) {
-        this._plane = plane;
-        this._buffers = {};
-        for (var name in this._plane.material.uniforms) {
-            var uniform = this._plane.material.uniforms[name];
-            if (uniform.type == "t") {
-                this._buffers[uniform.name] = new Uint8Array(AudioSource.FFT_SIZE * 4);
-                var dataTexture = new THREE.DataTexture(this._buffers[uniform.name], AudioSource.FFT_SIZE, 1, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.LinearFilter, THREE.LinearMipMapLinearFilter, 1);
-                this._plane.material.uniforms[uniform.name] = {
-                    name: uniform.name,
-                    type: "t",
-                    value: dataTexture
-                };
-                this.copyBuffer(uniform.value.image.data, this._buffers[uniform.name]);
-                this._plane.material.uniforms[uniform.name].value.needsUpdate = true;
-            }
-        }
-    }
-    ShaderRenderer.prototype.update = function (update) {
-        var _this = this;
-        update.uniforms.forEach(function (uniform) {
-            if (uniform.type == "t") {
-                _this.copyBuffer(uniform.value.image.data, _this._buffers[uniform.name]);
-                _this._plane.material.uniforms[uniform.name].value.needsUpdate = true;
-            }
-            else {
-                var newUniform = {
-                    type: uniform.type,
-                    name: uniform.name,
-                    value: uniform.value
-                };
-                _this._plane.material.uniforms[uniform.name] = newUniform;
-            }
-        });
-    };
-    ShaderRenderer.prototype.copyBuffer = function (source, dest) {
+var RendererUtils;
+(function (RendererUtils) {
+    function copyBuffer(source, dest) {
         for (var i = 0; i < source.length; i++) {
             dest[i] = source[i];
         }
+    }
+    RendererUtils.copyBuffer = copyBuffer;
+    function copyArray(source, dest) {
+        for (var i = 0; i < source.length; i++) {
+            dest[i] = source[i];
+        }
+    }
+    RendererUtils.copyArray = copyArray;
+})(RendererUtils || (RendererUtils = {}));
+var __extends = this.__extends || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    __.prototype = b.prototype;
+    d.prototype = new __();
+};
+var ObjectMaterial = (function (_super) {
+    __extends(ObjectMaterial, _super);
+    function ObjectMaterial() {
+        _super.apply(this, arguments);
+    }
+    return ObjectMaterial;
+})(THREE.Object3D);
+/// <reference path="./VisualizationRenderer"/>
+/// <reference path="../Sources/AudioSource"/>
+/// <reference path="./RendererUtils"/>
+/// <reference path="../ObjectMaterial"/>
+var ObjectRenderer = (function () {
+    function ObjectRenderer(object) {
+        this._object = object;
+        this._buffers = {};
+        if (this._object.material.uniforms) {
+            for (var name in this._object.material.uniforms) {
+                var uniform = this._object.material.uniforms[name];
+                if (uniform.type == "t") {
+                    this._buffers[uniform.name] = new Uint8Array(uniform.value.image.data.length);
+                    var dataTexture = new THREE.DataTexture(this._buffers[uniform.name], AudioSource.FFT_SIZE, 1, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.LinearFilter, THREE.LinearMipMapLinearFilter, 1);
+                    this._object.material.uniforms[uniform.name] = {
+                        name: uniform.name,
+                        type: "t",
+                        value: dataTexture
+                    };
+                    RendererUtils.copyBuffer(uniform.value.image.data, this._buffers[uniform.name]);
+                    this._object.material.uniforms[uniform.name].value.needsUpdate = true;
+                    console.log(dataTexture);
+                }
+            }
+        }
+        console.log(this._object.material);
+        if (this._object.material.attributes) {
+            for (var name in this._object.material.attributes) {
+                console.log(name);
+                var attr = this._object.material.attributes[name];
+                this._buffers[attr.name] = attr.value;
+                this._object.material.attributes[name] = {
+                    name: attr.name,
+                    type: attr.type,
+                    value: this._buffers[attr.name]
+                };
+            }
+        }
+    }
+    ObjectRenderer.prototype.update = function (update, resolution) {
+        var _this = this;
+        if (update.uniforms) {
+            update.uniforms.forEach(function (uniform) {
+                if (uniform.name == "resolution") {
+                    _this._object.material.uniforms[uniform.name].value = resolution;
+                }
+                else if (uniform.type == "t") {
+                    RendererUtils.copyBuffer(uniform.value.image.data, _this._buffers[uniform.name]);
+                    _this._object.material.uniforms[uniform.name].value.needsUpdate = true;
+                }
+                else {
+                    var newUniform = {
+                        type: uniform.type,
+                        name: uniform.name,
+                        value: uniform.value
+                    };
+                    _this._object.material.uniforms[uniform.name] = newUniform;
+                }
+            });
+        }
+        if (update.attributes) {
+            update.attributes.forEach(function (attr) {
+                RendererUtils.copyBuffer(attr.value, _this._buffers[attr.name]);
+                _this._object.material.attributes[attr.name].needsUpdate = true;
+            });
+        }
     };
-    return ShaderRenderer;
+    return ObjectRenderer;
 })();
+var EqPointCloudRenderer = (function (_super) {
+    __extends(EqPointCloudRenderer, _super);
+    function EqPointCloudRenderer(pointCloud) {
+        _super.call(this, pointCloud);
+        this._pc = pointCloud;
+    }
+    EqPointCloudRenderer.prototype.update = function (update, resolution) {
+        _super.prototype.update.call(this, update, resolution);
+        this._pc.rotateY(update.loudness / 128.0);
+        this._pc.rotateX(update.loudness / 256.0);
+    };
+    return EqPointCloudRenderer;
+})(ObjectRenderer);
 /// <reference path="../Models/Visualizations/IDs"/>
 /// <reference path="../Models/Visualizations/VisualizationRenderer"/>
-/// <reference path="../Models/Visualizations/ShaderRenderer"/>
+/// <reference path="../Models/Visualizations/ObjectRenderer"/>
+/// <reference path="../Models/Visualizations/EqPointCloudRenderer"/>
 /// <reference path="../typed/three.d.ts"/>
 /// <reference path="../Models/Window"/>
 /// <reference path="../typed/rx.d.ts"/>
@@ -137,7 +205,6 @@ var GLVis;
         function WindowInput() {
             var _this = this;
             this._canvas = document.createElement('canvas');
-            this._context = this._canvas.getContext('2d');
             this.onWindowResize();
             window.addEventListener("resize", function (__) { return _this.onWindowResize(); }, false);
             window.newVis = function (vis) { return _this.newVis(vis); };
@@ -146,7 +213,7 @@ var GLVis;
         WindowInput.prototype.render = function (el) {
             var _this = this;
             this._camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 350);
-            this._camera.position.z = 2;
+            this._camera.position.z = 100;
             this._scene = new THREE.Scene();
             this._renderer = new THREE.WebGLRenderer();
             el.appendChild(this._renderer.domElement);
@@ -156,25 +223,33 @@ var GLVis;
         };
         WindowInput.prototype.update = function (data) {
             if (this._visRenderer) {
-                this._visRenderer.update(data);
+                this._visRenderer.update(data, this._resolution);
             }
         };
         WindowInput.prototype.onWindowResize = function () {
             if (this._renderer) {
                 this._renderer.setSize(window.innerWidth, window.innerHeight);
             }
+            this._resolution = new THREE.Vector2(window.innerWidth, window.innerHeight);
         };
         WindowInput.prototype.newVis = function (data) {
             var meshes = data.objects;
             var loader = new THREE.ObjectLoader();
             var obj = new THREE.Object3D();
-            meshes.forEach(function (mesh) {
-                var newMesh = loader.parse(mesh);
-                obj.add(newMesh);
-            });
             obj.position = new THREE.Vector3(0, 0, 0);
-            if (data.type == IDs.dots || data.type == IDs.circles) {
-                this._visRenderer = new ShaderRenderer(obj.children[0]);
+            if (data.type == IDs.shader) {
+                meshes.forEach(function (mesh) {
+                    var newMesh = loader.parse(mesh.toJSON());
+                    obj.add(newMesh);
+                });
+                this._visRenderer = new ObjectRenderer(obj.children[0]);
+            }
+            else if (data.type == IDs.eqPointCloud) {
+                var pc = new THREE.PointCloud(meshes[0].geometry, meshes[0].material);
+                // pc.material = meshes[0].material;
+                // pc.geometry = meshes[0].geometry;
+                obj.add(pc);
+                this._visRenderer = new EqPointCloudRenderer(pc);
             }
             else {
                 console.log("Couldn't find renderer type " + data.type);

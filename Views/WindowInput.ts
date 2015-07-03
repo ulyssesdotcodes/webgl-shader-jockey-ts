@@ -1,6 +1,7 @@
 /// <reference path="../Models/Visualizations/IDs"/>
 /// <reference path="../Models/Visualizations/VisualizationRenderer"/>
-/// <reference path="../Models/Visualizations/ShaderRenderer"/>
+/// <reference path="../Models/Visualizations/ObjectRenderer"/>
+/// <reference path="../Models/Visualizations/EqPointCloudRenderer"/>
 /// <reference path="../typed/three.d.ts"/>
 /// <reference path="../Models/Window"/>
 /// <reference path="../typed/rx.d.ts"/>
@@ -8,7 +9,6 @@
 module GLVis {
   export class WindowInput {
     private _canvas: HTMLCanvasElement;
-    private _context: CanvasRenderingContext2D;
 
     private _renderer: THREE.WebGLRenderer;
     private _camera: THREE.Camera;
@@ -18,9 +18,10 @@ module GLVis {
 
     private _visRenderer: VisualizationRenderer;
 
+    private _resolution: THREE.Vector2;
+
     constructor() {
       this._canvas = document.createElement('canvas');
-      this._context = this._canvas.getContext('2d');
 
       this.onWindowResize();
       window.addEventListener("resize", (__) => this.onWindowResize(), false);
@@ -31,7 +32,7 @@ module GLVis {
 
     render(el: HTMLElement): void {
       this._camera  = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 350 );
-      this._camera.position.z = 2;
+      this._camera.position.z = 100;
 
       this._scene = new THREE.Scene()
       this._renderer = new THREE.WebGLRenderer();
@@ -47,7 +48,7 @@ module GLVis {
 
     update(data:any): void {
       if(this._visRenderer) {
-        this._visRenderer.update(data);
+        this._visRenderer.update(data, this._resolution);
       }
     }
 
@@ -55,21 +56,28 @@ module GLVis {
       if(this._renderer) {
         this._renderer.setSize(window.innerWidth, window.innerHeight);
       }
+      this._resolution = new THREE.Vector2(window.innerWidth, window.innerHeight)
     }
 
     newVis(data: any) {
       var meshes = data.objects;
       var loader = new THREE.ObjectLoader();
       var obj = new THREE.Object3D();
-      meshes.forEach((mesh) => {
-        var newMesh = loader.parse(mesh);
-        obj.add(newMesh);
-      });
-
       obj.position = new THREE.Vector3(0, 0, 0);
 
-      if (data.type == IDs.dots || data.type == IDs.circles) {
-        this._visRenderer = new ShaderRenderer(<THREE.Mesh>obj.children[0]);
+      if (data.type == IDs.shader) {
+        meshes.forEach((mesh) => {
+          var newMesh = loader.parse(mesh.toJSON());
+          obj.add(newMesh);
+        });
+        this._visRenderer = new ObjectRenderer(<THREE.Mesh>obj.children[0]);
+      }
+      else if(data.type == IDs.eqPointCloud) {
+        var pc = new THREE.PointCloud(meshes[0].geometry, meshes[0].material);
+        // pc.material = meshes[0].material;
+        // pc.geometry = meshes[0].geometry;
+        obj.add(pc);
+        this._visRenderer = new EqPointCloudRenderer(pc);
       }
       else {
         console.log("Couldn't find renderer type " + data.type);
