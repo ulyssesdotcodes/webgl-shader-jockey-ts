@@ -26,7 +26,7 @@ class GLController {
     this._visualizationManager.meshObservable(visualizationOptionObservable)
       .subscribe((meshes) => {
         this._meshSubject.onNext(meshes);
-      })
+      });
   }
 
   onNewResolution(resolution) {

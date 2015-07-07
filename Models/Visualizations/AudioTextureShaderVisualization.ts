@@ -7,7 +7,7 @@ class AudioTextureShaderVisualization extends ShaderVisualization {
   private _audioTextureUniform: IUniform<THREE.DataTexture>;
 
   constructor(audioSource: AudioSource, resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, shaderUrl: string, controlsProvider?: ControlsProvider) {
-    super(resolutionProvider, timeSource, shaderLoader, shaderUrl, controlsProvider);
+    super(resolutionProvider, timeSource, shaderLoader, shaderUrl);
 
     this._audioSource = audioSource;
     this.addSources([this._audioSource]);

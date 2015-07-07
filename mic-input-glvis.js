@@ -45,9 +45,8 @@ var ShaderText = (function () {
 /// <reference path="../typed/rx.jquery.d.ts"/>
 /// <reference path='./ShaderText.ts'/>
 var ShaderLoader = (function () {
-    function ShaderLoader(initialMethodsUrl, utilsUrl, shadersUrl) {
+    function ShaderLoader(utilsUrl, shadersUrl) {
         this._shadersUrl = shadersUrl;
-        this._initialMethodsUrl = shadersUrl + initialMethodsUrl;
         this._utilsUrl = shadersUrl + utilsUrl;
     }
     ShaderLoader.prototype.getShaderFromServer = function (url) {
@@ -57,7 +56,7 @@ var ShaderLoader = (function () {
         return $.getAsObservable(this._shadersUrl + url + ".vert").map(function (shader) { return shader.data; }).onErrorResumeNext(this.getPlane());
     };
     ShaderLoader.prototype.getFragment = function (url) {
-        return $.getAsObservable(this._shadersUrl + url + '.frag').map(function (shader) { return shader.data; }).combineLatest(this.utilFrag(), this.initialMethodsFrag(), function (frag, im, util) { return util.concat(im).concat(frag); });
+        return $.getAsObservable(this._shadersUrl + url + '.frag').map(function (shader) { return shader.data; }).combineLatest(this.utilFrag(), function (frag, util) { return util.concat(frag); });
     };
     ShaderLoader.prototype.getPlane = function () {
         var _this = this;
@@ -74,13 +73,6 @@ var ShaderLoader = (function () {
             return $.getAsObservable(this._utilsUrl).map(function (shader) { return shader.data; }).doOnNext(function (util) { return _this._utilFrag = util; });
         }
         return Rx.Observable.just(this._utilFrag);
-    };
-    ShaderLoader.prototype.initialMethodsFrag = function () {
-        var _this = this;
-        if (this._initialMethodsFrag === undefined) {
-            return $.getAsObservable(this._initialMethodsUrl).map(function (shader) { return shader.data; }).doOnNext(function (util) { return _this._initialMethodsFrag = util; });
-        }
-        return Rx.Observable.just(this._initialMethodsFrag);
     };
     return ShaderLoader;
 })();
@@ -174,6 +166,9 @@ var BaseVisualization = (function () {
     };
     BaseVisualization.prototype.unsubscribe = function () {
         this._disposable.dispose();
+    };
+    BaseVisualization.prototype.rendererId = function () {
+        return "";
     };
     return BaseVisualization;
 })();
@@ -319,7 +314,7 @@ var __extends = this.__extends || function (d, b) {
 };
 var ShaderVisualization = (function (_super) {
     __extends(ShaderVisualization, _super);
-    function ShaderVisualization(resolutionProvider, timeSource, shaderLoader, shaderUrl, controlsProvider) {
+    function ShaderVisualization(resolutionProvider, timeSource, shaderLoader, shaderUrl) {
         _super.call(this);
         this.addSources([timeSource]);
         this._shaderUrl = shaderUrl;
@@ -331,9 +326,6 @@ var ShaderVisualization = (function (_super) {
             value: 0.0
         };
         this._uniforms = [this._timeUniform].concat(resolutionProvider.uniforms());
-        if (controlsProvider) {
-            this.addUniforms(controlsProvider.uniforms());
-        }
     }
     ShaderVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
@@ -344,6 +336,13 @@ var ShaderVisualization = (function (_super) {
     ShaderVisualization.prototype.addUniforms = function (uniforms) {
         this._uniforms = this._uniforms.concat(uniforms);
     };
+    ShaderVisualization.prototype.animate = function () {
+        _super.prototype.animate.call(this);
+        return {
+            type: this.rendererId(),
+            uniforms: this._uniforms
+        };
+    };
     ShaderVisualization.prototype.object3DObservable = function () {
         var _this = this;
         return Rx.Observable.create(function (observer) {
@@ -351,13 +350,16 @@ var ShaderVisualization = (function (_super) {
             _this._shaderLoader.getShaderFromServer(_this._shaderUrl).map(function (shader) { return new ShaderPlane(shader, _this._uniforms); }).doOnNext(function (__) { return _this.onCreated(); }).map(function (shaderplane) { return [shaderplane.mesh]; }).subscribe(observer);
         });
     };
+    ShaderVisualization.prototype.rendererId = function () {
+        return IDs.shader;
+    };
     return ShaderVisualization;
 })(BaseVisualization);
 /// <reference path="./ShaderVisualization"/>
 var AudioTextureShaderVisualization = (function (_super) {
     __extends(AudioTextureShaderVisualization, _super);
     function AudioTextureShaderVisualization(audioSource, resolutionProvider, timeSource, shaderLoader, shaderUrl, controlsProvider) {
-        _super.call(this, resolutionProvider, timeSource, shaderLoader, shaderUrl, controlsProvider);
+        _super.call(this, resolutionProvider, timeSource, shaderLoader, shaderUrl);
         this._audioTextureBuffer = new Uint8Array(AudioSource.FFT_SIZE * 4);
         this._audioSource = audioSource;
         this.addSources([this._audioSource]);
@@ -393,6 +395,9 @@ var SimpleVisualization = (function (_super) {
             value: options && options.color || new THREE.Vector3(1.0, 1.0, 1.0)
         };
         this.addUniforms([coloruniform]);
+        if (controlsProvider) {
+            controlsProvider.newControls([]);
+        }
     }
     SimpleVisualization.prototype.setupvisualizerchain = function () {
         _super.prototype.setupVisualizerChain.call(this);
@@ -400,14 +405,28 @@ var SimpleVisualization = (function (_super) {
     SimpleVisualization.prototype.object3DObservable = function () {
         return _super.prototype.object3DObservable.call(this);
     };
+    SimpleVisualization.prototype.rendererId = function () {
+        return IDs.shader;
+    };
     SimpleVisualization.ID = "simple";
     return SimpleVisualization;
 })(AudioTextureShaderVisualization);
+var IDs = (function () {
+    function IDs() {
+    }
+    IDs.dots = "dots";
+    IDs.circles = "circles";
+    IDs.shader = "shader";
+    IDs.eqPointCloud = "eqPointCloud";
+    IDs.videoDistortion = "videoDistortion";
+    return IDs;
+})();
+/// <reference path="./IDs"/>
 /// <reference path="./ShaderVisualization"/>
 var DotsVisualization = (function (_super) {
     __extends(DotsVisualization, _super);
     function DotsVisualization(audioSource, resolutionProvider, timeSource, shaderLoader, controlsProvider) {
-        _super.call(this, resolutionProvider, timeSource, shaderLoader, "dots", controlsProvider);
+        _super.call(this, resolutionProvider, timeSource, shaderLoader, "dots");
         this._audioSource = audioSource;
         this.addSources([this._audioSource]);
         this._eqSegments = {
@@ -426,6 +445,9 @@ var DotsVisualization = (function (_super) {
             value: 0.0
         };
         this.addUniforms([this._eqSegments, this._accumulatedLoudness, this._loudness]);
+        if (controlsProvider) {
+            controlsProvider.newControls([]);
+        }
     }
     DotsVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
@@ -436,7 +458,10 @@ var DotsVisualization = (function (_super) {
             _this._accumulatedLoudness.value += loudness;
         }));
     };
-    DotsVisualization.ID = "dots";
+    DotsVisualization.prototype.rendererId = function () {
+        return IDs.shader;
+    };
+    DotsVisualization.ID = IDs.dots;
     return DotsVisualization;
 })(ShaderVisualization);
 /// <reference path="./AudioTextureShaderVisualization"/>
@@ -451,6 +476,10 @@ var CirclesVisualization = (function (_super) {
             value: 0.0
         };
         this.addUniforms([this._accumulatedLoudness]);
+        if (controlsProvider) {
+            controlsProvider.newControls([Controls.volume, Controls.hue]);
+            this.addUniforms(controlsProvider.uniforms());
+        }
     }
     CirclesVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
@@ -462,26 +491,33 @@ var CirclesVisualization = (function (_super) {
     CirclesVisualization.prototype.object3DObservable = function () {
         return _super.prototype.object3DObservable.call(this);
     };
-    CirclesVisualization.ID = "circles";
+    CirclesVisualization.prototype.rendererId = function () {
+        return IDs.shader;
+    };
     return CirclesVisualization;
 })(AudioTextureShaderVisualization);
 var VideoSource = (function () {
     function VideoSource() {
         this._creating = false;
         this._created = false;
-        this._videoCanvas = document.createElement("canvas");
-        this._videoCanvas.width = window.innerWidth;
-        this._videoCanvas.height = window.innerHeight;
-        this._videoContext = this._videoCanvas.getContext("2d");
         this._videoElement = document.createElement("video");
         this._videoElement.setAttribute("class", "camera");
         this._videoElement.setAttribute("autoplay", "true");
         this._videoElement.setAttribute("muted", "true");
+        this._videoCanvas = document.createElement("canvas");
+        this._videoCanvas.width = 1024;
+        this._videoCanvas.height = 1024;
+        this._videoContext = this._videoCanvas.getContext("2d");
         var texture = new THREE.Texture(this._videoCanvas);
         this._videoTexture = {
             name: "camera",
             type: "t",
             value: texture
+        };
+        this._videoResolution = {
+            name: "cameraResolution",
+            type: "v2",
+            value: new THREE.Vector2(0, 0)
         };
         navigator["getUserMedia"] = navigator["getUserMedia"] || navigator["webkitGetUserMedia"] || navigator["mozGetUserMedia"];
         window["URL"] = window["URL"] || window["webkitURL"];
@@ -505,7 +541,7 @@ var VideoSource = (function () {
         navigator["getUserMedia"]({ audio: false, video: true }, gotStream, console.log);
     };
     VideoSource.prototype.uniforms = function () {
-        return [this._videoTexture];
+        return [this._videoTexture, this._videoResolution];
     };
     VideoSource.prototype.observable = function () {
         return Rx.Observable.just(this._videoTexture.value);
@@ -519,6 +555,7 @@ var VideoSource = (function () {
             return;
         }
         this._videoContext.drawImage(this._videoElement, 0, 0, this._videoCanvas.width, this._videoCanvas.height);
+        this._videoResolution.value.set(this._videoElement.videoWidth, this._videoElement.videoHeight);
         this._videoTexture.value.needsUpdate = true;
     };
     return VideoSource;
@@ -531,16 +568,65 @@ var VideoDistortionVisualization = (function (_super) {
         this.addSources([videoSource]);
         this.addUniforms(videoSource.uniforms());
         if (controlsProvider) {
+            controlsProvider.newControls([Controls.volume, Controls.hue]);
             this.addUniforms(controlsProvider.uniforms());
         }
     }
     VideoDistortionVisualization.ID = "videoDistortion";
     return VideoDistortionVisualization;
 })(AudioTextureShaderVisualization);
+var Controls;
+(function (Controls) {
+    Controls.volume = {
+        name: "volume",
+        min: 0.0,
+        max: 2.0,
+        defVal: 1.0
+    };
+    Controls.hue = {
+        name: "hue",
+        min: -0.5,
+        max: 0.5,
+        defVal: 0.0
+    };
+})(Controls || (Controls = {}));
+/// <reference path="../Sources/VideoSource"/>
+/// <reference path="../Controls"/>
+var VideoAudioSpiralVisualization = (function (_super) {
+    __extends(VideoAudioSpiralVisualization, _super);
+    function VideoAudioSpiralVisualization(videoSource, audioSource, resolutionProvider, timeSource, shaderLoader, controlsProvider) {
+        _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "video_audio_spiral");
+        this.addSources([videoSource]);
+        this.addUniforms(videoSource.uniforms());
+        this._loudness = {
+            name: "loudness",
+            type: "f",
+            value: 0.0
+        };
+        this.addUniforms([this._loudness]);
+        if (controlsProvider) {
+            controlsProvider.newControls([Controls.volume, Controls.hue]);
+            this.addUniforms(controlsProvider.uniforms());
+        }
+    }
+    VideoAudioSpiralVisualization.prototype.setupVisualizerChain = function () {
+        var _this = this;
+        _super.prototype.setupVisualizerChain.call(this);
+        this.addDisposable(this._audioSource.observable().map(AudioUniformFunctions.calculateLoudness).subscribe(function (loudness) {
+            _this._loudness.value = loudness;
+        }));
+    };
+    VideoAudioSpiralVisualization.ID = "videoAudioSpiral";
+    return VideoAudioSpiralVisualization;
+})(AudioTextureShaderVisualization);
 var SquareVisualization = (function (_super) {
     __extends(SquareVisualization, _super);
     function SquareVisualization(audioSource, resolutionProvider, timeSource, shaderLoader, controlsProvider) {
-        _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "fft_matrix_product", controlsProvider);
+        _super.call(this, audioSource, resolutionProvider, timeSource, shaderLoader, "fft_matrix_product");
+        if (controlsProvider) {
+            controlsProvider.newControls([Controls.volume, Controls.hue]);
+            this.addUniforms(controlsProvider.uniforms());
+        }
     }
     SquareVisualization.ID = "squared";
     return SquareVisualization;
@@ -636,6 +722,30 @@ var EqPointCloud = (function (_super) {
             value: new THREE.Vector3()
         };
         this.addUniforms([this._eqs, this._eq1, this._eq2, this._eq3]);
+        if (controlsProvider) {
+            this._controlsProvider = controlsProvider;
+            this._controlsProvider.newControls([
+                {
+                    name: "size",
+                    min: 0.0,
+                    max: 2.0,
+                    defVal: 1.0
+                },
+                {
+                    name: "power",
+                    min: 0.6,
+                    max: 2.4,
+                    defVal: 1.2
+                },
+                {
+                    name: "rotationSpeed",
+                    min: 0.4,
+                    max: 2.4,
+                    defVal: 1.0
+                }
+            ]);
+            this.addUniforms(controlsProvider.uniforms());
+        }
     }
     EqPointCloud.prototype.setupVisualizerChain = function () {
         var _this = this;
@@ -666,12 +776,21 @@ var EqPointCloud = (function (_super) {
             this._material.attributes.color.needsUpdate = true;
         }
         if (this._pc) {
-            this._pc.rotateY(this._loudness / 128.0);
-            this._pc.rotateX(this._loudness / 256.0);
+            this._pc.rotateY(this._controlsProvider.getValue("rotationSpeed") / 128.0);
+            this._pc.rotateX(this._controlsProvider.getValue("rotationSpeed") / 256.0);
             this.updateEqWithVelocity(this._eq1, this._eq1Vel, this._eqs.value.x);
             this.updateEqWithVelocity(this._eq2, this._eq2Vel, this._eqs.value.y);
             this.updateEqWithVelocity(this._eq3, this._eq3Vel, this._eqs.value.z);
         }
+        return {
+            type: this.rendererId(),
+            loudness: this._loudness,
+            attributes: this._attributes,
+            uniforms: this._uniforms
+        };
+    };
+    EqPointCloud.prototype.rendererId = function () {
+        return IDs.eqPointCloud;
     };
     EqPointCloud.prototype.updateEqWithVelocity = function (eq, eqVel, mult) {
         eq.value.add(eqVel.clone().multiplyScalar(mult * mult * 4.0));
@@ -687,7 +806,7 @@ var EqPointCloud = (function (_super) {
     };
     EqPointCloud.ID = "eqPointCloud";
     EqPointCloud.POINT_COUNT = 80000;
-    EqPointCloud.CUBE_SIZE = 86;
+    EqPointCloud.CUBE_SIZE = 64;
     return EqPointCloud;
 })(PointCloudVisualization);
 /// <reference path="./BaseVisualization"/>
@@ -695,12 +814,14 @@ var EqPointCloud = (function (_super) {
 /// <reference path="./DotsVisualization"/>
 /// <reference path="./CirclesVisualization"/>
 /// <reference path="./VideoDistortionVisualization"/>
+/// <reference path="./VideoAudioSpiralVisualization"/>
 /// <reference path="./SquareVisualization"/>
 /// <reference path="./EqPointCloud"/>
 var VisualizationManager = (function () {
     function VisualizationManager(videoSource, audioSource, resolutionProvider, shaderBaseUrl, controlsProvider) {
         this._visualizationSubject = new Rx.BehaviorSubject(null);
-        this._shaderLoader = new ShaderLoader(controlsProvider ? "controls.frag" : "no_controls.frag", "util.frag", shaderBaseUrl);
+        this._visualizations = [];
+        this._shaderLoader = new ShaderLoader("util.frag", shaderBaseUrl);
         this._audioSource = audioSource;
         this._videoSource = videoSource;
         this._timeSource = new TimeSource();
@@ -715,19 +836,30 @@ var VisualizationManager = (function () {
             }
         });
         this.addVisualization(optionObservable, SimpleVisualization.ID, function (options) { return new SimpleVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, options, _this._shaderLoader, _this._controlsProvider); });
-        this.addVisualization(optionObservable, DotsVisualization.ID, function (options) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
-        this.addVisualization(optionObservable, CirclesVisualization.ID, function (options) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
+        this.addVisualization(optionObservable, IDs.dots, function (options) { return new DotsVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
+        this.addVisualization(optionObservable, IDs.circles, function (options) { return new CirclesVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, VideoDistortionVisualization.ID, function (options) { return new VideoDistortionVisualization(_this._videoSource, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
+        this.addVisualization(optionObservable, VideoAudioSpiralVisualization.ID, function (options) { return new VideoAudioSpiralVisualization(_this._videoSource, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, SquareVisualization.ID, function (options) { return new SquareVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, EqPointCloud.ID, function (options) { return new EqPointCloud(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.object3DObservable(); });
     };
+    VisualizationManager.prototype.observableSubject = function () {
+        return this._visualizationSubject.asObservable().flatMap(function (vis) { return vis.object3DObservable().map(function (newVis) {
+            return { type: vis.rendererId(), objects: newVis };
+        }); });
+    };
     VisualizationManager.prototype.addVisualization = function (optionObservable, id, f) {
         var _this = this;
-        optionObservable.filter(function (visualization) { return visualization.id == id; }).map(function (visualizationOption) { return visualizationOption.options; }).map(function (options) { return f.call(_this, options); }).subscribe(this._visualizationSubject);
+        optionObservable.filter(function (visualization) { return visualization.id == id; }).map(function (visOpt) {
+            if (!_this._visualizations[visOpt.id]) {
+                _this._visualizations[visOpt.id] = f(visOpt.options);
+            }
+            return _this._visualizations[visOpt.id];
+        }).map(function (visualizationOption) { return visualizationOption.options; }).map(function (options) { return f.call(_this, options); }).subscribe(this._visualizationSubject);
     };
     VisualizationManager.prototype.animate = function () {
-        this._visualizationSubject.getValue().animate();
+        return this._visualizationSubject.getValue().animate();
     };
     return VisualizationManager;
 })();
@@ -757,94 +889,83 @@ var GLController = (function () {
     };
     return GLController;
 })();
-var VolumeControl = (function () {
-    function VolumeControl() {
-        this.VolumeLevel = {
-            name: "volume",
-            type: "f",
-            value: 1.0
-        };
-    }
-    VolumeControl.prototype.updateVolume = function (volume) {
-        this.VolumeLevel.value = volume;
-    };
-    return VolumeControl;
-})();
-var HueControl = (function () {
-    function HueControl() {
-        this.HueShift = {
-            name: "hue",
-            type: "f",
-            value: 0.0
-        };
-    }
-    HueControl.prototype.updateHueShift = function (shift) {
-        this.HueShift.value = shift;
-    };
-    return HueControl;
-})();
-/// <reference path='../VolumeControl.ts'/>
-/// <reference path='../HueControl.ts'/>
+/// <reference path='../Control.ts'/>
 var ControlsProvider = (function () {
     function ControlsProvider() {
-        this._volumeControl = new VolumeControl();
-        this._hueControl = new HueControl();
+        this._controls = {};
+        this._controlUniforms = [];
+        this._controlSubject = new Rx.BehaviorSubject([]);
     }
     ControlsProvider.prototype.uniforms = function () {
-        return [this._volumeControl.VolumeLevel, this._hueControl.HueShift];
+        return this._controlUniforms;
     };
-    ControlsProvider.prototype.updateVolume = function (volume) {
-        this._volumeControl.updateVolume(volume);
+    ControlsProvider.prototype.updateControl = function (name, value) {
+        this._controls[name].value = value;
     };
-    ControlsProvider.prototype.updateHueShift = function (shift) {
-        this._hueControl.updateHueShift(shift);
+    ControlsProvider.prototype.controlsObservable = function () {
+        return this._controlSubject.asObservable();
+    };
+    ControlsProvider.prototype.getValue = function (name) {
+        return this._controls[name].value;
+    };
+    ControlsProvider.prototype.newControls = function (controls) {
+        var _this = this;
+        var oldControls = this._controls;
+        this._controls = {};
+        this._controlUniforms = [];
+        controls.forEach(function (control) {
+            if (oldControls[control.name]) {
+                _this._controls[control.name] = oldControls[control.name];
+            }
+            else {
+                _this._controls[control.name] = {
+                    name: control.name,
+                    type: "f",
+                    value: control.defVal
+                };
+            }
+            _this._controlUniforms.push(_this._controls[control.name]);
+        });
+        this._controlSubject.onNext(controls);
     };
     return ControlsProvider;
 })();
 /// <reference path='../Models/Sources/ControlsProvider.ts'/>
 var ControlsController = (function () {
     function ControlsController(controlsProvider) {
-        this.UniformsProvider = controlsProvider;
+        this._controlsProvider = controlsProvider;
     }
-    ControlsController.prototype.onVolumeChange = function (volume) {
-        this.UniformsProvider.updateVolume(parseFloat(volume));
+    ControlsController.prototype.controlsObservable = function () {
+        return this._controlsProvider.controlsObservable();
     };
-    ControlsController.prototype.onHueShiftChange = function (shift) {
-        this.UniformsProvider.updateHueShift(parseFloat(shift));
+    ControlsController.prototype.onControlChange = function (name, value) {
+        this._controlsProvider.updateControl(name, value);
     };
     return ControlsController;
 })();
 var ControlsView = (function () {
     function ControlsView(controller) {
+        var _this = this;
+        this._container = $("<div>", { class: "controls shader-controls" });
         this._controlsController = controller;
+        this._controlsController.controlsObservable().subscribe(function (controls) {
+            _this._container.empty();
+            controls.forEach(function (control) { return _this.renderControl(control); });
+        });
     }
     ControlsView.prototype.render = function (el) {
-        var container = $("<div>", { class: "controls shader-controls" });
-        this.renderVolume(container);
-        this.renderHue(container);
-        $(el).append(container);
+        $(el).append(this._container);
     };
-    ControlsView.prototype.renderVolume = function (container) {
+    ControlsView.prototype.renderControl = function (control) {
         var _this = this;
-        var volumeContainer = $("<div>");
-        volumeContainer.append("Volume: ");
-        var volumeSlider = $("<input>", { type: "range", min: 0, max: 2.0, step: 0.05 });
-        volumeSlider.on('input', function (__) {
-            _this._controlsController.onVolumeChange(volumeSlider.val());
+        var controlContainer = $("<div>");
+        controlContainer.append(control.name + ": ");
+        var controlSlider = $("<input>", { type: "range", min: control.min, max: control.max, step: 0.0000001 });
+        controlSlider.on('input', function (__) {
+            _this._controlsController.onControlChange(control.name, controlSlider.val());
         });
-        volumeContainer.append(volumeSlider);
-        container.append(volumeContainer);
-    };
-    ControlsView.prototype.renderHue = function (container) {
-        var _this = this;
-        var hueContainer = $("<div>");
-        hueContainer.append("Hue: ");
-        var hueSlider = $("<input>", { type: "range", min: -0.5, max: 0.5, step: 0.05 });
-        hueSlider.on('input', function (__) {
-            _this._controlsController.onHueShiftChange(hueSlider.val());
-        });
-        hueContainer.append(hueSlider);
-        container.append(hueContainer);
+        controlContainer.append(controlSlider);
+        this._container.append(controlContainer);
     };
     return ControlsView;
 })();
@@ -904,8 +1025,9 @@ var VisualizationOptionsController = (function () {
 })();
 /// <reference path="../Controllers/VisualizationOptionsController"/>
 var VisualizationOptionsView = (function () {
-    function VisualizationOptionsView(shadersController) {
+    function VisualizationOptionsView(shadersController, autoplay) {
         this._shadersController = shadersController;
+        this._autoplay = autoplay;
     }
     VisualizationOptionsView.prototype.render = function (el) {
         var _this = this;
@@ -915,20 +1037,25 @@ var VisualizationOptionsView = (function () {
         select.change(function (__) { return _this._shadersController.onOptionName(select.find('option:selected').val()); });
         this._shadersController.shaderNames().forEach(function (shaderName) { return select.append("<option value=\"" + shaderName + "\">" + shaderName + "</option>"); });
         container.append(select);
-        // Autoplay to enable autoplay
-        var autoplay = $("<label>", { text: "Autoplay" });
-        var input = $("<input/>", {
-            type: "checkbox",
-            checked: true
-        });
-        input.change(function () {
-            _this._shadersController.onAutoplayChanged(input.is(":checked"));
-        });
-        this._shadersController.currentShaderObservable().subscribe(function (ind) {
-            select.children().eq(ind).prop('selected', true);
-        });
-        autoplay.prepend(input);
-        container.append(autoplay);
+        if (this._autoplay) {
+            // Autoplay to enable autoplay
+            var autoplay = $("<label>", { text: "Autoplay" });
+            var input = $("<input/>", {
+                type: "checkbox",
+                checked: true
+            });
+            input.change(function () {
+                _this._shadersController.onAutoplayChanged(input.is(":checked"));
+            });
+            this._shadersController.currentShaderObservable().subscribe(function (ind) {
+                select.children().eq(ind).prop('selected', true);
+            });
+            autoplay.prepend(input);
+            container.append(autoplay);
+        }
+        else {
+            this._shadersController.onAutoplayChanged(false);
+        }
         $(el).append(container);
     };
     return VisualizationOptionsView;
@@ -1078,10 +1205,12 @@ var MicSource = (function (_super) {
 /// <reference path="../Models/VisualizationOption"/>
 /// <reference path="../Models/Sources/MicSource"/>
 /// <reference path="../Models/Sources/AudioSource"/>
+/// <reference path="../Models/Window"/>
 var GLVis;
 (function (GLVis) {
     var MicInput = (function () {
         function MicInput(visualizationOptions, shadersUrl) {
+            var _this = this;
             this.content = $("<div>");
             window["AudioContext"] = window["AudioContext"] || window["webkitAudioContext"];
             var audioSource = new MicSource(new AudioContext());
@@ -1089,14 +1218,22 @@ var GLVis;
             var resolutionProvider = new ResolutionProvider();
             var controlsProvider = new ControlsProvider();
             this._visualizationManager = new VisualizationManager(videoSource, audioSource, resolutionProvider, shadersUrl, controlsProvider);
-            // this._videoController = new VideoController(videoSource);
             this._visualizationOptionsController = new VisualizationOptionsController(visualizationOptions);
             this._controlsController = new ControlsController(controlsProvider);
             this._glController = new GLController(this._visualizationManager, this._visualizationOptionsController.VisualizationOptionObservable, resolutionProvider);
             this._glView = new GLView(this._glController);
-            this._shadersView = new VisualizationOptionsView(this._visualizationOptionsController);
+            this._shadersView = new VisualizationOptionsView(this._visualizationOptionsController, false);
             this._controlsView = new ControlsView(this._controlsController);
-            // this._videoView = new VideoView(this._videoController);
+            window.addEventListener('keypress', function (e) {
+                // console.log(e.keyCode);
+                // 'f' key
+                if (e.keyCode == 102) {
+                    _this._otherWindow = window.open("window.html", "_new", undefined, true);
+                    _this._otherWindow.onload = function () {
+                        _this._visualizationManager.observableSubject().subscribe(function (objs) { return _this._otherWindow.newVis(objs); });
+                    };
+                }
+            });
         }
         MicInput.prototype.render = function (el) {
             var _this = this;
@@ -1110,8 +1247,13 @@ var GLVis;
         MicInput.prototype.animate = function () {
             var _this = this;
             requestAnimationFrame(function () { return _this.animate(); });
-            this._visualizationManager.animate();
-            this._glView.animate();
+            var update = this._visualizationManager.animate();
+            if (this._otherWindow) {
+                this._otherWindow.update(update);
+            }
+            if (!this._otherWindow) {
+                this._glView.animate();
+            }
         };
         return MicInput;
     })();

@@ -7,11 +7,11 @@ class ShaderVisualization extends BaseVisualization {
 
   private _timeUniform: IUniform<number>;
 
-  private _uniforms: Array<IUniform<any>>;
+  protected _uniforms: Array<IUniform<any>>;
 
   private _shaderUrl: string;
 
-  constructor(resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, shaderUrl: string, controlsProvider?: ControlsProvider) {
+  constructor(resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, shaderUrl: string) {
     super();
 
     this.addSources([timeSource]);
@@ -28,10 +28,6 @@ class ShaderVisualization extends BaseVisualization {
     };
 
     this._uniforms = [<IUniform<any>> this._timeUniform].concat(resolutionProvider.uniforms());
-
-    if(controlsProvider) {
-      this.addUniforms(controlsProvider.uniforms());
-    }
   }
 
   protected setupVisualizerChain(): void {
@@ -45,6 +41,15 @@ class ShaderVisualization extends BaseVisualization {
     this._uniforms = this._uniforms.concat(uniforms);
   }
 
+  animate(): any {
+    super.animate();
+
+    return {
+      type: this.rendererId(),
+      uniforms: this._uniforms
+    };
+  }
+
   object3DObservable(): Rx.Observable<Array<THREE.Mesh>> {
     return Rx.Observable.create<Array<THREE.Mesh>>((observer) => {
       this.setupVisualizerChain();
@@ -55,5 +60,9 @@ class ShaderVisualization extends BaseVisualization {
         .map((shaderplane) => [shaderplane.mesh])
         .subscribe(observer);
     });
+  }
+
+  rendererId(): string {
+    return IDs.shader;
   }
 }

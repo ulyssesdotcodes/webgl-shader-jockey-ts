@@ -1,16 +1,17 @@
 /// <reference path='../Models/Sources/ControlsProvider.ts'/>
 
 class ControlsController {
-  UniformsProvider: ControlsProvider;
+  private _controlsProvider: ControlsProvider;
 
   constructor(controlsProvider:ControlsProvider) {
-    this.UniformsProvider = controlsProvider;
+    this._controlsProvider = controlsProvider;
   }
 
-  onVolumeChange(volume: string) {
-    this.UniformsProvider.updateVolume(parseFloat(volume));
+  controlsObservable(): Rx.Observable<Array<Control>> {
+    return this._controlsProvider.controlsObservable();
   }
 
-  onHueShiftChange(shift: string) {
-    this.UniformsProvider.updateHueShift(parseFloat(shift));
-  }}
+  onControlChange(name: string, value: number):void {
+    this._controlsProvider.updateControl(name, value);
+  }
+}

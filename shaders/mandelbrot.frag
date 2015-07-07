@@ -1,7 +1,7 @@
 void main() {
   vec2 uv = gl_FragCoord.xy / resolution.xy;
 
-  float loudness = loudness * getVolume();
+  float loudness = loudness * volume();
 
   vec2 z, c;
   c.x = 1.333333 * (uv.x - 0.5) * 2.5  - 0.5;
