@@ -4,7 +4,7 @@ class EqPointCloud extends PointCloudVisualization {
   static ID = "eqPointCloud"
 
   private static POINT_COUNT = 80000;
-  private static CUBE_SIZE = 86;
+  private static CUBE_SIZE = 64;
 
   private _audioSource: AudioSource;
 
@@ -25,6 +25,8 @@ class EqPointCloud extends PointCloudVisualization {
   private _eq1Vel: THREE.Vector3;
   private _eq2Vel: THREE.Vector3;
   private _eq3Vel: THREE.Vector3;
+
+  private _controlsProvider: ControlsProvider;
 
 
   constructor(audioSource: AudioSource, resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, controlsProvider?: ControlsProvider) {
@@ -71,6 +73,31 @@ class EqPointCloud extends PointCloudVisualization {
     };
 
     this.addUniforms([this._eqs, this._eq1, this._eq2, this._eq3]);
+
+    if (controlsProvider) {
+      this._controlsProvider = controlsProvider;
+      this._controlsProvider.newControls([
+        {
+          name: "size",
+          min: 0.0,
+          max: 2.0,
+          defVal: 1.0
+        },
+        {
+          name: "power",
+          min: 0.6,
+          max: 2.4,
+          defVal: 1.2
+        },
+        {
+          name: "rotationSpeed",
+          min: 0.4,
+          max: 2.4,
+          defVal: 1.0
+        }
+      ]);
+      this.addUniforms(controlsProvider.uniforms());
+    }
   }
 
   protected setupVisualizerChain(): void {
@@ -117,20 +144,31 @@ class EqPointCloud extends PointCloudVisualization {
     return [this._pc];
   }
 
-  animate() {
+  animate(): any {
     super.animate();
     if (this._material) {
       this._material.attributes.color.needsUpdate = true;
     }
 
     if (this._pc) {
-      this._pc.rotateY(this._loudness / 128.0);
-      this._pc.rotateX(this._loudness / 256.0);
+      this._pc.rotateY(this._controlsProvider.getValue("rotationSpeed") / 128.0);
+      this._pc.rotateX(this._controlsProvider.getValue("rotationSpeed") / 256.0);
 
       this.updateEqWithVelocity(this._eq1, this._eq1Vel, this._eqs.value.x);
       this.updateEqWithVelocity(this._eq2, this._eq2Vel, this._eqs.value.y);
       this.updateEqWithVelocity(this._eq3, this._eq3Vel, this._eqs.value.z);
     }
+
+    return {
+      type: this.rendererId(),
+      loudness: this._loudness,
+      attributes: this._attributes,
+      uniforms: this._uniforms
+    }
+  }
+
+  rendererId(): string {
+    return IDs.eqPointCloud;
   }
 
   updateEqWithVelocity(eq: IUniform<THREE.Vector3>, eqVel: THREE.Vector3, mult: number): void {

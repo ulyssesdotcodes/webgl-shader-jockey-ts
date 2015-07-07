@@ -2,9 +2,11 @@
 
 class VisualizationOptionsView {
   private _shadersController: VisualizationOptionsController;
+  private _autoplay: boolean;
 
-  constructor(shadersController: VisualizationOptionsController) {
+  constructor(shadersController: VisualizationOptionsController, autoplay: boolean) {
     this._shadersController = shadersController;
+    this._autoplay = autoplay;
   }
 
   render(el: HTMLElement): void {
@@ -21,25 +23,30 @@ class VisualizationOptionsView {
 
     container.append(select);
 
-    // Autoplay to enable autoplay
-    var autoplay: JQuery = $("<label>", { text: "Autoplay" });
+    if(this._autoplay) {
+      // Autoplay to enable autoplay
+      var autoplay: JQuery = $("<label>", { text: "Autoplay" });
 
-    var input: JQuery = $("<input/>", {
-      type: "checkbox",
-      checked: true
-    });
+      var input: JQuery = $("<input/>", {
+        type: "checkbox",
+        checked: true
+      });
 
-    input.change(() => {
-      this._shadersController.onAutoplayChanged(input.is(":checked"));
-    });
+      input.change(() => {
+        this._shadersController.onAutoplayChanged(input.is(":checked"));
+      });
 
-    this._shadersController.currentShaderObservable().subscribe((ind) => {
-      select.children().eq(ind).prop('selected', true);
-    })
+      this._shadersController.currentShaderObservable().subscribe((ind) => {
+        select.children().eq(ind).prop('selected', true);
+      })
 
-    autoplay.prepend(input);
+      autoplay.prepend(input);
 
-    container.append(autoplay);
+      container.append(autoplay);
+    }
+    else {
+      this._shadersController.onAutoplayChanged(false);
+    }
 
     $(el).append(container);
   }

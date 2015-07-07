@@ -4,8 +4,8 @@ class PointCloudVisualization extends BaseVisualization {
   private _timeSource: TimeSource;
   private _resolutionProvider: ResolutionProvider;
 
-  private _uniforms: Array<IUniform<any>>;
-  private _attributes: Array<Attribute<any>>;
+  protected _uniforms: Array<IUniform<any>>;
+  protected _attributes: Array<Attribute<any>>;
 
   private _timeUniform: IUniform<number>;
 

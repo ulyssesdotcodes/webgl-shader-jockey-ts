@@ -46,10 +46,6 @@ vec4 applyHueShift(vec4 color, float shift) {
   return vec4(hsv2rgb(hsv), color.w);
 }
 
-vec4 applyHueShift(vec4 color) {
-  return applyHueShift(color, getHue());
-}
-
 vec3 baseHue(float time) {
   return hsv2rgb(vec3(fract(sin(time)), 1.0, 0.5));
 }

@@ -1,42 +1,36 @@
 class ControlsView {
   private _controlsController: ControlsController;
 
+  private _container: JQuery;
+
   constructor(controller: ControlsController) {
+    this._container = $("<div>", { class: "controls shader-controls" });
+
     this._controlsController = controller;
+
+    this._controlsController.controlsObservable()
+      .subscribe((controls) => {
+        this._container.empty();
+
+        controls.forEach((control) => this.renderControl(control));
+      });
   }
 
   render(el: HTMLElement): void {
-    var container: JQuery = $("<div>", { class: "controls shader-controls" });
-
-    this.renderVolume(container);
-    this.renderHue(container);
-
-    $(el).append(container);
+    $(el).append(this._container);
   }
 
-  renderVolume(container: JQuery): void {
-    var volumeContainer: JQuery = $("<div>");
-    volumeContainer.append("Volume: ");
-    var volumeSlider: JQuery = $("<input>", { type: "range", min: 0, max: 2.0, step: 0.05});
+  renderControl(control: Control) {
+    var controlContainer: JQuery = $("<div>");
+    controlContainer.append(control.name + ": ");
+    var controlSlider: JQuery = $("<input>",
+    { type: "range", min: control.min, max: control.max, step: 0.0000001});
 
-    volumeSlider.on('input', (__) => {
-      this._controlsController.onVolumeChange(volumeSlider.val());
+    controlSlider.on('input', (__) => {
+      this._controlsController.onControlChange(control.name, controlSlider.val());
     });
 
-    volumeContainer.append(volumeSlider);
-    container.append(volumeContainer);
-  }
-
-  renderHue(container: JQuery): void {
-    var hueContainer = $("<div>");
-    hueContainer.append("Hue: ");
-    var hueSlider: JQuery = $("<input>", { type: "range", min: -0.5, max: 0.5, step: 0.05});
-
-    hueSlider.on('input', (__) => {
-      this._controlsController.onHueShiftChange(hueSlider.val());
-    });
-
-    hueContainer.append(hueSlider);
-    container.append(hueContainer);
+    controlContainer.append(controlSlider);
+    this._container.append(controlContainer);
   }
 }
