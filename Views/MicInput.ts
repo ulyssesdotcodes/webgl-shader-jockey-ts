@@ -70,7 +70,10 @@ module GLVis {
       if(this._otherWindow) {
         this._otherWindow.update(update);
       }
-      this._glView.animate();
+
+      if(!this._otherWindow) {
+        this._glView.animate();
+      }
     }
   }
 }

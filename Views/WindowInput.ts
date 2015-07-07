@@ -2,6 +2,7 @@
 /// <reference path="../Models/Visualizations/VisualizationRenderer"/>
 /// <reference path="../Models/Visualizations/ObjectRenderer"/>
 /// <reference path="../Models/Visualizations/EqPointCloudRenderer"/>
+/// <reference path="../Models/Visualizations/VideoDistortionRenderer"/> 
 /// <reference path="../typed/three.d.ts"/>
 /// <reference path="../Models/Window"/>
 /// <reference path="../typed/rx.d.ts"/>
@@ -27,7 +28,7 @@ module GLVis {
       window.addEventListener("resize", (__) => this.onWindowResize(), false);
 
       window.newVis = (vis) => this.newVis(vis);
-      window.update = (update) => this.update(update);
+      window.update = (updateData) => this.update(updateData);
     }
 
     render(el: HTMLElement): void {
@@ -70,7 +71,16 @@ module GLVis {
           var newMesh = loader.parse(mesh.toJSON());
           obj.add(newMesh);
         });
+
         this._visRenderer = new ObjectRenderer(<THREE.Mesh>obj.children[0]);
+      }
+      if(data.type == IDs.videoDistortion) {
+        meshes.forEach((mesh) => {
+          var newMesh = loader.parse(mesh.toJSON());
+          obj.add(newMesh);
+        });
+
+        this._visRenderer = new VideoDistortionRenderer(<THREE.Mesh>obj.children[0]);
       }
       else if(data.type == IDs.eqPointCloud) {
         var pc = new THREE.PointCloud(meshes[0].geometry, meshes[0].material);

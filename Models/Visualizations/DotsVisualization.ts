@@ -11,7 +11,7 @@ class DotsVisualization extends ShaderVisualization {
   private _loudness: IUniform<number>;
 
   constructor(audioSource: AudioSource, resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, controlsProvider?: ControlsProvider) {
-    super(resolutionProvider, timeSource, shaderLoader, "dots", controlsProvider);
+    super(resolutionProvider, timeSource, shaderLoader, "dots");
 
     this._audioSource = audioSource;
     this.addSources([this._audioSource]);
@@ -35,6 +35,10 @@ class DotsVisualization extends ShaderVisualization {
     };
 
     this.addUniforms([this._eqSegments, this._accumulatedLoudness, this._loudness]);
+
+    if(controlsProvider) {
+      controlsProvider.newControls([]);
+    }
   }
 
   protected setupVisualizerChain(): void {

@@ -3,4 +3,5 @@ class IDs {
   static circles = "circles";
   static shader = "shader";
   static eqPointCloud = "eqPointCloud";
+  static videoDistortion = "videoDistortion";
 }

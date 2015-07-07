@@ -12,9 +12,8 @@ class ShaderLoader {
   private _initialMethodsUrl: string;
   private _initialMethodsFrag: string;
 
-  constructor(initialMethodsUrl: string, utilsUrl: string, shadersUrl: string) {
+  constructor(utilsUrl: string, shadersUrl: string) {
     this._shadersUrl = shadersUrl;
-    this._initialMethodsUrl = shadersUrl + initialMethodsUrl;
     this._utilsUrl = shadersUrl + utilsUrl;
   }
 
@@ -32,7 +31,7 @@ class ShaderLoader {
   private getFragment(url: string): Rx.Observable<string> {
     return $.getAsObservable<ShaderResponse>(this._shadersUrl + url + '.frag')
       .map((shader) => shader.data)
-      .combineLatest(this.utilFrag(), this.initialMethodsFrag(), (frag, im, util) => util.concat(im).concat(frag));
+      .combineLatest(this.utilFrag(), (frag, util) => util.concat(frag));
   }
 
   private getPlane(): Rx.Observable<string> {
@@ -55,16 +54,6 @@ class ShaderLoader {
     }
 
     return Rx.Observable.just(this._utilFrag);
-  }
-
-  private initialMethodsFrag(): Rx.Observable<string> {
-    if (this._initialMethodsFrag === undefined) {
-      return $.getAsObservable<ShaderResponse>(this._initialMethodsUrl)
-        .map((shader) => shader.data)
-        .doOnNext((util) => this._initialMethodsFrag = util);
-    }
-
-    return Rx.Observable.just(this._initialMethodsFrag);
   }
 }
 

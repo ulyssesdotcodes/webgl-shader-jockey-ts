@@ -5,6 +5,7 @@ var IDs = (function () {
     IDs.circles = "circles";
     IDs.shader = "shader";
     IDs.eqPointCloud = "eqPointCloud";
+    IDs.videoDistortion = "videoDistortion";
     return IDs;
 })();
 var AudioAnalyser = (function () {
@@ -119,23 +120,35 @@ var ObjectRenderer = (function () {
         this._object = object;
         this._buffers = {};
         if (this._object.material.uniforms) {
-            for (var name in this._object.material.uniforms) {
-                var uniform = this._object.material.uniforms[name];
+            var uniforms = this._object.material.uniforms;
+            for (var name in uniforms) {
+                var uniform = uniforms[name];
                 if (uniform.type == "t") {
-                    this._buffers[uniform.name] = new Uint8Array(uniform.value.image.data.length);
-                    var dataTexture = new THREE.DataTexture(this._buffers[uniform.name], AudioSource.FFT_SIZE, 1, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.LinearFilter, THREE.LinearMipMapLinearFilter, 1);
-                    this._object.material.uniforms[uniform.name] = {
-                        name: uniform.name,
-                        type: "t",
-                        value: dataTexture
-                    };
-                    RendererUtils.copyBuffer(uniform.value.image.data, this._buffers[uniform.name]);
-                    this._object.material.uniforms[uniform.name].value.needsUpdate = true;
-                    console.log(dataTexture);
+                    if (uniform.value.image.nodeName && uniform.value.image.nodeName.toLowerCase() === "canvas") {
+                        var canvas = document.createElement("canvas");
+                        canvas.width = 1024;
+                        canvas.height = 1024;
+                        this._buffers[uniform.name] = canvas.getContext("2d");
+                        this._object.material.uniforms[uniform.name] = {
+                            name: uniform.name,
+                            type: "t",
+                            value: new THREE.Texture(canvas)
+                        };
+                    }
+                    else {
+                        this._buffers[uniform.name] = new Uint8Array(uniform.value.image.data.length);
+                        var dataTexture = new THREE.DataTexture(this._buffers[uniform.name], AudioSource.FFT_SIZE, 1, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.LinearFilter, THREE.LinearMipMapLinearFilter, 1);
+                        this._object.material.uniforms[uniform.name] = {
+                            name: uniform.name,
+                            type: "t",
+                            value: dataTexture
+                        };
+                        RendererUtils.copyBuffer(uniform.value.image.data, this._buffers[uniform.name]);
+                        this._object.material.uniforms[uniform.name].value.needsUpdate = true;
+                    }
                 }
             }
         }
-        console.log(this._object.material);
         if (this._object.material.attributes) {
             for (var name in this._object.material.attributes) {
                 console.log(name);
@@ -149,29 +162,34 @@ var ObjectRenderer = (function () {
             }
         }
     }
-    ObjectRenderer.prototype.update = function (update, resolution) {
+    ObjectRenderer.prototype.update = function (updateData, resolution) {
         var _this = this;
-        if (update.uniforms) {
-            update.uniforms.forEach(function (uniform) {
+        if (updateData.uniforms) {
+            updateData.uniforms.forEach(function (uniform) {
                 if (uniform.name == "resolution") {
                     _this._object.material.uniforms[uniform.name].value = resolution;
                 }
                 else if (uniform.type == "t") {
-                    RendererUtils.copyBuffer(uniform.value.image.data, _this._buffers[uniform.name]);
+                    if (uniform.value.image.nodeName && uniform.value.image.nodeName.toLowerCase() === "canvas") {
+                        _this._buffers[uniform.name].drawImage(uniform.value.image, 0, 0);
+                    }
+                    else {
+                        RendererUtils.copyBuffer(uniform.value.image.data, _this._buffers[uniform.name]);
+                    }
                     _this._object.material.uniforms[uniform.name].value.needsUpdate = true;
                 }
+                else if (uniform.type.startsWith("v")) {
+                    var arr = [];
+                    uniform.value.toArray(arr);
+                    _this._object.material.uniforms[uniform.name].value.fromArray(arr);
+                }
                 else {
-                    var newUniform = {
-                        type: uniform.type,
-                        name: uniform.name,
-                        value: uniform.value
-                    };
-                    _this._object.material.uniforms[uniform.name] = newUniform;
+                    _this._object.material.uniforms[uniform.name].value = uniform.value;
                 }
             });
         }
-        if (update.attributes) {
-            update.attributes.forEach(function (attr) {
+        if (updateData.attributes) {
+            updateData.attributes.forEach(function (attr) {
                 RendererUtils.copyBuffer(attr.value, _this._buffers[attr.name]);
                 _this._object.material.attributes[attr.name].needsUpdate = true;
             });
@@ -192,10 +210,21 @@ var EqPointCloudRenderer = (function (_super) {
     };
     return EqPointCloudRenderer;
 })(ObjectRenderer);
+var VideoDistortionRenderer = (function (_super) {
+    __extends(VideoDistortionRenderer, _super);
+    function VideoDistortionRenderer(plane) {
+        _super.call(this, plane);
+    }
+    VideoDistortionRenderer.prototype.update = function (updateData, resolution) {
+        _super.prototype.update.call(this, updateData, resolution);
+    };
+    return VideoDistortionRenderer;
+})(ObjectRenderer);
 /// <reference path="../Models/Visualizations/IDs"/>
 /// <reference path="../Models/Visualizations/VisualizationRenderer"/>
 /// <reference path="../Models/Visualizations/ObjectRenderer"/>
 /// <reference path="../Models/Visualizations/EqPointCloudRenderer"/>
+/// <reference path="../Models/Visualizations/VideoDistortionRenderer"/> 
 /// <reference path="../typed/three.d.ts"/>
 /// <reference path="../Models/Window"/>
 /// <reference path="../typed/rx.d.ts"/>
@@ -208,7 +237,7 @@ var GLVis;
             this.onWindowResize();
             window.addEventListener("resize", function (__) { return _this.onWindowResize(); }, false);
             window.newVis = function (vis) { return _this.newVis(vis); };
-            window.update = function (update) { return _this.update(update); };
+            window.update = function (updateData) { return _this.update(updateData); };
         }
         WindowInput.prototype.render = function (el) {
             var _this = this;
@@ -243,6 +272,13 @@ var GLVis;
                     obj.add(newMesh);
                 });
                 this._visRenderer = new ObjectRenderer(obj.children[0]);
+            }
+            if (data.type == IDs.videoDistortion) {
+                meshes.forEach(function (mesh) {
+                    var newMesh = loader.parse(mesh.toJSON());
+                    obj.add(newMesh);
+                });
+                this._visRenderer = new VideoDistortionRenderer(obj.children[0]);
             }
             else if (data.type == IDs.eqPointCloud) {
                 var pc = new THREE.PointCloud(meshes[0].geometry, meshes[0].material);

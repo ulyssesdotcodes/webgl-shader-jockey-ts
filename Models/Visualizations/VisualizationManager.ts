@@ -3,6 +3,7 @@
 /// <reference path="./DotsVisualization"/>
 /// <reference path="./CirclesVisualization"/>
 /// <reference path="./VideoDistortionVisualization"/>
+/// <reference path="./VideoAudioSpiralVisualization"/>
 /// <reference path="./SquareVisualization"/>
 /// <reference path="./EqPointCloud"/>
 
@@ -24,7 +25,7 @@ class VisualizationManager {
     this._visualizationSubject = new Rx.BehaviorSubject(null);
     this._visualizations = [];
 
-    this._shaderLoader = new ShaderLoader(controlsProvider ? "controls.frag" : "no_controls.frag", "util.frag", shaderBaseUrl);
+    this._shaderLoader = new ShaderLoader("util.frag", shaderBaseUrl);
 
     this._audioSource = audioSource;
     this._videoSource = videoSource;
@@ -51,6 +52,9 @@ class VisualizationManager {
 
     this.addVisualization(optionObservable, VideoDistortionVisualization.ID,
       (options) => new VideoDistortionVisualization(this._videoSource, this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));
+
+    this.addVisualization(optionObservable, VideoAudioSpiralVisualization.ID,
+      (options) => new VideoAudioSpiralVisualization(this._videoSource, this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));
 
     this.addVisualization(optionObservable, SquareVisualization.ID,
       (options) => new SquareVisualization(this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));

@@ -1,4 +1,4 @@
-float getVolume() {
+float volume() {
    return 1.0;
 }
 

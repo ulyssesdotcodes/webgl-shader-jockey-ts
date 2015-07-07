@@ -11,7 +11,7 @@ class ShaderVisualization extends BaseVisualization {
 
   private _shaderUrl: string;
 
-  constructor(resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, shaderUrl: string, controlsProvider?: ControlsProvider) {
+  constructor(resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, shaderUrl: string) {
     super();
 
     this.addSources([timeSource]);
@@ -28,10 +28,6 @@ class ShaderVisualization extends BaseVisualization {
     };
 
     this._uniforms = [<IUniform<any>> this._timeUniform].concat(resolutionProvider.uniforms());
-
-    if(controlsProvider) {
-      this.addUniforms(controlsProvider.uniforms());
-    }
   }
 
   protected setupVisualizerChain(): void {
@@ -64,5 +60,9 @@ class ShaderVisualization extends BaseVisualization {
         .map((shaderplane) => [shaderplane.mesh])
         .subscribe(observer);
     });
+  }
+
+  rendererId(): string {
+    return IDs.shader;
   }
 }

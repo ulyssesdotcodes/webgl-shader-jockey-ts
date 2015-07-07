@@ -14,6 +14,10 @@ class SimpleVisualization extends AudioTextureShaderVisualization {
     };
 
     this.addUniforms([coloruniform]);
+
+    if(controlsProvider) {
+      controlsProvider.newControls([]);
+    }
   }
 
   protected setupvisualizerchain(): void {

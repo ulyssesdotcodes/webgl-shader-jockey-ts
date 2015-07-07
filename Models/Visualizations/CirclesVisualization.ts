@@ -15,6 +15,11 @@ class CirclesVisualization extends AudioTextureShaderVisualization {
     };
 
     this.addUniforms([this._accumulatedLoudness]);
+
+    if(controlsProvider) {
+      controlsProvider.newControls([Controls.volume, Controls.hue]);
+      this.addUniforms(controlsProvider.uniforms());
+    }
   }
 
   protected setupVisualizerChain(): void {
