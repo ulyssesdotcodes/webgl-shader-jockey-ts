@@ -1,13 +1,16 @@
 var GLView = (function () {
     function GLView(glController) {
         this._glController = glController;
+        this._scene = new THREE.Scene();
+        this._renderer = new THREE.WebGLRenderer();
     }
+    GLView.prototype.renderer = function () {
+        return this._renderer;
+    };
     GLView.prototype.render = function (el) {
         var _this = this;
         this._camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 350);
         this._camera.position.z = 100;
-        this._scene = new THREE.Scene();
-        this._renderer = new THREE.WebGLRenderer();
         this._camera.position.z = 100;
         var sceneContainer = new THREE.Object3D();
         this._scene.add(sceneContainer);
@@ -49,6 +52,9 @@ var ShaderLoader = (function () {
         this._shadersUrl = shadersUrl;
         this._utilsUrl = shadersUrl + utilsUrl;
     }
+    ShaderLoader.prototype.getVariedShaderFromServer = function (fragmentUrl, vertexUrl) {
+        return Rx.Observable.zip(this.getFragment(fragmentUrl), this.getVertex(vertexUrl), function (frag, vert) { return new ShaderText(frag, vert); });
+    };
     ShaderLoader.prototype.getShaderFromServer = function (url) {
         return Rx.Observable.zip(this.getFragment(url), this.getVertex(url), function (frag, vert) { return new ShaderText(frag, vert); });
     };
@@ -663,6 +669,9 @@ var PointCloudVisualization = (function (_super) {
         this.addDisposable(this._timeSource.observable().subscribe(function (time) {
             _this._timeUniform.value = time;
         }));
+        this.addDisposable(this._timeSource.observable().subscribe(function (time) {
+            _this._timeUniform.value = time;
+        }));
     };
     PointCloudVisualization.prototype.createPointCloudVisualization = function (shaderMaterial) {
         console.log("This is a really boring pointcloud");
@@ -809,6 +818,190 @@ var EqPointCloud = (function (_super) {
     EqPointCloud.CUBE_SIZE = 64;
     return EqPointCloud;
 })(PointCloudVisualization);
+var FlockingVisualization = (function (_super) {
+    __extends(FlockingVisualization, _super);
+    function FlockingVisualization(renderer, audioSource, resolutionProvider, timeSource, shaderLoader, controlsProvider) {
+        var _this = this;
+        _super.call(this, resolutionProvider, timeSource, shaderLoader, "flocking/point", controlsProvider);
+        this._flipflop = true;
+        this._renderer = renderer;
+        this._scene = new THREE.Scene();
+        this._camera = new THREE.Camera();
+        this._camera.position.z = 1.0;
+        this._resolutionUniform = { name: "resolution", type: "v2", value: new THREE.Vector2(FlockingVisualization.POINT_TEX_WIDTH, FlockingVisualization.POINT_TEX_WIDTH) };
+        this._deltaUniform = {
+            name: "delta",
+            type: "f",
+            value: 0.0
+        };
+        var textureShaderObs = shaderLoader.getShaderFromServer("flocking/texture").map(function (shaderText) {
+            var timeUniforms = [
+                _this._timeUniform,
+                _this._resolutionUniform,
+                { name: "texture", type: "t", value: null }
+            ];
+            return (new ShaderPlane(shaderText, timeUniforms)).mesh;
+        }).doOnNext(function (mesh) {
+            _this._textureMesh = mesh;
+            _this._textureShader = _this._textureMesh.material;
+            _this._scene.add(_this._textureMesh);
+        });
+        var positionShaderObs = shaderLoader.getVariedShaderFromServer("flocking/position", "flocking/texture").map(function (shaderText) {
+            var positionUniforms = [
+                _this._timeUniform,
+                _this._deltaUniform,
+                _this._resolutionUniform,
+                { name: "texturePosition", type: "t", value: null },
+                { name: "textureVelocity", type: "t", value: null }
+            ];
+            return UniformUtils.createShaderMaterialUniforms(shaderText, positionUniforms);
+        }).doOnNext(function (pos) { return _this._positionShader = pos; });
+        var velocityShaderObs = shaderLoader.getVariedShaderFromServer("flocking/velocity", "flocking/texture").map(function (shaderText) {
+            var velocityUniforms = [
+                _this._timeUniform,
+                _this._deltaUniform,
+                _this._resolutionUniform,
+                { name: "texturePosition", type: "t", value: null },
+                { name: "textureVelocity", type: "t", value: null },
+                { name: "separationDistance", type: "f", value: 4.0 },
+                { name: "alignmentDistance", type: "f", value: 4.0 },
+                { name: "cohesionDistance", type: "f", value: 4.0 },
+                { name: "freedomFactor", type: "f", value: 5.0 }
+            ];
+            return UniformUtils.createShaderMaterialUniforms(shaderText, velocityUniforms);
+        }).doOnNext(function (vel) { return _this._velocityShader = vel; });
+        Rx.Observable.zip(textureShaderObs, positionShaderObs, velocityShaderObs, function (tex, pos, vel) {
+            return {
+                pos: _this.generateTexture(),
+                vel: _this.generateVelocityTexture()
+            };
+        }).subscribe(function (startTex) {
+            _this.renderTexture(startTex.pos, _this._rtPosition1);
+            _this.renderTexture(_this._rtPosition1, _this._rtPosition2);
+            _this.renderTexture(startTex.vel, _this._rtVelocity1);
+            _this.renderTexture(_this._rtVelocity1, _this._rtVelocity2);
+        });
+        this._rtPosition1 = this.getRenderTarget();
+        this._rtPosition2 = this._rtPosition1.clone();
+        this._rtVelocity1 = this._rtPosition1.clone();
+        this._rtVelocity2 = this._rtPosition1.clone();
+        this.addUniforms([
+            { name: "texturePosition", type: "t", value: null },
+            { name: "textureVelocity", type: "t", value: null },
+            this._timeUniform,
+            this._deltaUniform
+        ]);
+        this.addAttributes([
+            { name: "reference", type: "v2", value: [] },
+            { name: "pointVertex", type: "f", value: [] }
+        ]);
+    }
+    FlockingVisualization.prototype.setupVisualizerChain = function () {
+        var _this = this;
+        this.addDisposable(this._timeSource.observable().subscribe(function (time) {
+            _this._deltaUniform.value = time - _this._timeUniform.value;
+        }));
+        _super.prototype.setupVisualizerChain.call(this);
+    };
+    FlockingVisualization.prototype.createPointCloudVisualization = function (shaderMaterial) {
+        this._pc = this.createPointCloud(FlockingVisualization.POINT_COUNT, shaderMaterial, function (i) { return new THREE.Vector3(Math.random() * 32.0, Math.random() * 32.0, Math.random() * 32.0); });
+        var reference = shaderMaterial.attributes.reference.value;
+        var pointVertex = shaderMaterial.attributes.pointVertex.value;
+        for (var v = 0; v < this._pc.geometry.vertices.length; v++) {
+            var i = ~~(v / 3);
+            var x = ~(i % FlockingVisualization.POINT_TEX_WIDTH) / FlockingVisualization.POINT_TEX_WIDTH;
+            var y = (i % FlockingVisualization.POINT_TEX_WIDTH) / FlockingVisualization.POINT_TEX_WIDTH;
+            reference[v] = new THREE.Vector2(x, y);
+            pointVertex[v] = v % 9;
+        }
+        return [this._pc];
+    };
+    FlockingVisualization.prototype.animate = function () {
+        _super.prototype.animate.call(this);
+        if (!this._pc) {
+            return;
+        }
+        if (this._flipflop) {
+            this.renderVelocity(this._rtPosition1, this._rtVelocity1, this._rtVelocity2);
+            this.renderPosition(this._rtPosition1, this._rtVelocity2, this._rtPosition2);
+            this._pc.material.uniforms.texturePosition.value = this._rtPosition2;
+            this._pc.material.uniforms.textureVelocity.value = this._rtVelocity2;
+        }
+        else {
+            this.renderVelocity(this._rtPosition2, this._rtVelocity2, this._rtVelocity1);
+            this.renderPosition(this._rtPosition2, this._rtVelocity1, this._rtPosition1);
+            this._pc.material.uniforms.texturePosition.value = this._rtPosition1;
+            this._pc.material.uniforms.textureVelocity.value = this._rtVelocity1;
+        }
+        this._flipflop = !this._flipflop;
+    };
+    FlockingVisualization.prototype.getRenderTarget = function () {
+        return new THREE.WebGLRenderTarget(FlockingVisualization.POINT_TEX_WIDTH, FlockingVisualization.POINT_TEX_WIDTH, {
+            wrapS: THREE.RepeatWrapping,
+            wrapT: THREE.RepeatWrapping,
+            minFilter: THREE.NearestFilter,
+            magFilter: THREE.NearestFilter,
+            format: THREE.RGBAFormat,
+            type: THREE.FloatType,
+            stencilBuffer: false
+        });
+    };
+    FlockingVisualization.prototype.renderTexture = function (input, output) {
+        if (!this._textureMesh) {
+            return;
+        }
+        this._textureMesh.material = this._textureShader;
+        this._textureShader.uniforms.texture.value = input;
+        this._renderer.render(this._scene, this._camera, output);
+    };
+    FlockingVisualization.prototype.renderPosition = function (position, velocity, output) {
+        if (!this._textureMesh) {
+            return;
+        }
+        this._textureMesh.material = this._positionShader;
+        this._positionShader.uniforms.texturePosition.value = position;
+        this._positionShader.uniforms.textureVelocity.value = velocity;
+        this._renderer.render(this._scene, this._camera, output);
+    };
+    FlockingVisualization.prototype.renderVelocity = function (position, velocity, output) {
+        if (!this._textureMesh) {
+            return;
+        }
+        this._textureMesh.material = this._velocityShader;
+        this._velocityShader.uniforms.texturePosition.value = position;
+        this._velocityShader.uniforms.textureVelocity.value = velocity;
+        this._renderer.render(this._scene, this._camera, output);
+    };
+    FlockingVisualization.prototype.generateTexture = function () {
+        return this.generateDataTexture(function () { return Math.random() * FlockingVisualization.CUBE_SIZE - FlockingVisualization.CUBE_SIZE * 0.5; });
+    };
+    FlockingVisualization.prototype.generateVelocityTexture = function () {
+        return this.generateDataTexture(function () { return Math.random() - 0.5; });
+    };
+    FlockingVisualization.prototype.generateDataTexture = function (positionFunc) {
+        var w = FlockingVisualization.POINT_TEX_WIDTH, h = FlockingVisualization.POINT_TEX_WIDTH;
+        var a = new Float32Array(FlockingVisualization.POINT_COUNT * 4);
+        var x, y, z;
+        for (var k = 0; k < FlockingVisualization.POINT_COUNT; k++) {
+            x = positionFunc();
+            y = positionFunc();
+            z = positionFunc();
+            a[k * 4 + 0] = x;
+            a[k * 4 + 1] = y;
+            a[k * 4 + 2] = z;
+            a[k * 4 + 3] = 1;
+        }
+        var texture = new THREE.DataTexture(a, FlockingVisualization.POINT_TEX_WIDTH, FlockingVisualization.POINT_TEX_WIDTH, THREE.RGBAFormat, THREE.FloatType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.NearestFilter, THREE.NearestFilter, 1);
+        texture.flipY = true;
+        texture.needsUpdate = true;
+        return texture;
+    };
+    FlockingVisualization.ID = "flocking";
+    FlockingVisualization.POINT_TEX_WIDTH = 256;
+    FlockingVisualization.POINT_COUNT = FlockingVisualization.POINT_TEX_WIDTH * FlockingVisualization.POINT_TEX_WIDTH;
+    FlockingVisualization.CUBE_SIZE = 32;
+    return FlockingVisualization;
+})(PointCloudVisualization);
 /// <reference path="./BaseVisualization"/>
 /// <reference path="./SimpleVisualization"/>
 /// <reference path="./DotsVisualization"/>
@@ -817,10 +1010,12 @@ var EqPointCloud = (function (_super) {
 /// <reference path="./VideoAudioSpiralVisualization"/>
 /// <reference path="./SquareVisualization"/>
 /// <reference path="./EqPointCloud"/>
+/// <reference path="./FlockingVisualization"/>
 var VisualizationManager = (function () {
-    function VisualizationManager(videoSource, audioSource, resolutionProvider, shaderBaseUrl, controlsProvider) {
+    function VisualizationManager(renderer, videoSource, audioSource, resolutionProvider, shaderBaseUrl, controlsProvider) {
         this._visualizationSubject = new Rx.BehaviorSubject(null);
         this._visualizations = [];
+        this._renderer = renderer;
         this._shaderLoader = new ShaderLoader("util.frag", shaderBaseUrl);
         this._audioSource = audioSource;
         this._videoSource = videoSource;
@@ -842,6 +1037,7 @@ var VisualizationManager = (function () {
         this.addVisualization(optionObservable, VideoAudioSpiralVisualization.ID, function (options) { return new VideoAudioSpiralVisualization(_this._videoSource, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, SquareVisualization.ID, function (options) { return new SquareVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, EqPointCloud.ID, function (options) { return new EqPointCloud(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
+        this.addVisualization(optionObservable, FlockingVisualization.ID, function (options) { return new FlockingVisualization(_this._renderer, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.object3DObservable(); });
     };
     VisualizationManager.prototype.observableSubject = function () {
@@ -874,16 +1070,19 @@ var VisualizationManager = (function () {
 /// <reference path='../Models/LoudnessAccumulator.ts'/>
 /// <reference path="../Models/Visualizations/VisualizationManager"/>
 var GLController = (function () {
-    function GLController(visualizationManager, visualizationOptionObservable, resolutionProvider) {
-        var _this = this;
+    function GLController(visualizationOptionObservable, resolutionProvider) {
         this._meshSubject = new Rx.BehaviorSubject([]);
         this.MeshObservable = this._meshSubject.asObservable();
         this._resolutionProvider = resolutionProvider;
-        this._visualizationManager = visualizationManager;
-        this._visualizationManager.meshObservable(visualizationOptionObservable).subscribe(function (meshes) {
+        this._visOptionObservable = visualizationOptionObservable;
+    }
+    GLController.prototype.setVisualizationManager = function (visMan) {
+        var _this = this;
+        this._visualizationManager = visMan;
+        this._visualizationManager.meshObservable(this._visOptionObservable).subscribe(function (meshes) {
             _this._meshSubject.onNext(meshes);
         });
-    }
+    };
     GLController.prototype.onNewResolution = function (resolution) {
         this._resolutionProvider.updateResolution(new THREE.Vector2(resolution.width, resolution.height));
     };
@@ -1217,13 +1416,14 @@ var GLVis;
             var videoSource = new VideoSource();
             var resolutionProvider = new ResolutionProvider();
             var controlsProvider = new ControlsProvider();
-            this._visualizationManager = new VisualizationManager(videoSource, audioSource, resolutionProvider, shadersUrl, controlsProvider);
             this._visualizationOptionsController = new VisualizationOptionsController(visualizationOptions);
             this._controlsController = new ControlsController(controlsProvider);
-            this._glController = new GLController(this._visualizationManager, this._visualizationOptionsController.VisualizationOptionObservable, resolutionProvider);
+            this._glController = new GLController(this._visualizationOptionsController.VisualizationOptionObservable, resolutionProvider);
             this._glView = new GLView(this._glController);
             this._shadersView = new VisualizationOptionsView(this._visualizationOptionsController, false);
             this._controlsView = new ControlsView(this._controlsController);
+            this._visualizationManager = new VisualizationManager(this._glView.renderer(), videoSource, audioSource, resolutionProvider, shadersUrl, controlsProvider);
+            this._glController.setVisualizationManager(this._visualizationManager);
             window.addEventListener('keypress', function (e) {
                 // console.log(e.keyCode);
                 // 'f' key

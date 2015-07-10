@@ -5,7 +5,7 @@
   <script type="text/javascript" src="lib/rx.all.js"></script>
   <script type="text/javascript" src="lib/jquery.js"></script>
   <script type="text/javascript" src="lib/rx.jquery.min.js"></script>
-  <script type="text/javascript" src="lib/three.min.js"></script>
+  <script type="text/javascript" src="lib/three.js"></script>
   <script type="text/javascript" src="mic-input-glvis.js"></script>
 </head>
 
@@ -15,14 +15,17 @@
   <script type="text/javascript">
     var app =
       new GLVis.MicInput([{
+        name: "Flocking",
+        id: "flocking"
+      }, {
+        name: "EQ Point Cloud",
+        id: "eqPointCloud"
+      }, {
         name: "Camera Spiral",
         id: "videoAudioSpiral"
       }, {
         name: "Camera Distortion",
         id: "videoDistortion"
-      }, {
-        name: "EQ Point Cloud",
-        id: "eqPointCloud"
       }, {
         name: "Circles",
         id: "circles"

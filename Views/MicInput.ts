@@ -31,15 +31,17 @@ module GLVis {
       var resolutionProvider = new ResolutionProvider();
       var controlsProvider = new ControlsProvider();
 
-      this._visualizationManager = new VisualizationManager(videoSource, audioSource, resolutionProvider, shadersUrl, controlsProvider);
-
       this._visualizationOptionsController = new VisualizationOptionsController(visualizationOptions);
       this._controlsController = new ControlsController(controlsProvider);
-      this._glController = new GLController(this._visualizationManager, this._visualizationOptionsController.VisualizationOptionObservable, resolutionProvider);
+      this._glController = new GLController( this._visualizationOptionsController.VisualizationOptionObservable, resolutionProvider);
 
       this._glView = new GLView(this._glController);
       this._shadersView = new VisualizationOptionsView(this._visualizationOptionsController, false);
       this._controlsView = new ControlsView(this._controlsController);
+
+      this._visualizationManager = new VisualizationManager(this._glView.renderer(), videoSource, audioSource, resolutionProvider, shadersUrl, controlsProvider);
+
+      this._glController.setVisualizationManager(this._visualizationManager);
 
       window.addEventListener('keypress', (e) => {
         // console.log(e.keyCode);

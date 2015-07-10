@@ -5,7 +5,7 @@ class ShaderVisualization extends BaseVisualization {
   protected _timeSource: TimeSource;
   protected _shaderLoader: ShaderLoader;
 
-  private _timeUniform: IUniform<number>;
+  protected _timeUniform: IUniform<number>;
 
   protected _uniforms: Array<IUniform<any>>;
 

@@ -53,6 +53,7 @@
         "./Models/Visualizations/DotsVisualization.ts",
         "./Models/Visualizations/EqPointCloud.ts",
         "./Models/Visualizations/EqPointCloudRenderer.ts",
+        "./Models/Visualizations/FlockingVisualization.ts",
         "./Models/Visualizations/IDs.ts",
         "./Models/Visualizations/ObjectRenderer.ts",
         "./Models/Visualizations/PointCloudVisualization.ts",

@@ -16,14 +16,19 @@ class GLController {
   private _shadersUrl: string;
 
   private _visualizationManager: VisualizationManager;
+  private _visOptionObservable: Rx.Observable<VisualizationOption>;
 
-  constructor(visualizationManager: VisualizationManager, visualizationOptionObservable: Rx.Observable<VisualizationOption>, resolutionProvider: ResolutionProvider) {
+  constructor(visualizationOptionObservable: Rx.Observable<VisualizationOption>, resolutionProvider: ResolutionProvider) {
     this._meshSubject = new Rx.BehaviorSubject<Array<THREE.Object3D>>([]);
     this.MeshObservable = this._meshSubject.asObservable();
 
     this._resolutionProvider = resolutionProvider;
-    this._visualizationManager = visualizationManager;
-    this._visualizationManager.meshObservable(visualizationOptionObservable)
+    this._visOptionObservable =visualizationOptionObservable;
+  }
+
+  setVisualizationManager(visMan: VisualizationManager) {
+    this._visualizationManager = visMan;
+    this._visualizationManager.meshObservable(this._visOptionObservable)
       .subscribe((meshes) => {
         this._meshSubject.onNext(meshes);
       });

@@ -1,13 +1,13 @@
 /// <reference path="../Attribute"/>
 
 class PointCloudVisualization extends BaseVisualization {
-  private _timeSource: TimeSource;
+  protected _timeSource: TimeSource;
   private _resolutionProvider: ResolutionProvider;
 
   protected _uniforms: Array<IUniform<any>>;
   protected _attributes: Array<Attribute<any>>;
 
-  private _timeUniform: IUniform<number>;
+  protected _timeUniform: IUniform<number>;
 
   protected _shaderLoader: ShaderLoader;
   private _shaderUrl: string;
@@ -46,6 +46,10 @@ class PointCloudVisualization extends BaseVisualization {
   }
 
   protected setupVisualizerChain(): void {
+    this.addDisposable(this._timeSource.observable().subscribe((time) => {
+      this._timeUniform.value = time;
+    }));
+
     this.addDisposable(this._timeSource.observable().subscribe((time) => {
       this._timeUniform.value = time;
     }));
