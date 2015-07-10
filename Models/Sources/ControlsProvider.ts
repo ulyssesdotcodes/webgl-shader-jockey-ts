@@ -17,6 +17,10 @@ class ControlsProvider implements UniformProvider<any> {
     return this._controlUniforms;
   }
 
+  uniformObject(): any {
+    return this._controls;
+  }
+
   updateControl(name: string, value: number) {
     this._controls[name].value = value;
   }

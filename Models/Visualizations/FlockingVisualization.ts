@@ -13,7 +13,10 @@ class FlockingVisualization extends PointCloudVisualization {
   private _scene: THREE.Scene;
   private _camera: THREE.Camera;
 
+  private _audioSource: AudioSource;
+
   private _deltaUniform: IUniform<number>;
+  private _loudnessUniform: IUniform<number>;
   private _resolutionUniform: IUniform<THREE.Vector2>;
 
   /*private _textureUniforms: Array<IUniform<any>>;*/
@@ -43,6 +46,10 @@ class FlockingVisualization extends PointCloudVisualization {
     this._camera = new THREE.Camera();
     this._camera.position.z = 1.0;
 
+    this._audioSource = audioSource;
+
+    this.addSources([audioSource]);
+
     this._resolutionUniform =
     { name: "resolution", type: "v2", value: new THREE.Vector2(FlockingVisualization.POINT_TEX_WIDTH, FlockingVisualization.POINT_TEX_WIDTH) };
 
@@ -51,6 +58,22 @@ class FlockingVisualization extends PointCloudVisualization {
       type: "f",
       value: 0.0
     };
+
+    this._loudnessUniform = {
+      name: "loudness",
+      type: "f",
+      value: 0.0
+    };
+
+    if(controlsProvider) {
+      controlsProvider.newControls([
+        { name: "separationDistance", min: 0.0, max: 20.0,defVal: 4.0 },
+        { name: "alignmentDistance", min: 0.0, max: 20.0,defVal: 4.0 },
+        { name: "cohesionDistance", min: 0.0, max: 20.0,defVal: 4.0 },
+        { name: "roamingDistance", min: 20.0, max: 300.0,defVal: 100.0 },
+        { name: "speed", min: 1.0, max: 20.0,defVal: 3.0 }
+        ]);
+    }
 
     var textureShaderObs = shaderLoader.getShaderFromServer("flocking/texture")
       .map((shaderText) => {
@@ -91,9 +114,12 @@ class FlockingVisualization extends PointCloudVisualization {
         this._resolutionUniform,
         { name: "texturePosition", type: "t", value: null },
         { name: "textureVelocity", type: "t", value: null },
-        { name: "separationDistance", type: "f", value: 4.0 },
-        { name: "alignmentDistance", type: "f", value: 4.0 },
-        { name: "cohesionDistance", type: "f", value: 4.0 },
+        controlsProvider.uniformObject().separationDistance,
+        controlsProvider.uniformObject().alignmentDistance,
+        controlsProvider.uniformObject().cohesionDistance,
+        controlsProvider.uniformObject().roamingDistance,
+        controlsProvider.uniformObject().speed,
+        this._loudnessUniform,
         { name: "freedomFactor", type: "f", value: 5.0 }
       ];
 
@@ -143,6 +169,13 @@ class FlockingVisualization extends PointCloudVisualization {
       this._deltaUniform.value = time - this._timeUniform.value;
     }));
     super.setupVisualizerChain();
+    this.addDisposable(
+      this._audioSource.observable()
+        .map(AudioUniformFunctions.calculateLoudness)
+        .subscribe((loudness) => {
+        this._loudnessUniform.value = loudness;
+      })
+    );
   }
 
   protected createPointCloudVisualization(shaderMaterial: THREE.ShaderMaterial) {
@@ -152,11 +185,8 @@ class FlockingVisualization extends PointCloudVisualization {
     var pointVertex = shaderMaterial.attributes.pointVertex.value;
 
     for (var v = 0; v < this._pc.geometry.vertices.length; v++) {
-      var i = ~~(v / 3);
-      var x = ~(i % FlockingVisualization.POINT_TEX_WIDTH) /
-        FlockingVisualization.POINT_TEX_WIDTH;
-      var y = (i % FlockingVisualization.POINT_TEX_WIDTH) /
-        FlockingVisualization.POINT_TEX_WIDTH;
+      var x = (v % FlockingVisualization.POINT_TEX_WIDTH) / FlockingVisualization.POINT_TEX_WIDTH;
+      var y = (v / FlockingVisualization.POINT_TEX_WIDTH) / FlockingVisualization.POINT_TEX_WIDTH;
 
       reference[v] = new THREE.Vector2(x, y);
       pointVertex[v] = v % 9;
