@@ -6,6 +6,7 @@
 /// <reference path="./VideoAudioSpiralVisualization"/>
 /// <reference path="./SquareVisualization"/>
 /// <reference path="./EqPointCloud"/>
+/// <reference path="./FlockingVisualization"/>
 
 class VisualizationManager {
   private _visualizationSubject: Rx.BehaviorSubject<BaseVisualization>;
@@ -19,11 +20,15 @@ class VisualizationManager {
   private _resolutionProvider: ResolutionProvider;
   private _controlsProvider: ControlsProvider;
 
+  private _renderer: THREE.WebGLRenderer;
+
   private _visualizations: any;
 
-  constructor(videoSource: VideoSource, audioSource: AudioSource, resolutionProvider: ResolutionProvider, shaderBaseUrl: string, controlsProvider?: ControlsProvider) {
+  constructor(renderer: THREE.WebGLRenderer, videoSource: VideoSource, audioSource: AudioSource, resolutionProvider: ResolutionProvider, shaderBaseUrl: string, controlsProvider?: ControlsProvider) {
     this._visualizationSubject = new Rx.BehaviorSubject(null);
     this._visualizations = [];
+
+    this._renderer = renderer;
 
     this._shaderLoader = new ShaderLoader("util.frag", shaderBaseUrl);
 
@@ -61,6 +66,9 @@ class VisualizationManager {
 
     this.addVisualization(optionObservable, EqPointCloud.ID,
       (options) => new EqPointCloud(this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));
+
+    this.addVisualization(optionObservable, FlockingVisualization.ID,
+      (options) => new FlockingVisualization(this._renderer, this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));
 
     return this._visualizationSubject.asObservable().filter(vis => vis != null).flatMap((visualization) => visualization.object3DObservable());
   }

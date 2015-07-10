@@ -7,14 +7,18 @@ class GLView implements IControllerView {
 
   constructor(glController: GLController) {
     this._glController = glController;
+
+    this._scene = new THREE.Scene();
+    this._renderer = new THREE.WebGLRenderer();
+  }
+
+  renderer(): THREE.WebGLRenderer {
+    return this._renderer;
   }
 
   render(el: HTMLElement): void {
   this._camera  = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 1, 350 );
   this._camera.position.z = 100;
-
-    this._scene = new THREE.Scene();
-    this._renderer = new THREE.WebGLRenderer();
 
     this._camera.position.z = 100;
 

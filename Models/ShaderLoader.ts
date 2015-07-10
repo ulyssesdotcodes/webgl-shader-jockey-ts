@@ -17,6 +17,11 @@ class ShaderLoader {
     this._utilsUrl = shadersUrl + utilsUrl;
   }
 
+  getVariedShaderFromServer(fragmentUrl: string, vertexUrl: string): Rx.Observable<ShaderText> {
+    return Rx.Observable.zip(this.getFragment(fragmentUrl), this.getVertex(vertexUrl),
+      (frag, vert) => new ShaderText(frag, vert));
+  }
+
   getShaderFromServer(url: string): Rx.Observable<ShaderText> {
     return Rx.Observable.zip(this.getFragment(url), this.getVertex(url),
       (frag, vert) => new ShaderText(frag, vert));
