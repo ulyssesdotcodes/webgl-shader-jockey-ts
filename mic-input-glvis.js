@@ -828,12 +828,28 @@ var FlockingVisualization = (function (_super) {
         this._scene = new THREE.Scene();
         this._camera = new THREE.Camera();
         this._camera.position.z = 1.0;
+        this._audioSource = audioSource;
+        this.addSources([audioSource]);
         this._resolutionUniform = { name: "resolution", type: "v2", value: new THREE.Vector2(FlockingVisualization.POINT_TEX_WIDTH, FlockingVisualization.POINT_TEX_WIDTH) };
         this._deltaUniform = {
             name: "delta",
             type: "f",
             value: 0.0
         };
+        this._loudnessUniform = {
+            name: "loudness",
+            type: "f",
+            value: 0.0
+        };
+        if (controlsProvider) {
+            controlsProvider.newControls([
+                { name: "separationDistance", min: 0.0, max: 20.0, defVal: 4.0 },
+                { name: "alignmentDistance", min: 0.0, max: 20.0, defVal: 4.0 },
+                { name: "cohesionDistance", min: 0.0, max: 20.0, defVal: 4.0 },
+                { name: "roamingDistance", min: 20.0, max: 300.0, defVal: 100.0 },
+                { name: "speed", min: 1.0, max: 20.0, defVal: 3.0 }
+            ]);
+        }
         var textureShaderObs = shaderLoader.getShaderFromServer("flocking/texture").map(function (shaderText) {
             var timeUniforms = [
                 _this._timeUniform,
@@ -863,9 +879,12 @@ var FlockingVisualization = (function (_super) {
                 _this._resolutionUniform,
                 { name: "texturePosition", type: "t", value: null },
                 { name: "textureVelocity", type: "t", value: null },
-                { name: "separationDistance", type: "f", value: 4.0 },
-                { name: "alignmentDistance", type: "f", value: 4.0 },
-                { name: "cohesionDistance", type: "f", value: 4.0 },
+                controlsProvider.uniformObject().separationDistance,
+                controlsProvider.uniformObject().alignmentDistance,
+                controlsProvider.uniformObject().cohesionDistance,
+                controlsProvider.uniformObject().roamingDistance,
+                controlsProvider.uniformObject().speed,
+                _this._loudnessUniform,
                 { name: "freedomFactor", type: "f", value: 5.0 }
             ];
             return UniformUtils.createShaderMaterialUniforms(shaderText, velocityUniforms);
@@ -902,15 +921,17 @@ var FlockingVisualization = (function (_super) {
             _this._deltaUniform.value = time - _this._timeUniform.value;
         }));
         _super.prototype.setupVisualizerChain.call(this);
+        this.addDisposable(this._audioSource.observable().map(AudioUniformFunctions.calculateLoudness).subscribe(function (loudness) {
+            _this._loudnessUniform.value = loudness;
+        }));
     };
     FlockingVisualization.prototype.createPointCloudVisualization = function (shaderMaterial) {
         this._pc = this.createPointCloud(FlockingVisualization.POINT_COUNT, shaderMaterial, function (i) { return new THREE.Vector3(Math.random() * 32.0, Math.random() * 32.0, Math.random() * 32.0); });
         var reference = shaderMaterial.attributes.reference.value;
         var pointVertex = shaderMaterial.attributes.pointVertex.value;
         for (var v = 0; v < this._pc.geometry.vertices.length; v++) {
-            var i = ~~(v / 3);
-            var x = ~(i % FlockingVisualization.POINT_TEX_WIDTH) / FlockingVisualization.POINT_TEX_WIDTH;
-            var y = (i % FlockingVisualization.POINT_TEX_WIDTH) / FlockingVisualization.POINT_TEX_WIDTH;
+            var x = (v % FlockingVisualization.POINT_TEX_WIDTH) / FlockingVisualization.POINT_TEX_WIDTH;
+            var y = (v / FlockingVisualization.POINT_TEX_WIDTH) / FlockingVisualization.POINT_TEX_WIDTH;
             reference[v] = new THREE.Vector2(x, y);
             pointVertex[v] = v % 9;
         }
@@ -1097,6 +1118,9 @@ var ControlsProvider = (function () {
     }
     ControlsProvider.prototype.uniforms = function () {
         return this._controlUniforms;
+    };
+    ControlsProvider.prototype.uniformObject = function () {
+        return this._controls;
     };
     ControlsProvider.prototype.updateControl = function (name, value) {
         this._controls[name].value = value;

@@ -3,7 +3,7 @@ const float PI_2 = PI * 2.0;
 
 const float WIDTH = 64.0;
 
-float zoneRadius = 50.0;
+float zoneRadius = 10.0;
 float zoneRadiusSquared = zoneRadius * zoneRadius;
 
 float separationThresh = 0.45;
@@ -11,8 +11,6 @@ float alignmentThresh = 0.65;
 
 const float UPPER_BOUNDS = 400.0;
 const float LOWER_BOUNDS = -UPPER_BOUNDS;
-
-const float SPEED_LIMIT = 3.0;
 
 float rand(vec2 co) {
   return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 432758.5453);
@@ -37,10 +35,7 @@ void main() {
   float separationSquared = separationDistance * separationDistance;
   float cohesionSquared = cohesionDistance * cohesionDistance;
 
-  float f;
   float percent;
-
-  float limit = SPEED_LIMIT;
 
   vec3 velocity = selfVelocity;
 
@@ -51,7 +46,7 @@ void main() {
   dist = length(dir);
   distSquared = dist * dist;
 
-  if(dist > 64.0){
+  if(dist > roamingDistance){
     velocity -= normalize(dir) * delta * dist * 5.0;
   }
 
@@ -66,12 +61,14 @@ void main() {
       dist = length(dir);
       distSquared = dist * dist;
 
+      float f = loudness;
+
       if(dist > 0.0 && distSquared < zoneRadiusSquared) {
         percent = distSquared / zoneRadiusSquared;
 
         if(percent < separationThresh) {
           // Separate
-          f = (separationThresh / percent - 1.0) * delta;
+          f *= (separationThresh / percent - 1.0) * delta;
           velocity -= normalize(dir) * f;
         }
         else if (percent < alignmentThresh){
@@ -81,14 +78,14 @@ void main() {
 
           pointVelocity = texture2D(textureVelocity,
             vec2(x / resolution.x, y / resolution.y)).xyz;
-          f = (0.5 - cos(adjustedPercent * PI_2) * 0.5 + 0.5) * delta;
+          f *= (0.5 - cos(adjustedPercent * PI_2) * 0.5 + 0.5) * delta;
           velocity += normalize(pointVelocity) * f;
         }
         else {
           // Cohese
           float threshDelta = 1.0 - alignmentThresh;
           float adjustedPercent = (percent - alignmentThresh) / threshDelta;
-          f  = (0.5 - cos(adjustedPercent * PI_2) * -0.5 + 0.5) * delta;
+          f  *= (0.5 - cos(adjustedPercent * PI_2) * -0.5 + 0.5) * delta;
           velocity += normalize(dir) * f;
         }
       }
@@ -97,8 +94,8 @@ void main() {
 
   }
 
-  if(length(velocity) > limit) {
-    velocity = normalize(velocity) * limit;
+  if(length(velocity) > speed) {
+    velocity = normalize(velocity) * speed;
   }
 
   gl_FragColor = vec4(velocity, 1.0);
