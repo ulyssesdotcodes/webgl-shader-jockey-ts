@@ -1,6 +1,6 @@
 class FlockingVisualization extends PointCloudVisualization {
   static ID = "flocking";
-  private static POINT_TEX_WIDTH = 256;
+  private static POINT_TEX_WIDTH = 64;
   private static POINT_COUNT = FlockingVisualization.POINT_TEX_WIDTH *
   FlockingVisualization.POINT_TEX_WIDTH;
   private static CUBE_SIZE = 32;

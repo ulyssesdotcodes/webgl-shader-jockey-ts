@@ -997,7 +997,7 @@ var FlockingVisualization = (function (_super) {
         return texture;
     };
     FlockingVisualization.ID = "flocking";
-    FlockingVisualization.POINT_TEX_WIDTH = 256;
+    FlockingVisualization.POINT_TEX_WIDTH = 64;
     FlockingVisualization.POINT_COUNT = FlockingVisualization.POINT_TEX_WIDTH * FlockingVisualization.POINT_TEX_WIDTH;
     FlockingVisualization.CUBE_SIZE = 32;
     return FlockingVisualization;
