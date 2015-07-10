@@ -1,7 +1,7 @@
 const float PI = 3.141592654;
 const float PI_2 = PI * 2.0;
 
-const float WIDTH = 256.0;
+const float WIDTH = 64.0;
 
 float zoneRadius = 50.0;
 float zoneRadiusSquared = zoneRadius * zoneRadius;
