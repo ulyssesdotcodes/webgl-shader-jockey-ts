@@ -1020,7 +1020,7 @@ var FlockingVisualization = (function (_super) {
     FlockingVisualization.ID = "flocking";
     FlockingVisualization.POINT_TEX_WIDTH = 64;
     FlockingVisualization.POINT_COUNT = FlockingVisualization.POINT_TEX_WIDTH * FlockingVisualization.POINT_TEX_WIDTH;
-    FlockingVisualization.CUBE_SIZE = 32;
+    FlockingVisualization.CUBE_SIZE = 128;
     return FlockingVisualization;
 })(PointCloudVisualization);
 /// <reference path="./BaseVisualization"/>

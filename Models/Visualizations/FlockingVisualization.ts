@@ -3,7 +3,7 @@ class FlockingVisualization extends PointCloudVisualization {
   private static POINT_TEX_WIDTH = 64;
   private static POINT_COUNT = FlockingVisualization.POINT_TEX_WIDTH *
   FlockingVisualization.POINT_TEX_WIDTH;
-  private static CUBE_SIZE = 32;
+  private static CUBE_SIZE = 128;
 
   private _vertices: Array<THREE.Vector3>;
 
