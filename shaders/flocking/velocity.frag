@@ -53,6 +53,12 @@ void main() {
     velocity -= normalize(dir) * delta * dist;
   }
 
+  if(dist > roamingDistance * roamingDistance) {
+    velocity -= normalize(dir) * delta * dist * dist;
+  }
+
+  float zoneCount = 0.0;
+
   for(float y=0.0; y < WIDTH; y++) {
     for(float x = 0.0; x < WIDTH; x++){
       if(x == gl_FragCoord.x && y == gl_FragCoord.y) {
@@ -68,30 +74,31 @@ void main() {
       float f = loudness;
 
       if(dist > 0.0 && distSquared < zoneRadiusSquared) {
+        zoneCount++;
         percent = distSquared / zoneRadiusSquared;
 
         if(percent < separationThresh) {
           // Separate
           f *= (separationThresh / percent - 1.0) * delta;
           velocity -= normalize(dir) * f;
-          selfHueVelocity = 0.0;
+          selfHueVelocity += 0.0;
         }
         else if (percent < alignmentThresh){
           // Align
           float threshDelta = alignmentThresh - separationThresh;
           float adjustedPercent = (percent - separationThresh) / threshDelta;
 
-          f *= (0.5 - cos(adjustedPercent * PI_2) * 0.5 + 0.5) * delta;
+          f *= (0.5 - cos(adjustedPercent * PI_2) * 0.5 + 0.5) * delta * 0.5;
           velocity += normalize(pointVelocity.xyz) * f;
-          selfHueVelocity = 0.33;
+          selfHueVelocity += 0.33;
         }
         else {
           // Cohese
           float threshDelta = 1.0 - alignmentThresh;
           float adjustedPercent = (percent - alignmentThresh) / threshDelta;
-          f  *= (0.5 - cos(adjustedPercent * PI_2) * -0.5 + 0.5) * delta;
+          f  *= (0.5 - cos(adjustedPercent * PI_2) * -0.5 + 0.5) * delta * 0.5;
           velocity += normalize(dir) * f;
-          selfHueVelocity = 0.66;
+          selfHueVelocity += 0.66;
         }
       }
 
@@ -100,6 +107,8 @@ void main() {
       // selfHueVelocity += hueVelocity * delta / dist;
     }
   }
+
+  selfHueVelocity /=  zoneCount;
 
   if(length(velocity) > speed) {
     velocity = normalize(velocity) * speed;

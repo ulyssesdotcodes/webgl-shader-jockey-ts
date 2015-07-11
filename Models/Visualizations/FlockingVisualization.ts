@@ -3,7 +3,7 @@ class FlockingVisualization extends PointCloudVisualization {
   private static POINT_TEX_WIDTH = 64;
   private static POINT_COUNT = FlockingVisualization.POINT_TEX_WIDTH *
   FlockingVisualization.POINT_TEX_WIDTH;
-  private static CUBE_SIZE = 128;
+  private static CUBE_SIZE = 64;
 
   private _vertices: Array<THREE.Vector3>;
 
@@ -70,7 +70,7 @@ class FlockingVisualization extends PointCloudVisualization {
         { name: "separationDistance", min: 0.0, max: 20.0,defVal: 4.0 },
         { name: "alignmentDistance", min: 0.0, max: 20.0,defVal: 4.0 },
         { name: "cohesionDistance", min: 0.0, max: 20.0,defVal: 4.0 },
-        { name: "roamingDistance", min: 20.0, max: 300.0,defVal: 100.0 },
+        { name: "roamingDistance", min: 20.0, max: 100.0,defVal: 64.0 },
         { name: "speed", min: 1.0, max: 20.0,defVal: 3.0 }
         ]);
     }
