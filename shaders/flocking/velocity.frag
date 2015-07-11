@@ -17,16 +17,18 @@ float rand(vec2 co) {
 }
 
 void main() {
+  float ad = alignmentDistance * loudness;
   zoneRadius = separationDistance + alignmentDistance + cohesionDistance;
   separationThresh = separationDistance / zoneRadius;
   alignmentThresh = (separationDistance + alignmentDistance) / zoneRadius;
   zoneRadiusSquared = zoneRadius * zoneRadius;
 
   vec2 uv = gl_FragCoord.xy / resolution.xy;
-  vec3 pointPosition, pointVelocity;
+  vec4 pointPosition, pointVelocity;
+  float hueVelocity;
 
-  vec3 selfPosition = texture2D(texturePosition, uv).xyz;
-  vec3 selfVelocity = texture2D(textureVelocity, uv).xyz;
+  vec4 selfPosition = texture2D(texturePosition, uv);
+  vec4 selfVelocity = texture2D(textureVelocity, uv);
 
   float dist;
   vec3 dir;
@@ -37,17 +39,18 @@ void main() {
 
   float percent;
 
-  vec3 velocity = selfVelocity;
+  vec3 velocity = selfVelocity.xyz;
+  float selfHueVelocity = selfVelocity.w;
 
   //TODO: Predator
 
   vec3 central = vec3(0.0, 0.0, 0.0);
-  dir = selfPosition - central;
+  dir = selfPosition.xyz - central;
   dist = length(dir);
   distSquared = dist * dist;
 
   if(dist > roamingDistance){
-    velocity -= normalize(dir) * delta * dist * 5.0;
+    velocity -= normalize(dir) * delta * dist;
   }
 
   for(float y=0.0; y < WIDTH; y++) {
@@ -56,8 +59,9 @@ void main() {
         continue;
       }
 
-      pointPosition = texture2D(texturePosition, vec2(x / resolution.x, y / resolution.y)).xyz;
-      dir = pointPosition - selfPosition;
+      pointPosition = texture2D(texturePosition, vec2(x / resolution.x, y / resolution.y));
+      pointVelocity = texture2D(textureVelocity, vec2(x / resolution.x, y / resolution.y));
+      dir = pointPosition.xyz - selfPosition.xyz;
       dist = length(dir);
       distSquared = dist * dist;
 
@@ -70,16 +74,16 @@ void main() {
           // Separate
           f *= (separationThresh / percent - 1.0) * delta;
           velocity -= normalize(dir) * f;
+          selfHueVelocity = 0.0;
         }
         else if (percent < alignmentThresh){
           // Align
           float threshDelta = alignmentThresh - separationThresh;
           float adjustedPercent = (percent - separationThresh) / threshDelta;
 
-          pointVelocity = texture2D(textureVelocity,
-            vec2(x / resolution.x, y / resolution.y)).xyz;
           f *= (0.5 - cos(adjustedPercent * PI_2) * 0.5 + 0.5) * delta;
-          velocity += normalize(pointVelocity) * f;
+          velocity += normalize(pointVelocity.xyz) * f;
+          selfHueVelocity = 0.33;
         }
         else {
           // Cohese
@@ -87,16 +91,19 @@ void main() {
           float adjustedPercent = (percent - alignmentThresh) / threshDelta;
           f  *= (0.5 - cos(adjustedPercent * PI_2) * -0.5 + 0.5) * delta;
           velocity += normalize(dir) * f;
+          selfHueVelocity = 0.66;
         }
       }
 
+      // hueVelocity = pointVelocity.w;
+      //
+      // selfHueVelocity += hueVelocity * delta / dist;
     }
-
   }
 
   if(length(velocity) > speed) {
     velocity = normalize(velocity) * speed;
   }
 
-  gl_FragColor = vec4(velocity, 1.0);
+  gl_FragColor = vec4(velocity * (0.9 + 4.0 * loudness * loudness), selfHueVelocity);
 }

@@ -150,7 +150,6 @@ class FlockingVisualization extends PointCloudVisualization {
     this._rtVelocity1 = this._rtPosition1.clone();
     this._rtVelocity2 = this._rtPosition1.clone();
 
-
     this.addUniforms([
       { name: "texturePosition", type: "t", value: null },
       { name: "textureVelocity", type: "t", value: null },
@@ -291,7 +290,7 @@ class FlockingVisualization extends PointCloudVisualization {
       a[k * 4 + 0] = x;
       a[k * 4 + 1] = y;
       a[k * 4 + 2] = z;
-      a[k * 4 + 3] = 1;
+      a[k * 4 + 3] = Math.random();
     }
 
     var texture = new THREE.DataTexture(
