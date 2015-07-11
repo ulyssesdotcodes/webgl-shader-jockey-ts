@@ -846,7 +846,7 @@ var FlockingVisualization = (function (_super) {
                 { name: "separationDistance", min: 0.0, max: 20.0, defVal: 4.0 },
                 { name: "alignmentDistance", min: 0.0, max: 20.0, defVal: 4.0 },
                 { name: "cohesionDistance", min: 0.0, max: 20.0, defVal: 4.0 },
-                { name: "roamingDistance", min: 20.0, max: 300.0, defVal: 100.0 },
+                { name: "roamingDistance", min: 20.0, max: 100.0, defVal: 64.0 },
                 { name: "speed", min: 1.0, max: 20.0, defVal: 3.0 }
             ]);
         }
@@ -1020,7 +1020,7 @@ var FlockingVisualization = (function (_super) {
     FlockingVisualization.ID = "flocking";
     FlockingVisualization.POINT_TEX_WIDTH = 64;
     FlockingVisualization.POINT_COUNT = FlockingVisualization.POINT_TEX_WIDTH * FlockingVisualization.POINT_TEX_WIDTH;
-    FlockingVisualization.CUBE_SIZE = 128;
+    FlockingVisualization.CUBE_SIZE = 64;
     return FlockingVisualization;
 })(PointCloudVisualization);
 /// <reference path="./BaseVisualization"/>
