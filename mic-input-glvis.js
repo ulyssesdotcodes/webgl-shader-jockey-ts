@@ -1010,7 +1010,7 @@ var FlockingVisualization = (function (_super) {
             a[k * 4 + 0] = x;
             a[k * 4 + 1] = y;
             a[k * 4 + 2] = z;
-            a[k * 4 + 3] = 1;
+            a[k * 4 + 3] = Math.random();
         }
         var texture = new THREE.DataTexture(a, FlockingVisualization.POINT_TEX_WIDTH, FlockingVisualization.POINT_TEX_WIDTH, THREE.RGBAFormat, THREE.FloatType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.NearestFilter, THREE.NearestFilter, 1);
         texture.flipY = true;
