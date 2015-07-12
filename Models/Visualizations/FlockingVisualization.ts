@@ -21,6 +21,7 @@ class FlockingVisualization extends PointCloudVisualization {
   private _loudnessUniform: IUniform<number>;
   private _accumulatedLoudnessUniform: IUniform<number>;
   private _resolutionUniform: IUniform<THREE.Vector2>;
+  private _eqs: IUniform<THREE.Vector3>;
 
   /*private _textureUniforms: Array<IUniform<any>>;*/
   /*private _positionUniforms: Array<IUniform<any>>;
@@ -79,6 +80,12 @@ class FlockingVisualization extends PointCloudVisualization {
       value: 0.0
     };
 
+    this._eqs = {
+      name: "eqs",
+      type: "v3",
+      value: new THREE.Vector3()
+    }
+
     if(controlsProvider) {
       controlsProvider.newControls([
         { name: "separationDistance", min: 0.0, max: 20.0,defVal: 12.0 },
@@ -135,6 +142,7 @@ class FlockingVisualization extends PointCloudVisualization {
         controlsProvider.uniformObject().speed,
         this._loudnessUniform,
         this._accumulatedLoudnessUniform,
+        this._eqs,
         { name: "freedomFactor", type: "f", value: 5.0 }
       ];
 
@@ -198,6 +206,13 @@ class FlockingVisualization extends PointCloudVisualization {
         .subscribe((loudness) => {
         this._loudnessUniform.value = loudness;
         this._accumulatedLoudnessUniform.value += loudness;
+      })
+    );
+    this.addDisposable(
+      this._audioSource.observable()
+        .map((e) => AudioUniformFunctions.calculateEqs(e, 3))
+        .subscribe((eqs) => {
+          this._eqs.value = new THREE.Vector3(eqs[0], eqs[1], eqs[2]);
       })
     );
   }

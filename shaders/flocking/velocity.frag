@@ -18,12 +18,13 @@ float rand(vec2 co) {
 
 void main() {
   float delt = min(1.0, delta);
-  float cd = cohesionDistance * (0.8 + 0.2 * cos(accumulatedLoudness * 0.25));
-  float sd = separationDistance * (0.4 + sin(accumulatedLoudness * 0.25));
+  float cd = cohesionDistance * (0.6 + 0.2 * cos(accumulatedLoudness * 0.25) + eqs.z);
+  float sd = separationDistance * (0.4 + sin(accumulatedLoudness * 0.25) + eqs.x);
+  float ad = alignmentDistance * (0.6 + eqs.y);
 
-  zoneRadius = sd + alignmentDistance + cd;
+  zoneRadius = sd + ad + cd;
   separationThresh = sd / zoneRadius;
-  alignmentThresh = (sd + alignmentDistance) / zoneRadius;
+  alignmentThresh = (sd + ad) / zoneRadius;
   zoneRadiusSquared = zoneRadius * zoneRadius;
 
   vec2 uv = gl_FragCoord.xy / resolution.xy;
@@ -85,7 +86,7 @@ void main() {
 
         if(percent < separationThresh) {
           // Separate
-          f *= (separationThresh / percent - 1.0) * delt ;
+          f *= (separationThresh / percent - 1.0) * delt * 0.7;
           velocity -= normalize(dir) * f;
           selfHueVelocity += 0.0;
           separationCount += 1.0;
@@ -95,7 +96,7 @@ void main() {
           float threshDelta = alignmentThresh - separationThresh;
           float adjustedPercent = (percent - separationThresh) / threshDelta;
 
-          f *= (0.5 - cos(adjustedPercent * PI_2) * 0.5 + 0.5) * delt;
+          f *= (0.5 - cos(adjustedPercent * PI_2) * 0.5 + 0.5) * delt * 0.7;
           velocity += normalize(pointVelocity.xyz) * f;
           selfHueVelocity += 0.33;
           alignmentCount += 1.0;
@@ -104,7 +105,7 @@ void main() {
           // Cohese
           float threshDelta = 1.0 - alignmentThresh;
           float adjustedPercent = (percent - alignmentThresh) / threshDelta;
-          f  *= (0.5 - cos(adjustedPercent * PI_2) * -0.5 + 0.5) * delt;
+          f  *= (0.5 - cos(adjustedPercent * PI_2) * -0.5 + 0.5) * delt * 0.7;
           velocity += normalize(dir) * f;
           selfHueVelocity += 0.66;
           cohesionCount += 1.0;
@@ -137,5 +138,5 @@ void main() {
     velocity = normalize(velocity) * speed;
   }
 
-  gl_FragColor = vec4(velocity * (0.9999 + loudness * loudness), selfHueVelocity);
+  gl_FragColor = vec4(velocity * (0.99 + pow(loudness, 1.5)), selfHueVelocity);
 }
