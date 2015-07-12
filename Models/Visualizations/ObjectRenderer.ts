@@ -8,7 +8,7 @@ class ObjectRenderer implements VisualizationRenderer {
 
   private _textures: any;
   protected _buffers: any;
-  private _object: ObjectMaterial;
+  protected _object: ObjectMaterial;
 
   constructor(object: ObjectMaterial) {
     this._object = object;
@@ -19,7 +19,7 @@ class ObjectRenderer implements VisualizationRenderer {
       for (var name in uniforms) {
         var uniform = uniforms[name];
         if (uniform.type == "t") {
-          if (uniform.value.image.nodeName &&
+          if (uniform.value && uniform.value.image && uniform.value.image.nodeName &&
             uniform.value.image.nodeName.toLowerCase() === "canvas") {
             var canvas = document.createElement("canvas");
             canvas.width = 1024;
@@ -32,19 +32,25 @@ class ObjectRenderer implements VisualizationRenderer {
               value: new THREE.Texture(canvas)
             }
           }
-          else {
-            this._buffers[uniform.name] = new Uint8Array(uniform.value.image.data.length);
+          else if(uniform.value && uniform.value.image && uniform.value.image.data){
+            if(uniform.value.image.data instanceof Uint8Array) {
+              this._buffers[uniform.name] = new Uint8Array(uniform.value.image.data.length);
+            }
+            else {
+              this._buffers[uniform.name] = new Float32Array(uniform.value.image.data.length);
+            }
+            
             var dataTexture = new THREE.DataTexture(
               this._buffers[uniform.name],
-              AudioSource.FFT_SIZE,
-              1,
+              uniform.value.image.width,
+              uniform.value.image.height,
               THREE.RGBAFormat,
-              THREE.UnsignedByteType,
+              this._buffers[uniform.name] instanceof Uint8Array ? THREE.UnsignedByteType : THREE.FloatType,
               THREE.UVMapping,
               THREE.ClampToEdgeWrapping,
               THREE.ClampToEdgeWrapping,
-              THREE.LinearFilter,
-              THREE.LinearMipMapLinearFilter,
+              THREE.NearestFilter,
+              THREE.NearestFilter,
               1);
 
             (<THREE.ShaderMaterial>this._object.material).uniforms[uniform.name] = {
@@ -57,13 +63,39 @@ class ObjectRenderer implements VisualizationRenderer {
             (<THREE.ShaderMaterial>this._object.material).uniforms[uniform.name].value
             .needsUpdate = true;
           }
+          else {
+            this._buffers[uniform.name] = new Float32Array(uniform.value.width * uniform.value.height * 4);
+
+            var dataTexture = new THREE.DataTexture(
+              this._buffers[uniform.name],
+              this._buffers[uniform.name].length / 4,
+              1,
+              THREE.RGBAFormat,
+              THREE.UnsignedByteType,
+              THREE.UVMapping,
+              THREE.ClampToEdgeWrapping,
+              THREE.ClampToEdgeWrapping,
+              THREE.LinearFilter,
+              THREE.LinearMipMapLinearFilter,
+              1);
+
+            (<THREE.ShaderMaterial>this._object.material).uniforms[uniform.name] = {
+              name: uniform.name,
+              type:"t",
+              value: dataTexture
+            };
+
+            console.log(uniform.name);
+            console.log((<THREE.ShaderMaterial>this._object.material).uniforms);
+            console.log((<THREE.ShaderMaterial>this._object.material).uniforms[uniform.name]);
+            console.log((<THREE.ShaderMaterial>this._object.material).uniforms[uniform.name].value);
+          }
         }
       }
     }
 
     if ((<THREE.ShaderMaterial>this._object.material).attributes) {
       for (var name in (<THREE.ShaderMaterial>this._object.material).attributes) {
-        console.log(name);
         var attr = (<THREE.ShaderMaterial>this._object.material).attributes[name];
         this._buffers[attr.name] = attr.value;
         (<THREE.ShaderMaterial>this._object.material).attributes[name] = {
@@ -82,26 +114,27 @@ class ObjectRenderer implements VisualizationRenderer {
           (<THREE.ShaderMaterial>this._object.material).uniforms[uniform.name].value = resolution;
         }
         else if (uniform.type == "t") {
-          if(uniform.value.image.nodeName &&
+          if(uniform.value.image && uniform.value.image.nodeName &&
             uniform.value.image.nodeName.toLowerCase() === "canvas") {
             this._buffers[uniform.name].drawImage(uniform.value.image, 0, 0);
-          }
-          else {
-            RendererUtils.copyBuffer(uniform.value.image.data,
-              this._buffers[uniform.name]);
-          }
           (<THREE.ShaderMaterial>this._object.material).uniforms[uniform.name].value
             .needsUpdate = true;
+          }
+          else if (uniform.value.image && uniform.value.image.data) {
+            RendererUtils.copyBuffer(uniform.value.image.data,
+              this._buffers[uniform.name]);
+          (<THREE.ShaderMaterial>this._object.material).uniforms[uniform.name].value
+            .needsUpdate = true;
+          }
+          else {
+            console.log(uniform);
+          }
         }
         else if (uniform.type.startsWith("v")) {
           var arr = [];
           uniform.value.toArray(arr);
           (<THREE.ShaderMaterial>this._object.material).uniforms[uniform.name].value
             .fromArray(arr);
-        }
-        else {
-          (<THREE.ShaderMaterial>this._object.material).uniforms[uniform.name].value =
-          uniform.value;
         }
       });
     }

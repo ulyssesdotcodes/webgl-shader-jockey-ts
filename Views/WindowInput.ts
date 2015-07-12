@@ -2,7 +2,8 @@
 /// <reference path="../Models/Visualizations/VisualizationRenderer"/>
 /// <reference path="../Models/Visualizations/ObjectRenderer"/>
 /// <reference path="../Models/Visualizations/EqPointCloudRenderer"/>
-/// <reference path="../Models/Visualizations/VideoDistortionRenderer"/> 
+/// <reference path="../Models/Visualizations/GPGPUPointCloudRenderer"/>
+/// <reference path="../Models/Visualizations/VideoDistortionRenderer"/>
 /// <reference path="../typed/three.d.ts"/>
 /// <reference path="../Models/Window"/>
 /// <reference path="../typed/rx.d.ts"/>
@@ -74,7 +75,7 @@ module GLVis {
 
         this._visRenderer = new ObjectRenderer(<THREE.Mesh>obj.children[0]);
       }
-      if(data.type == IDs.videoDistortion) {
+      else if(data.type == IDs.videoDistortion) {
         meshes.forEach((mesh) => {
           var newMesh = loader.parse(mesh.toJSON());
           obj.add(newMesh);
@@ -82,12 +83,20 @@ module GLVis {
 
         this._visRenderer = new VideoDistortionRenderer(<THREE.Mesh>obj.children[0]);
       }
-      else if(data.type == IDs.eqPointCloud) {
+      else if(data.type == IDs.pointCloud || data.type == IDs.eqPointCloud ||
+        data.type == IDs.gpgpuPointCloud) {
         var pc = new THREE.PointCloud(meshes[0].geometry, meshes[0].material);
-        // pc.material = meshes[0].material;
-        // pc.geometry = meshes[0].geometry;
+
         obj.add(pc);
-        this._visRenderer = new EqPointCloudRenderer(pc);
+        if(data.type == IDs.eqPointCloud) {
+          this._visRenderer = new EqPointCloudRenderer(pc);
+        }
+        else if(data.type == IDs.gpgpuPointCloud) {
+          this._visRenderer = new GPGPUPointCloudRenderer(pc);
+        }
+        else {
+          this._visRenderer =  new ObjectRenderer(pc);
+        }
       }
       else {
         console.log("Couldn't find renderer type " + data.type);

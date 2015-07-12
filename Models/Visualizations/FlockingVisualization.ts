@@ -3,20 +3,23 @@ class FlockingVisualization extends PointCloudVisualization {
   private static POINT_TEX_WIDTH = 64;
   private static POINT_COUNT = FlockingVisualization.POINT_TEX_WIDTH *
   FlockingVisualization.POINT_TEX_WIDTH;
-  private static CUBE_SIZE = 64;
+  private static CUBE_SIZE = 128;
 
   private _vertices: Array<THREE.Vector3>;
 
   private _material: THREE.ShaderMaterial;
 
   private _renderer: THREE.WebGLRenderer;
+  private _gl: WebGLRenderingContext;
   private _scene: THREE.Scene;
   private _camera: THREE.Camera;
 
   private _audioSource: AudioSource;
 
   private _deltaUniform: IUniform<number>;
+  private _lastTime: number = 0.0;
   private _loudnessUniform: IUniform<number>;
+  private _accumulatedLoudnessUniform: IUniform<number>;
   private _resolutionUniform: IUniform<THREE.Vector2>;
 
   /*private _textureUniforms: Array<IUniform<any>>;*/
@@ -28,11 +31,13 @@ class FlockingVisualization extends PointCloudVisualization {
   private _velocityShader: THREE.ShaderMaterial;
 
   private _textureMesh: THREE.Mesh;
-
   private _rtPosition1: THREE.WebGLRenderTarget;
   private _rtPosition2: THREE.WebGLRenderTarget;
   private _rtVelocity1: THREE.WebGLRenderTarget;
   private _rtVelocity2: THREE.WebGLRenderTarget;
+
+  private _positionBuffer: Float32Array;
+  private _velocityBuffer: Float32Array;
 
   private _flipflop = true;
 
@@ -45,6 +50,9 @@ class FlockingVisualization extends PointCloudVisualization {
     this._scene = new THREE.Scene();
     this._camera = new THREE.Camera();
     this._camera.position.z = 1.0;
+
+    this._renderer.setFaceCulling(THREE.CullFaceNone);
+    this._gl = this._renderer.getContext();
 
     this._audioSource = audioSource;
 
@@ -65,13 +73,19 @@ class FlockingVisualization extends PointCloudVisualization {
       value: 0.0
     };
 
+    this._accumulatedLoudnessUniform = {
+      name: "accumulatedLoudness",
+      type: "f",
+      value: 0.0
+    };
+
     if(controlsProvider) {
       controlsProvider.newControls([
-        { name: "separationDistance", min: 0.0, max: 20.0,defVal: 4.0 },
-        { name: "alignmentDistance", min: 0.0, max: 20.0,defVal: 4.0 },
-        { name: "cohesionDistance", min: 0.0, max: 20.0,defVal: 4.0 },
-        { name: "roamingDistance", min: 20.0, max: 100.0,defVal: 64.0 },
-        { name: "speed", min: 1.0, max: 20.0,defVal: 3.0 }
+        { name: "separationDistance", min: 0.0, max: 20.0,defVal: 12.0 },
+        { name: "alignmentDistance", min: 0.0, max: 20.0,defVal: 12.0 },
+        { name: "cohesionDistance", min: 0.0, max: 20.0,defVal: 12.0 },
+        { name: "roamingDistance", min: 20.0, max: 300.0,defVal: 182.0 },
+        { name: "speed", min: 1.0, max: 10.0,defVal: 3.0 }
         ]);
     }
 
@@ -120,6 +134,7 @@ class FlockingVisualization extends PointCloudVisualization {
         controlsProvider.uniformObject().roamingDistance,
         controlsProvider.uniformObject().speed,
         this._loudnessUniform,
+        this._accumulatedLoudnessUniform,
         { name: "freedomFactor", type: "f", value: 5.0 }
       ];
 
@@ -150,9 +165,14 @@ class FlockingVisualization extends PointCloudVisualization {
     this._rtVelocity1 = this._rtPosition1.clone();
     this._rtVelocity2 = this._rtPosition1.clone();
 
+    this._positionBuffer = new Float32Array(FlockingVisualization.POINT_COUNT * 4);
+    this._velocityBuffer = new Float32Array(FlockingVisualization.POINT_COUNT * 4);
+
+    var positionTexture = this.generateDataTexture(() => 0, this._positionBuffer);
+    var velocityTexture = this.generateDataTexture(() => 0, this._velocityBuffer);
     this.addUniforms([
-      { name: "texturePosition", type: "t", value: null },
-      { name: "textureVelocity", type: "t", value: null },
+      { name: "texturePosition", type: "t", value: positionTexture },
+      { name: "textureVelocity", type: "t", value: velocityTexture },
       this._timeUniform,
       this._deltaUniform
     ]);
@@ -165,7 +185,11 @@ class FlockingVisualization extends PointCloudVisualization {
 
   protected setupVisualizerChain(): void {
     this.addDisposable(this._timeSource.observable().subscribe((time) => {
-      this._deltaUniform.value = time - this._timeUniform.value;
+      var diff = time - this._lastTime;
+      if(diff > 0) {
+        this._deltaUniform.value = diff;
+        this._lastTime = time;
+      }
     }));
     super.setupVisualizerChain();
     this.addDisposable(
@@ -173,6 +197,7 @@ class FlockingVisualization extends PointCloudVisualization {
         .map(AudioUniformFunctions.calculateLoudness)
         .subscribe((loudness) => {
         this._loudnessUniform.value = loudness;
+        this._accumulatedLoudnessUniform.value += loudness;
       })
     );
   }
@@ -194,7 +219,7 @@ class FlockingVisualization extends PointCloudVisualization {
     return [this._pc];
   }
 
-  animate() {
+  animate(): any {
     super.animate();
     if (!this._pc) {
       return;
@@ -202,21 +227,40 @@ class FlockingVisualization extends PointCloudVisualization {
 
     if (this._flipflop) {
       this.renderVelocity(this._rtPosition1, this._rtVelocity1, this._rtVelocity2);
+      var gl = this._renderer.getContext();
+      gl.readPixels(0, 0, this._rtVelocity2.width,
+        this._rtVelocity2.height, gl.RGBA, gl.FLOAT, this._velocityBuffer);
+
       this.renderPosition(this._rtPosition1, this._rtVelocity2, this._rtPosition2);
-      (<THREE.ShaderMaterial>this._pc.material).uniforms.texturePosition.value =
-      this._rtPosition2;
-      (<THREE.ShaderMaterial>this._pc.material).uniforms.textureVelocity.value =
-      this._rtVelocity2;
+      gl = this._renderer.getContext();
+      gl.readPixels(0, 0, this._rtPosition2.width,
+        this._rtPosition2.height, gl.RGBA, gl.FLOAT, this._positionBuffer);
+
+      (<THREE.ShaderMaterial>this._pc.material).uniforms.texturePosition.value.needsUpdate = true;
+      (<THREE.ShaderMaterial>this._pc.material).uniforms.textureVelocity.value.needsUpdate = true;
     }
     else {
       this.renderVelocity(this._rtPosition2, this._rtVelocity2, this._rtVelocity1);
+      var gl = this._renderer.getContext();
+      gl.readPixels(0, 0, this._rtVelocity1.width,
+        this._rtVelocity1.height, gl.RGBA, this._gl.FLOAT, this._velocityBuffer);
+
       this.renderPosition(this._rtPosition2, this._rtVelocity1, this._rtPosition1);
-      (<THREE.ShaderMaterial>this._pc.material).uniforms.texturePosition.value =
-      this._rtPosition1;
-      (<THREE.ShaderMaterial>this._pc.material).uniforms.textureVelocity.value = this._rtVelocity1;
+      gl = this._renderer.getContext();
+      gl.readPixels(0, 0, this._rtPosition1.width,
+        this._rtPosition1.height, gl.RGBA, this._gl.FLOAT, this._positionBuffer);
+
+      (<THREE.ShaderMaterial>this._pc.material).uniforms.texturePosition.value.needsUpdate = true;
+      (<THREE.ShaderMaterial>this._pc.material).uniforms.textureVelocity.value.needsUpdate = true;
     }
 
     this._flipflop = !this._flipflop;
+
+    return {
+      type: this.rendererId(),
+      uniforms: this._uniforms,
+      attributes: this._attributes
+    }
   }
 
   getRenderTarget(): THREE.WebGLRenderTarget {
@@ -234,7 +278,7 @@ class FlockingVisualization extends PointCloudVisualization {
       });
   }
 
-  renderTexture(input: any, output: THREE.WebGLRenderTarget): void {
+  renderTexture(input: any, output: any): void {
     if (!this._textureMesh) {
       return;
     }
@@ -274,23 +318,29 @@ class FlockingVisualization extends PointCloudVisualization {
     return this.generateDataTexture(() => Math.random() - 0.5);
   }
 
-  generateDataTexture(positionFunc: () => number): THREE.DataTexture {
+  generateDataTexture(positionFunc: () => number, arr? :Float32Array): THREE.DataTexture {
     var w = FlockingVisualization.POINT_TEX_WIDTH, h =
       FlockingVisualization.POINT_TEX_WIDTH;
 
-    var a = new Float32Array(FlockingVisualization.POINT_COUNT * 4);
+    var a;
+    if(arr) {
+      a = arr;
+    }
+    else {
+      a = new Float32Array(FlockingVisualization.POINT_COUNT * 4);
 
-    var x, y, z;
+      var x, y, z;
 
-    for (var k = 0; k < FlockingVisualization.POINT_COUNT; k++) {
-      x = positionFunc();
-      y = positionFunc();
-      z = positionFunc();
+      for (var k = 0; k < FlockingVisualization.POINT_COUNT; k++) {
+        x = positionFunc();
+        y = positionFunc();
+        z = positionFunc();
 
-      a[k * 4 + 0] = x;
-      a[k * 4 + 1] = y;
-      a[k * 4 + 2] = z;
-      a[k * 4 + 3] = Math.random();
+        a[k * 4 + 0] = x;
+        a[k * 4 + 1] = y;
+        a[k * 4 + 2] = z;
+        a[k * 4 + 3] = Math.random();
+      }
     }
 
     var texture = new THREE.DataTexture(
@@ -310,6 +360,10 @@ class FlockingVisualization extends PointCloudVisualization {
     texture.needsUpdate = true;
 
     return texture;
+  }
+
+  rendererId(): string {
+    return IDs.pointCloud;
   }
 
 }

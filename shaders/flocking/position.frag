@@ -7,5 +7,11 @@ void main() {
   float hue = tmpPos.w;
   float hueVelocity = velocity.w;
 
-  gl_FragColor = vec4(position + velocity.xyz * delta * 15.0, hueVelocity);
+  vec3 finalPos = position + velocity.xyz * delta * 8.0;
+
+  finalPos.x = min(finalPos.x, 256.0);
+  finalPos.y = min(finalPos.y, 256.0);
+  finalPos.z = min(finalPos.z, 256.0);
+
+  gl_FragColor = vec4(finalPos, hueVelocity);
 }

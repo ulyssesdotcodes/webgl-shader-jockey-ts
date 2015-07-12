@@ -49,10 +49,6 @@ class PointCloudVisualization extends BaseVisualization {
     this.addDisposable(this._timeSource.observable().subscribe((time) => {
       this._timeUniform.value = time;
     }));
-
-    this.addDisposable(this._timeSource.observable().subscribe((time) => {
-      this._timeUniform.value = time;
-    }));
   }
 
   protected createPointCloudVisualization(shaderMaterial: THREE.ShaderMaterial): Array<THREE.Object3D> {

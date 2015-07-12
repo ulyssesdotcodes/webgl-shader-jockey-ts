@@ -1,5 +1,5 @@
 module RendererUtils {
-  export function  copyBuffer(source: Uint8Array, dest: Uint8Array):void {
+  export function  copyBuffer(source: any, dest: any):void {
     for(var i = 0; i < source.length; i++) {
       dest[i] = source[i];
     }

@@ -423,7 +423,9 @@ var IDs = (function () {
     IDs.dots = "dots";
     IDs.circles = "circles";
     IDs.shader = "shader";
+    IDs.pointCloud = "pointCloud";
     IDs.eqPointCloud = "eqPointCloud";
+    IDs.gpgpuPointCloud = "gpgpuPointCloud";
     IDs.videoDistortion = "videoDistortion";
     return IDs;
 })();
@@ -669,9 +671,6 @@ var PointCloudVisualization = (function (_super) {
         this.addDisposable(this._timeSource.observable().subscribe(function (time) {
             _this._timeUniform.value = time;
         }));
-        this.addDisposable(this._timeSource.observable().subscribe(function (time) {
-            _this._timeUniform.value = time;
-        }));
     };
     PointCloudVisualization.prototype.createPointCloudVisualization = function (shaderMaterial) {
         console.log("This is a really boring pointcloud");
@@ -823,11 +822,14 @@ var FlockingVisualization = (function (_super) {
     function FlockingVisualization(renderer, audioSource, resolutionProvider, timeSource, shaderLoader, controlsProvider) {
         var _this = this;
         _super.call(this, resolutionProvider, timeSource, shaderLoader, "flocking/point", controlsProvider);
+        this._lastTime = 0.0;
         this._flipflop = true;
         this._renderer = renderer;
         this._scene = new THREE.Scene();
         this._camera = new THREE.Camera();
         this._camera.position.z = 1.0;
+        this._renderer.setFaceCulling(THREE.CullFaceNone);
+        this._gl = this._renderer.getContext();
         this._audioSource = audioSource;
         this.addSources([audioSource]);
         this._resolutionUniform = { name: "resolution", type: "v2", value: new THREE.Vector2(FlockingVisualization.POINT_TEX_WIDTH, FlockingVisualization.POINT_TEX_WIDTH) };
@@ -841,13 +843,18 @@ var FlockingVisualization = (function (_super) {
             type: "f",
             value: 0.0
         };
+        this._accumulatedLoudnessUniform = {
+            name: "accumulatedLoudness",
+            type: "f",
+            value: 0.0
+        };
         if (controlsProvider) {
             controlsProvider.newControls([
-                { name: "separationDistance", min: 0.0, max: 20.0, defVal: 4.0 },
-                { name: "alignmentDistance", min: 0.0, max: 20.0, defVal: 4.0 },
-                { name: "cohesionDistance", min: 0.0, max: 20.0, defVal: 4.0 },
-                { name: "roamingDistance", min: 20.0, max: 100.0, defVal: 64.0 },
-                { name: "speed", min: 1.0, max: 20.0, defVal: 3.0 }
+                { name: "separationDistance", min: 0.0, max: 20.0, defVal: 12.0 },
+                { name: "alignmentDistance", min: 0.0, max: 20.0, defVal: 12.0 },
+                { name: "cohesionDistance", min: 0.0, max: 20.0, defVal: 12.0 },
+                { name: "roamingDistance", min: 20.0, max: 300.0, defVal: 182.0 },
+                { name: "speed", min: 1.0, max: 10.0, defVal: 3.0 }
             ]);
         }
         var textureShaderObs = shaderLoader.getShaderFromServer("flocking/texture").map(function (shaderText) {
@@ -885,6 +892,7 @@ var FlockingVisualization = (function (_super) {
                 controlsProvider.uniformObject().roamingDistance,
                 controlsProvider.uniformObject().speed,
                 _this._loudnessUniform,
+                _this._accumulatedLoudnessUniform,
                 { name: "freedomFactor", type: "f", value: 5.0 }
             ];
             return UniformUtils.createShaderMaterialUniforms(shaderText, velocityUniforms);
@@ -904,9 +912,13 @@ var FlockingVisualization = (function (_super) {
         this._rtPosition2 = this._rtPosition1.clone();
         this._rtVelocity1 = this._rtPosition1.clone();
         this._rtVelocity2 = this._rtPosition1.clone();
+        this._positionBuffer = new Float32Array(FlockingVisualization.POINT_COUNT * 4);
+        this._velocityBuffer = new Float32Array(FlockingVisualization.POINT_COUNT * 4);
+        var positionTexture = this.generateDataTexture(function () { return 0; }, this._positionBuffer);
+        var velocityTexture = this.generateDataTexture(function () { return 0; }, this._velocityBuffer);
         this.addUniforms([
-            { name: "texturePosition", type: "t", value: null },
-            { name: "textureVelocity", type: "t", value: null },
+            { name: "texturePosition", type: "t", value: positionTexture },
+            { name: "textureVelocity", type: "t", value: velocityTexture },
             this._timeUniform,
             this._deltaUniform
         ]);
@@ -918,11 +930,16 @@ var FlockingVisualization = (function (_super) {
     FlockingVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
         this.addDisposable(this._timeSource.observable().subscribe(function (time) {
-            _this._deltaUniform.value = time - _this._timeUniform.value;
+            var diff = time - _this._lastTime;
+            if (diff > 0) {
+                _this._deltaUniform.value = diff;
+                _this._lastTime = time;
+            }
         }));
         _super.prototype.setupVisualizerChain.call(this);
         this.addDisposable(this._audioSource.observable().map(AudioUniformFunctions.calculateLoudness).subscribe(function (loudness) {
             _this._loudnessUniform.value = loudness;
+            _this._accumulatedLoudnessUniform.value += loudness;
         }));
     };
     FlockingVisualization.prototype.createPointCloudVisualization = function (shaderMaterial) {
@@ -944,17 +961,30 @@ var FlockingVisualization = (function (_super) {
         }
         if (this._flipflop) {
             this.renderVelocity(this._rtPosition1, this._rtVelocity1, this._rtVelocity2);
+            var gl = this._renderer.getContext();
+            gl.readPixels(0, 0, this._rtVelocity2.width, this._rtVelocity2.height, gl.RGBA, gl.FLOAT, this._velocityBuffer);
             this.renderPosition(this._rtPosition1, this._rtVelocity2, this._rtPosition2);
-            this._pc.material.uniforms.texturePosition.value = this._rtPosition2;
-            this._pc.material.uniforms.textureVelocity.value = this._rtVelocity2;
+            gl = this._renderer.getContext();
+            gl.readPixels(0, 0, this._rtPosition2.width, this._rtPosition2.height, gl.RGBA, gl.FLOAT, this._positionBuffer);
+            this._pc.material.uniforms.texturePosition.value.needsUpdate = true;
+            this._pc.material.uniforms.textureVelocity.value.needsUpdate = true;
         }
         else {
             this.renderVelocity(this._rtPosition2, this._rtVelocity2, this._rtVelocity1);
+            var gl = this._renderer.getContext();
+            gl.readPixels(0, 0, this._rtVelocity1.width, this._rtVelocity1.height, gl.RGBA, this._gl.FLOAT, this._velocityBuffer);
             this.renderPosition(this._rtPosition2, this._rtVelocity1, this._rtPosition1);
-            this._pc.material.uniforms.texturePosition.value = this._rtPosition1;
-            this._pc.material.uniforms.textureVelocity.value = this._rtVelocity1;
+            gl = this._renderer.getContext();
+            gl.readPixels(0, 0, this._rtPosition1.width, this._rtPosition1.height, gl.RGBA, this._gl.FLOAT, this._positionBuffer);
+            this._pc.material.uniforms.texturePosition.value.needsUpdate = true;
+            this._pc.material.uniforms.textureVelocity.value.needsUpdate = true;
         }
         this._flipflop = !this._flipflop;
+        return {
+            type: this.rendererId(),
+            uniforms: this._uniforms,
+            attributes: this._attributes
+        };
     };
     FlockingVisualization.prototype.getRenderTarget = function () {
         return new THREE.WebGLRenderTarget(FlockingVisualization.POINT_TEX_WIDTH, FlockingVisualization.POINT_TEX_WIDTH, {
@@ -999,28 +1029,37 @@ var FlockingVisualization = (function (_super) {
     FlockingVisualization.prototype.generateVelocityTexture = function () {
         return this.generateDataTexture(function () { return Math.random() - 0.5; });
     };
-    FlockingVisualization.prototype.generateDataTexture = function (positionFunc) {
+    FlockingVisualization.prototype.generateDataTexture = function (positionFunc, arr) {
         var w = FlockingVisualization.POINT_TEX_WIDTH, h = FlockingVisualization.POINT_TEX_WIDTH;
-        var a = new Float32Array(FlockingVisualization.POINT_COUNT * 4);
-        var x, y, z;
-        for (var k = 0; k < FlockingVisualization.POINT_COUNT; k++) {
-            x = positionFunc();
-            y = positionFunc();
-            z = positionFunc();
-            a[k * 4 + 0] = x;
-            a[k * 4 + 1] = y;
-            a[k * 4 + 2] = z;
-            a[k * 4 + 3] = Math.random();
+        var a;
+        if (arr) {
+            a = arr;
+        }
+        else {
+            a = new Float32Array(FlockingVisualization.POINT_COUNT * 4);
+            var x, y, z;
+            for (var k = 0; k < FlockingVisualization.POINT_COUNT; k++) {
+                x = positionFunc();
+                y = positionFunc();
+                z = positionFunc();
+                a[k * 4 + 0] = x;
+                a[k * 4 + 1] = y;
+                a[k * 4 + 2] = z;
+                a[k * 4 + 3] = Math.random();
+            }
         }
         var texture = new THREE.DataTexture(a, FlockingVisualization.POINT_TEX_WIDTH, FlockingVisualization.POINT_TEX_WIDTH, THREE.RGBAFormat, THREE.FloatType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.NearestFilter, THREE.NearestFilter, 1);
         texture.flipY = true;
         texture.needsUpdate = true;
         return texture;
     };
+    FlockingVisualization.prototype.rendererId = function () {
+        return IDs.pointCloud;
+    };
     FlockingVisualization.ID = "flocking";
     FlockingVisualization.POINT_TEX_WIDTH = 64;
     FlockingVisualization.POINT_COUNT = FlockingVisualization.POINT_TEX_WIDTH * FlockingVisualization.POINT_TEX_WIDTH;
-    FlockingVisualization.CUBE_SIZE = 64;
+    FlockingVisualization.CUBE_SIZE = 128;
     return FlockingVisualization;
 })(PointCloudVisualization);
 /// <reference path="./BaseVisualization"/>

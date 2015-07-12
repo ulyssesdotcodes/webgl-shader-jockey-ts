@@ -4,7 +4,9 @@ var IDs = (function () {
     IDs.dots = "dots";
     IDs.circles = "circles";
     IDs.shader = "shader";
+    IDs.pointCloud = "pointCloud";
     IDs.eqPointCloud = "eqPointCloud";
+    IDs.gpgpuPointCloud = "gpgpuPointCloud";
     IDs.videoDistortion = "videoDistortion";
     return IDs;
 })();
@@ -124,7 +126,7 @@ var ObjectRenderer = (function () {
             for (var name in uniforms) {
                 var uniform = uniforms[name];
                 if (uniform.type == "t") {
-                    if (uniform.value.image.nodeName && uniform.value.image.nodeName.toLowerCase() === "canvas") {
+                    if (uniform.value && uniform.value.image && uniform.value.image.nodeName && uniform.value.image.nodeName.toLowerCase() === "canvas") {
                         var canvas = document.createElement("canvas");
                         canvas.width = 1024;
                         canvas.height = 1024;
@@ -135,9 +137,14 @@ var ObjectRenderer = (function () {
                             value: new THREE.Texture(canvas)
                         };
                     }
-                    else {
-                        this._buffers[uniform.name] = new Uint8Array(uniform.value.image.data.length);
-                        var dataTexture = new THREE.DataTexture(this._buffers[uniform.name], AudioSource.FFT_SIZE, 1, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.LinearFilter, THREE.LinearMipMapLinearFilter, 1);
+                    else if (uniform.value && uniform.value.image && uniform.value.image.data) {
+                        if (uniform.value.image.data instanceof Uint8Array) {
+                            this._buffers[uniform.name] = new Uint8Array(uniform.value.image.data.length);
+                        }
+                        else {
+                            this._buffers[uniform.name] = new Float32Array(uniform.value.image.data.length);
+                        }
+                        var dataTexture = new THREE.DataTexture(this._buffers[uniform.name], uniform.value.image.width, uniform.value.image.height, THREE.RGBAFormat, this._buffers[uniform.name] instanceof Uint8Array ? THREE.UnsignedByteType : THREE.FloatType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.NearestFilter, THREE.NearestFilter, 1);
                         this._object.material.uniforms[uniform.name] = {
                             name: uniform.name,
                             type: "t",
@@ -146,12 +153,24 @@ var ObjectRenderer = (function () {
                         RendererUtils.copyBuffer(uniform.value.image.data, this._buffers[uniform.name]);
                         this._object.material.uniforms[uniform.name].value.needsUpdate = true;
                     }
+                    else {
+                        this._buffers[uniform.name] = new Float32Array(uniform.value.width * uniform.value.height * 4);
+                        var dataTexture = new THREE.DataTexture(this._buffers[uniform.name], this._buffers[uniform.name].length / 4, 1, THREE.RGBAFormat, THREE.UnsignedByteType, THREE.UVMapping, THREE.ClampToEdgeWrapping, THREE.ClampToEdgeWrapping, THREE.LinearFilter, THREE.LinearMipMapLinearFilter, 1);
+                        this._object.material.uniforms[uniform.name] = {
+                            name: uniform.name,
+                            type: "t",
+                            value: dataTexture
+                        };
+                        console.log(uniform.name);
+                        console.log(this._object.material.uniforms);
+                        console.log(this._object.material.uniforms[uniform.name]);
+                        console.log(this._object.material.uniforms[uniform.name].value);
+                    }
                 }
             }
         }
         if (this._object.material.attributes) {
             for (var name in this._object.material.attributes) {
-                console.log(name);
                 var attr = this._object.material.attributes[name];
                 this._buffers[attr.name] = attr.value;
                 this._object.material.attributes[name] = {
@@ -170,21 +189,22 @@ var ObjectRenderer = (function () {
                     _this._object.material.uniforms[uniform.name].value = resolution;
                 }
                 else if (uniform.type == "t") {
-                    if (uniform.value.image.nodeName && uniform.value.image.nodeName.toLowerCase() === "canvas") {
+                    if (uniform.value.image && uniform.value.image.nodeName && uniform.value.image.nodeName.toLowerCase() === "canvas") {
                         _this._buffers[uniform.name].drawImage(uniform.value.image, 0, 0);
+                        _this._object.material.uniforms[uniform.name].value.needsUpdate = true;
+                    }
+                    else if (uniform.value.image && uniform.value.image.data) {
+                        RendererUtils.copyBuffer(uniform.value.image.data, _this._buffers[uniform.name]);
+                        _this._object.material.uniforms[uniform.name].value.needsUpdate = true;
                     }
                     else {
-                        RendererUtils.copyBuffer(uniform.value.image.data, _this._buffers[uniform.name]);
+                        console.log(uniform);
                     }
-                    _this._object.material.uniforms[uniform.name].value.needsUpdate = true;
                 }
                 else if (uniform.type.startsWith("v")) {
                     var arr = [];
                     uniform.value.toArray(arr);
                     _this._object.material.uniforms[uniform.name].value.fromArray(arr);
-                }
-                else {
-                    _this._object.material.uniforms[uniform.name].value = uniform.value;
                 }
             });
         }
@@ -210,6 +230,20 @@ var EqPointCloudRenderer = (function (_super) {
     };
     return EqPointCloudRenderer;
 })(ObjectRenderer);
+var GPGPUPointCloudRenderer = (function (_super) {
+    __extends(GPGPUPointCloudRenderer, _super);
+    function GPGPUPointCloudRenderer(pc) {
+        _super.call(this, pc);
+    }
+    GPGPUPointCloudRenderer.prototype.update = function (update, resolution) {
+        _super.prototype.update.call(this, update, resolution);
+        RendererUtils.copyBuffer(update.texturePosition, this._buffers["texturePosition"]);
+        RendererUtils.copyBuffer(update.textureVelocity, this._buffers["textureVelocity"]);
+        this._object.material.uniforms["texturePosition"].value.needsUpdate = true;
+        this._object.material.uniforms["textureVelocity"].value.needsUpdate = true;
+    };
+    return GPGPUPointCloudRenderer;
+})(ObjectRenderer);
 var VideoDistortionRenderer = (function (_super) {
     __extends(VideoDistortionRenderer, _super);
     function VideoDistortionRenderer(plane) {
@@ -224,7 +258,8 @@ var VideoDistortionRenderer = (function (_super) {
 /// <reference path="../Models/Visualizations/VisualizationRenderer"/>
 /// <reference path="../Models/Visualizations/ObjectRenderer"/>
 /// <reference path="../Models/Visualizations/EqPointCloudRenderer"/>
-/// <reference path="../Models/Visualizations/VideoDistortionRenderer"/> 
+/// <reference path="../Models/Visualizations/GPGPUPointCloudRenderer"/>
+/// <reference path="../Models/Visualizations/VideoDistortionRenderer"/>
 /// <reference path="../typed/three.d.ts"/>
 /// <reference path="../Models/Window"/>
 /// <reference path="../typed/rx.d.ts"/>
@@ -273,19 +308,25 @@ var GLVis;
                 });
                 this._visRenderer = new ObjectRenderer(obj.children[0]);
             }
-            if (data.type == IDs.videoDistortion) {
+            else if (data.type == IDs.videoDistortion) {
                 meshes.forEach(function (mesh) {
                     var newMesh = loader.parse(mesh.toJSON());
                     obj.add(newMesh);
                 });
                 this._visRenderer = new VideoDistortionRenderer(obj.children[0]);
             }
-            else if (data.type == IDs.eqPointCloud) {
+            else if (data.type == IDs.pointCloud || data.type == IDs.eqPointCloud || data.type == IDs.gpgpuPointCloud) {
                 var pc = new THREE.PointCloud(meshes[0].geometry, meshes[0].material);
-                // pc.material = meshes[0].material;
-                // pc.geometry = meshes[0].geometry;
                 obj.add(pc);
-                this._visRenderer = new EqPointCloudRenderer(pc);
+                if (data.type == IDs.eqPointCloud) {
+                    this._visRenderer = new EqPointCloudRenderer(pc);
+                }
+                else if (data.type == IDs.gpgpuPointCloud) {
+                    this._visRenderer = new GPGPUPointCloudRenderer(pc);
+                }
+                else {
+                    this._visRenderer = new ObjectRenderer(pc);
+                }
             }
             else {
                 console.log("Couldn't find renderer type " + data.type);
