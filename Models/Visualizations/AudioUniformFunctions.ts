@@ -17,7 +17,7 @@ module AudioUniformFunctions {
         vec.push(0);
       }
 
-      var segmentSize = e.frequencyBuffer.length * 0.5 / segments;
+      var segmentSize = e.frequencyBuffer.length * 0.33 / segments;
 
       for(var i = 0; i < segmentSize * segments; i++) {
         var val = e.frequencyBuffer[i];

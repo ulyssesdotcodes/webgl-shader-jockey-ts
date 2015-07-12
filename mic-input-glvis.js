@@ -195,7 +195,7 @@ var AudioUniformFunctions;
             for (var i = 0; i < segments; i++) {
                 vec.push(0);
             }
-            var segmentSize = e.frequencyBuffer.length * 0.5 / segments;
+            var segmentSize = e.frequencyBuffer.length * 0.33 / segments;
             for (var i = 0; i < segmentSize * segments; i++) {
                 var val = e.frequencyBuffer[i];
                 vec[Math.floor(i / segmentSize)] += val * val / (255 - ((255 - val) * i / (segmentSize * segments)));
@@ -848,6 +848,11 @@ var FlockingVisualization = (function (_super) {
             type: "f",
             value: 0.0
         };
+        this._eqs = {
+            name: "eqs",
+            type: "v3",
+            value: new THREE.Vector3()
+        };
         if (controlsProvider) {
             controlsProvider.newControls([
                 { name: "separationDistance", min: 0.0, max: 20.0, defVal: 12.0 },
@@ -893,6 +898,7 @@ var FlockingVisualization = (function (_super) {
                 controlsProvider.uniformObject().speed,
                 _this._loudnessUniform,
                 _this._accumulatedLoudnessUniform,
+                _this._eqs,
                 { name: "freedomFactor", type: "f", value: 5.0 }
             ];
             return UniformUtils.createShaderMaterialUniforms(shaderText, velocityUniforms);
@@ -940,6 +946,9 @@ var FlockingVisualization = (function (_super) {
         this.addDisposable(this._audioSource.observable().map(AudioUniformFunctions.calculateLoudness).subscribe(function (loudness) {
             _this._loudnessUniform.value = loudness;
             _this._accumulatedLoudnessUniform.value += loudness;
+        }));
+        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); }).subscribe(function (eqs) {
+            _this._eqs.value = new THREE.Vector3(eqs[0], eqs[1], eqs[2]);
         }));
     };
     FlockingVisualization.prototype.createPointCloudVisualization = function (shaderMaterial) {
