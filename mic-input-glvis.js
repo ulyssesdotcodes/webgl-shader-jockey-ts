@@ -195,7 +195,7 @@ var AudioUniformFunctions;
             for (var i = 0; i < segments; i++) {
                 vec.push(0);
             }
-            var segmentSize = e.frequencyBuffer.length * 0.33 / segments;
+            var segmentSize = e.frequencyBuffer.length * 0.5 / segments;
             for (var i = 0; i < segmentSize * segments; i++) {
                 var val = e.frequencyBuffer[i];
                 vec[Math.floor(i / segmentSize)] += val * val / (255 - ((255 - val) * i / (segmentSize * segments)));
@@ -858,7 +858,7 @@ var FlockingVisualization = (function (_super) {
                 { name: "separationDistance", min: 0.0, max: 20.0, defVal: 12.0 },
                 { name: "alignmentDistance", min: 0.0, max: 20.0, defVal: 12.0 },
                 { name: "cohesionDistance", min: 0.0, max: 20.0, defVal: 12.0 },
-                { name: "roamingDistance", min: 20.0, max: 300.0, defVal: 182.0 },
+                { name: "roamingDistance", min: 20.0, max: 200.0, defVal: 128.0 },
                 { name: "speed", min: 1.0, max: 10.0, defVal: 3.0 }
             ]);
         }
