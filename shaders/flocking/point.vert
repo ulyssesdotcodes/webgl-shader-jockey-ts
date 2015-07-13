@@ -6,6 +6,6 @@ void main() {
 	hue = pos.w;
 	vPosition = pos.xyz;
 	vec4 mvPosition = modelViewMatrix * vec4(pos.xyz, 1.0);
-	gl_PointSize = 5.0 / length(mvPosition.xyz);
+	gl_PointSize = 50.0 / length(mvPosition.xyz);
 	gl_Position = projectionMatrix * mvPosition;
 }
