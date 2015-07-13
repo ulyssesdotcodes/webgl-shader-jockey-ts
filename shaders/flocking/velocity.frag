@@ -53,13 +53,24 @@ void main() {
   dist = length(dir);
   distSquared = dist * dist;
 
-  if(dist > roamingDistance){
-    velocity -= normalize(dir) * delt * dist;
+
+  vec3 norm = vec3(
+    step(roamingDistance, abs(selfPosition.x)) * sign(selfPosition.x),
+     step(roamingDistance, abs(selfPosition.y)) * sign(selfPosition.y),
+     step(roamingDistance, abs(selfPosition.z)) * sign(selfPosition.z));
+
+  if(length(norm) > 0.0 && dot(velocity, norm) > 0.0) {
+    velocity = reflect(velocity, norm);
   }
 
-  if(dist > roamingDistance * roamingDistance) {
-    velocity -= normalize(dir) * delt * dist * dist;
-  }
+  velocity -= normalize(dir) * delt * 2.0;
+  // if(selfPosition.x > roamingDistance || selfPosition.y >  && dot(velocity, dir) > 0.0){
+  //   velocity = reflect(velocity, dir);
+  //   // velocity -= normalize(dir) * delt * dist;
+  // }
+
+  // if(dist > roamingDistance * roamingDistance) {
+  // }
 
   float separationCount, alignmentCount, cohesionCount;
 

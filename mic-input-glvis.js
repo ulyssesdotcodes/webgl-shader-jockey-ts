@@ -858,7 +858,7 @@ var FlockingVisualization = (function (_super) {
                 { name: "separationDistance", min: 0.0, max: 20.0, defVal: 12.0 },
                 { name: "alignmentDistance", min: 0.0, max: 20.0, defVal: 12.0 },
                 { name: "cohesionDistance", min: 0.0, max: 20.0, defVal: 12.0 },
-                { name: "roamingDistance", min: 20.0, max: 200.0, defVal: 128.0 },
+                { name: "roamingDistance", min: 20.0, max: 192.0, defVal: 96.0 },
                 { name: "speed", min: 1.0, max: 10.0, defVal: 3.0 }
             ]);
         }
