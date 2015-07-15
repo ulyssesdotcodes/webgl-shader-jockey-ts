@@ -1071,6 +1071,92 @@ var FlockingVisualization = (function (_super) {
     FlockingVisualization.CUBE_SIZE = 128;
     return FlockingVisualization;
 })(PointCloudVisualization);
+var LSystem = (function (_super) {
+    __extends(LSystem, _super);
+    function LSystem(timeSource) {
+        _super.call(this);
+        this._delta = 20;
+        this._gen = "F+F+F+F+F";
+        this._genIndex = 1.0;
+        this._vertices = [];
+        this._time = 0.0;
+        this._lastDraw = 0.0;
+        this._timeSource = timeSource;
+        this.addSources([this._timeSource]);
+    }
+    LSystem.prototype.setupVisualizerChain = function () {
+        var _this = this;
+        this.addDisposable(this._timeSource.observable().subscribe(function (time) {
+            _this._time = time;
+        }));
+    };
+    LSystem.prototype.object3DObservable = function () {
+        var _this = this;
+        return Rx.Observable.create(function (observer) {
+            _this.setupVisualizerChain();
+            var mat = new THREE.LineBasicMaterial({
+                vertexColors: THREE.VertexColors
+            });
+            _this._geometry = new THREE.BufferGeometry();
+            _this._vertexPositions = new Float32Array(500 * 3);
+            _this._colors = new Float32Array(500 * 3);
+            _this._vertices[0] = [0, 0, 0, 0];
+            _this._geometry.addAttribute('position', new THREE.BufferAttribute(_this._vertexPositions, 3));
+            _this._geometry.addAttribute('color', new THREE.BufferAttribute(_this._colors, 3));
+            /*this.addVertex("F");*/
+            var lines = new THREE.Line(_this._geometry, mat);
+            _this._geometry.computeBoundingSphere();
+            _this.onCreated();
+            observer.onNext([lines]);
+        });
+    };
+    LSystem.prototype.addVertex = function (rule) {
+        var currentVert = this._vertices[this._vertices.length - 1];
+        var addedVertices = 0;
+        switch (rule) {
+            case 'F':
+                if (this._vertices.length > 1) {
+                    this._vertices.push(currentVert);
+                }
+                this._vertices.push([
+                    currentVert[0] + Math.cos(currentVert[3] / 180) * 8,
+                    currentVert[1] + Math.sin(currentVert[3] / 100) * 8,
+                    currentVert[2],
+                    currentVert[3]
+                ]);
+                addedVertices += 2;
+                break;
+            case '+':
+                currentVert[3] += this._delta;
+                break;
+        }
+        for (var i = 0; i < addedVertices; i++) {
+            var j = this._vertices.length - addedVertices + i;
+            this._vertexPositions[j * 3] = this._vertices[j][0];
+            this._vertexPositions[j * 3 + 1] = this._vertices[j][1];
+            this._vertexPositions[j * 3 + 2] = this._vertices[j][2];
+            this._colors[j * 3] = 0;
+            this._colors[j * 3 + 1] = 0;
+            this._colors[j * 3 + 2] = 1;
+        }
+        if (addedVertices > 0) {
+            this._geometry.attributes.position.needsUpdate = true;
+            this._geometry.attributes.color.needsUpdate = true;
+            this._geometry.computeBoundingSphere();
+        }
+    };
+    LSystem.prototype.animate = function () {
+        _super.prototype.animate.call(this);
+        if (this._time - this._lastDraw > 1.0) {
+            this._lastDraw = this._time;
+            this.addVertex(this._gen.charAt(this._genIndex));
+            this._geometry.computeBoundingSphere();
+            this._genIndex += 1.0;
+        }
+    };
+    LSystem.ID = "lsystem";
+    return LSystem;
+})(BaseVisualization);
 /// <reference path="./BaseVisualization"/>
 /// <reference path="./SimpleVisualization"/>
 /// <reference path="./DotsVisualization"/>
@@ -1080,6 +1166,7 @@ var FlockingVisualization = (function (_super) {
 /// <reference path="./SquareVisualization"/>
 /// <reference path="./EqPointCloud"/>
 /// <reference path="./FlockingVisualization"/>
+/// <reference path="./LSystem"/>
 var VisualizationManager = (function () {
     function VisualizationManager(renderer, videoSource, audioSource, resolutionProvider, shaderBaseUrl, controlsProvider) {
         this._visualizationSubject = new Rx.BehaviorSubject(null);
@@ -1107,6 +1194,7 @@ var VisualizationManager = (function () {
         this.addVisualization(optionObservable, SquareVisualization.ID, function (options) { return new SquareVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, EqPointCloud.ID, function (options) { return new EqPointCloud(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, FlockingVisualization.ID, function (options) { return new FlockingVisualization(_this._renderer, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
+        this.addVisualization(optionObservable, LSystem.ID, function (options) { return new LSystem(_this._timeSource); });
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.object3DObservable(); });
     };
     VisualizationManager.prototype.observableSubject = function () {

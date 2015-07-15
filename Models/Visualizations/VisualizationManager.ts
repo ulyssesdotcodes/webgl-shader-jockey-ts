@@ -7,6 +7,7 @@
 /// <reference path="./SquareVisualization"/>
 /// <reference path="./EqPointCloud"/>
 /// <reference path="./FlockingVisualization"/>
+/// <reference path="./LSystem"/>
 
 class VisualizationManager {
   private _visualizationSubject: Rx.BehaviorSubject<BaseVisualization>;
@@ -69,6 +70,10 @@ class VisualizationManager {
 
     this.addVisualization(optionObservable, FlockingVisualization.ID,
       (options) => new FlockingVisualization(this._renderer, this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));
+
+    this.addVisualization(optionObservable, LSystem.ID,
+      (options) => new LSystem(this._timeSource)
+      );
 
     return this._visualizationSubject.asObservable().filter(vis => vis != null).flatMap((visualization) => visualization.object3DObservable());
   }
