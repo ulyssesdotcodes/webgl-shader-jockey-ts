@@ -3,9 +3,6 @@ const float PI_2 = PI * 2.0;
 
 const float WIDTH = 64.0;
 
-float zoneRadius = 10.0;
-float zoneRadiusSquared = zoneRadius * zoneRadius;
-
 float separationThresh = 0.45;
 float alignmentThresh = 0.65;
 
@@ -22,10 +19,10 @@ void main() {
   float sd = separationDistance * (0.4 + sin(accumulatedLoudness * 0.25) + eqs.x);
   float ad = alignmentDistance * (0.6 + eqs.y);
 
-  zoneRadius = sd + ad + cd;
+  float zoneRadius = sd + ad + cd;
   separationThresh = sd / zoneRadius;
   alignmentThresh = (sd + ad) / zoneRadius;
-  zoneRadiusSquared = zoneRadius * zoneRadius;
+  float zoneRadiusSquared = zoneRadius * zoneRadius;
 
   vec2 uv = gl_FragCoord.xy / resolution.xy;
   vec4 pointPosition, pointVelocity;
