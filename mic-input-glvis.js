@@ -1077,8 +1077,9 @@ var LSystem = (function (_super) {
         _super.call(this);
         this._da = 27.5;
         this._length = 2;
-        this._cosda = Math.cos(this._da);
-        this._sinda = Math.sin(this._da);
+        this._ru = [];
+        this._rl = [];
+        this._rh = [];
         this._genIndex = 0.0;
         this._vertexStack = [];
         this._vertices = [];
@@ -1086,6 +1087,18 @@ var LSystem = (function (_super) {
         this._dt = 0.0;
         this._timeSource = timeSource;
         this.addSources([this._timeSource]);
+        this._ru[0] = new THREE.Matrix4();
+        this._ru[0].makeRotationX(this._da);
+        this._ru[1] = new THREE.Matrix4();
+        this._ru[1].makeRotationX(-this._da);
+        this._rl[0] = new THREE.Matrix4();
+        this._rl[0].makeRotationY(this._da);
+        this._rl[1] = new THREE.Matrix4();
+        this._rl[1].makeRotationY(-this._da);
+        this._rh[0] = new THREE.Matrix4();
+        this._rh[0].makeRotationZ(this._da);
+        this._rh[2] = new THREE.Matrix4();
+        this._rh[2].makeRotationZ(-this._da);
         this._rules = {
             "F": [
                 "F[+F]F[-F]F",
@@ -1158,19 +1171,20 @@ var LSystem = (function (_super) {
         var addedVertices = 0;
         switch (rule) {
             case 'F':
+                this._vertices.push(gen.currentVertex.slice(0));
                 gen.currentVertex = [
-                    gen.currentVertex[0] + gen.heading[0] * this._length,
-                    gen.currentVertex[1] + gen.heading[1] * this._length,
-                    gen.currentVertex[2] + gen.heading[2] * this._length
+                    gen.currentVertex[0] + gen.heading.getComponent(0) * this._length,
+                    gen.currentVertex[1] + gen.heading.getComponent(1) * this._length,
+                    gen.currentVertex[2] + gen.heading.getComponent(2) * this._length
                 ];
                 this._vertices.push(gen.currentVertex.slice(0));
                 addedVertices += 2;
                 break;
             case '+':
-                gen.currentVertex[3] += this._da;
+                gen.heading.transformDirection(this._ru[0]);
                 break;
             case '-':
-                gen.currentVertex[3] -= this._da;
+                gen.heading.transformDirection(this._ru[1]);
                 break;
             default:
                 console.log("Unknown instruction: " + rule);
@@ -1200,7 +1214,6 @@ var LSystem = (function (_super) {
                 if (this._rules[gen.charAt(i)]) {
                     var choices = this._rules[gen.charAt(i)];
                     var choice = Math.floor(Math.random() * choices.length);
-                    console.log(choice);
                     newGen += choices[choice];
                 }
                 else {
@@ -1236,9 +1249,9 @@ var LSystem = (function (_super) {
                         currentVertex: [
                             gen.currentVertex[0],
                             gen.currentVertex[1],
-                            gen.currentVertex[2],
-                            gen.currentVertex[3]
+                            gen.currentVertex[2]
                         ],
+                        heading: gen.heading.clone(),
                         parent: j
                     });
                     i = end;
