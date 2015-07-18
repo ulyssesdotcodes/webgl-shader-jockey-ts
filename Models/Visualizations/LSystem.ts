@@ -1,18 +1,26 @@
 class LSystem extends BaseVisualization {
   static ID = "lsystem";
 
-  private _delta = 20;
+  private _da = 27.5;
+  private _length = 2;
+  private _cosda = Math.cos(this._da);
+  private _sinda = Math.sin(this._da);
 
-  private _gen: string = "F+F+F+F+F"
-  private _genIndex: number = 1.0;
+  private _genIndex: number = 0.0;
+  private _rules: any;
+
+  private _genStack: Array<any>;
+
+  private _vertexStack = [];
 
   private _vertexPositions: Float32Array;
   private _colors: Float32Array;
   private _vertices: Array<Array<number>> = [];
+  private _line: THREE.Line;
 
   private _timeSource: TimeSource;
   private _time = 0.0;
-  private _lastDraw = 0.0;
+  private _dt = 0.0;
 
   private _geometry: THREE.BufferGeometry;
 
@@ -22,10 +30,46 @@ class LSystem extends BaseVisualization {
     this._timeSource = timeSource;
 
     this.addSources([this._timeSource]);
+
+    this._rules = {
+      "F": [
+        "F[+F]F[-F]F",
+        "[+F]F[-F]",
+        "F[-F]F"
+      ]
+    }
+
+    this._genStack = [{
+      str: "F",
+      index: 0,
+      currentVertex: [0, 0, 0],
+      heading: (new THREE.Vector3(1.0, 1.0, 0.0)).normalize(),
+      parent: -1
+
+    }, {
+      str: "F",
+      index: 0,
+      currentVertex: [0, 0, 0],
+      heading: (new THREE.Vector3(1.0, -1.0, 0.0)).normalize(),
+      parent: -1
+    }, {
+      str: "F",
+      index: 0,
+      currentVertex: [0, 0, 0],
+      heading: (new THREE.Vector3(-1.0, -1.0, 0.0)).normalize(),
+      parent: -1
+    }, {
+      str: "F",
+      index: 0,
+      currentVertex: [0, 0, 0],
+      heading: (new THREE.Vector3(-1.0, 1.0, 0.0)).normalize(),
+      parent: -1
+    }]
   }
 
   protected setupVisualizerChain(): void {
     this.addDisposable(this._timeSource.observable().subscribe((time) => {
+      this._dt = time - this._time;
       this._time = time;
     }));
   }
@@ -39,44 +83,55 @@ class LSystem extends BaseVisualization {
         });
 
         this._geometry = new THREE.BufferGeometry();
-        this._vertexPositions = new Float32Array(500 * 3);
-        this._colors = new Float32Array(500 * 3);
-
-        this._vertices[0] = [0, 0, 0, 0];
+        this._vertexPositions = new Float32Array(5000 * 3);
+        this._colors = new Float32Array(5000 * 3);
 
         this._geometry.addAttribute('position', new THREE.BufferAttribute(this._vertexPositions, 3));
         this._geometry.addAttribute('color', new THREE.BufferAttribute(this._colors, 3));
 
         /*this.addVertex("F");*/
 
-        var lines = new THREE.Line(this._geometry, mat);
+        var line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
 
         this._geometry.computeBoundingSphere();
 
         this.onCreated();
 
-        observer.onNext([lines]);
+        var stepCount = 0;
+        while(stepCount < 10000) {
+          this.lstep();
+          stepCount = 0;
+          for(var i = 0; i < this._genStack.length; i++) {
+            stepCount += this._genStack[i].str.length;
+          }
+        }
+
+        this._line = line;
+
+        observer.onNext([line]);
       });
   }
 
-  private addVertex(rule: string) {
-    var currentVert = this._vertices[this._vertices.length - 1];
+  private addVertex(rule: string, gen): boolean {
     var addedVertices = 0;
     switch (rule) {
       case 'F':
-        if(this._vertices.length > 1) {
-          this._vertices.push(currentVert);
-        }
-        this._vertices.push([
-          currentVert[0] + Math.cos(currentVert[3] / 180) * 8,
-          currentVert[1] + Math.sin(currentVert[3] / 100) * 8,
-          currentVert[2], currentVert[3]
-        ]);
+        gen.currentVertex = [
+          gen.currentVertex[0] + gen.heading[0] * this._length,
+          gen.currentVertex[1] + gen.heading[1] * this._length,
+          gen.currentVertex[2] + gen.heading[2] * this._length
+        ];
+        this._vertices.push(gen.currentVertex.slice(0));
         addedVertices += 2;
         break;
       case '+':
-        currentVert[3] += this._delta;
+        gen.currentVertex[3] += this._da;
         break;
+      case '-':
+        gen.currentVertex[3] -= this._da;
+        break;
+      default:
+        console.log("Unknown instruction: " + rule)
     }
 
     for(var i = 0; i < addedVertices; i++) {
@@ -90,25 +145,85 @@ class LSystem extends BaseVisualization {
       this._colors[j * 3 + 2] = 1;
     }
 
-    if(addedVertices > 0) {
-      (<any>this._geometry.attributes).position.needsUpdate = true;
-      (<any>this._geometry.attributes).color.needsUpdate = true;
-      this._geometry.computeBoundingSphere();
+    if(addedVertices == 0) {
+      return false;
+    }
+
+    (<any>this._geometry.attributes).position.needsUpdate = true;
+    (<any>this._geometry.attributes).color.needsUpdate = true;
+    this._geometry.computeBoundingSphere();
+    return true;
+  }
+
+  private lstep():void {
+
+    for(var j = 0; j < this._genStack.length; j++) {
+      var newGen = "";
+      var gen: string = this._genStack[0].str;
+      for(var i = 0; i < gen.length; i++) {
+        if(this._rules[gen.charAt(i)]) {
+          var choices = this._rules[gen.charAt(i)];
+          var choice = Math.floor(Math.random() * choices.length);
+          console.log(choice);
+          newGen += choices[choice];
+        }
+        else {
+          newGen += gen.charAt(i);
+        }
+      }
+      this._genStack[j].str = newGen;
     }
   }
 
   animate() {
     super.animate();
 
-    if(this._time - this._lastDraw > 1.0) {
-      this._lastDraw = this._time;
+    var j = 0;
+    while(this._genStack[j]) {
+      var gen = this._genStack[j];
+      var i;
+      if(gen.index >= gen.str.length) {
+        j++;
+        continue;
+      }
 
-      this.addVertex(this._gen.charAt(this._genIndex));
-        this._geometry.computeBoundingSphere();
-      this._genIndex += 1.0;
+      for(i = gen.index; i < gen.str.length; i++) {
+        var instruction = this._genStack[j].str.charAt(i);
+        if(instruction == '[') {
+          var end = i+1;
+          var bracketCount = 0;
+          while(!(bracketCount == 0 && gen.str.charAt(end) == ']')) {
+            bracketCount += gen.str.charAt(end) == '[' ? 1 : 0;
+            bracketCount -= gen.str.charAt(end) == ']' ? 1 : 0;
+            end++;
+          }
+          this._genStack.push({
+            str: gen.str.substring(i+1, end),
+            index: 0,
+            currentVertex: [
+              gen.currentVertex[0],
+              gen.currentVertex[1],
+              gen.currentVertex[2],
+              gen.currentVertex[3]
+            ],
+            parent: j
+          });
+          i = end;
+        }
+        else {
+          if(this.addVertex(gen.str.charAt(i), gen)) {
+            i++;
+            break;
+          }
+        }
+      }
+
+      this._genStack[j].index = i;
+      j++;
     }
-  }
 
+    this._line.rotateY(0.5 * this._dt);
+  }
 
 
 }
