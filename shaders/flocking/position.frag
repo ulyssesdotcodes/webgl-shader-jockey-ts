@@ -7,7 +7,14 @@ void main() {
   float hue = tmpPos.w;
   float hueVelocity = velocity.w;
 
-  vec3 finalPos = position + velocity.xyz * delta * 12.0;
+  float delt;
+  if(delta > 1.0) {
+    delt = 1.0;
+  }
+  else {
+    delt = delta;
+  }
+  vec3 finalPos = position + velocity.xyz * delt * 12.0;
 
   finalPos.x = min(finalPos.x, 256.0);
   finalPos.y = min(finalPos.y, 256.0);
