@@ -3,6 +3,9 @@
 class LSystem extends BaseVisualization {
   static ID = "lsystem";
 
+  private _growthFactorName = "volume";
+  private _rotationName = "rotation speed";
+
   private _da = 22.5;
   private _length = 2;
   private _ru: Array<THREE.Matrix4> = [];
@@ -28,12 +31,13 @@ class LSystem extends BaseVisualization {
   private _audioSource: AudioSource;
   private _growth = 0.0;
   private _color = new THREE.Vector3(0.0, 0.0, 1.0);
+  private _controlsProvider: ControlsProvider;
 
   private _geometry: THREE.BufferGeometry;
 
   private _attributes: Array<TypedArrayAttribute> = [];
 
-  constructor(timeSource: TimeSource, audioSource: AudioSource) {
+  constructor(timeSource: TimeSource, audioSource: AudioSource, controlsProvider?: ControlsProvider) {
     super();
 
     this._timeSource = timeSource;
@@ -130,6 +134,14 @@ class LSystem extends BaseVisualization {
         "F[^F[-F]F]F",
       ]
     };
+
+    this._controlsProvider = controlsProvider;
+    if(this._controlsProvider) {
+      this._controlsProvider.newControls([
+        { name: this._growthFactorName, min: 1.0, max: 8.0, defVal: 5.0 },
+        { name: this._rotationName, min: 0.0, max: 4.0, defVal: 0.5 }
+      ]);
+    }
   }
 
   protected setupVisualizerChain(): void {
@@ -143,8 +155,9 @@ class LSystem extends BaseVisualization {
     this.addDisposable(this._audioSource.observable()
       .map((e) => AudioUniformFunctions.calculateLoudness(e))
       .subscribe((loudness) => {
-        this._growth = Math.pow(loudness, 0.5) * 5.0;
-    }) );
+        this._growth = Math.pow(loudness, 0.5) *
+          this._controlsProvider.getValue(this._growthFactorName);
+    }));
 
     this.addDisposable(this._audioSource.observable()
       .map((e) => AudioUniformFunctions.calculateEqs(e, 3))
@@ -352,12 +365,12 @@ class LSystem extends BaseVisualization {
       this.resetGen();
     }
 
-    this._line.rotateY(0.5 * this._dt);
-    this._line.rotateZ(0.5 * this._dt);
+    this._line.rotateY(this._controlsProvider.getValue(this._rotationName) * this._dt);
+    this._line.rotateZ(this._controlsProvider.getValue(this._rotationName) * this._dt);
 
     return {
       type: this.rendererId(),
-      dt: this._dt,
+      rotation: this._controlsProvider.getValue(this._rotationName) * this._dt,
       attributes: this._attributes
     }
   }
