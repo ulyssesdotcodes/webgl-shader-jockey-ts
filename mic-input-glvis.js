@@ -1075,7 +1075,7 @@ var LSystem = (function (_super) {
     __extends(LSystem, _super);
     function LSystem(timeSource) {
         _super.call(this);
-        this._da = 27.5;
+        this._da = 22.5;
         this._length = 2;
         this._ru = [];
         this._rl = [];
@@ -1088,49 +1088,33 @@ var LSystem = (function (_super) {
         this._timeSource = timeSource;
         this.addSources([this._timeSource]);
         this._ru[0] = new THREE.Matrix4();
-        this._ru[0].makeRotationX(this._da);
+        this._ru[0].makeRotationZ(-this._da);
         this._ru[1] = new THREE.Matrix4();
-        this._ru[1].makeRotationX(-this._da);
+        this._ru[1].makeRotationZ(this._da);
         this._rl[0] = new THREE.Matrix4();
-        this._rl[0].makeRotationY(this._da);
+        this._rl[0].makeRotationY(-this._da);
         this._rl[1] = new THREE.Matrix4();
-        this._rl[1].makeRotationY(-this._da);
+        this._rl[1].makeRotationY(this._da);
         this._rh[0] = new THREE.Matrix4();
-        this._rh[0].makeRotationZ(this._da);
-        this._rh[2] = new THREE.Matrix4();
-        this._rh[2].makeRotationZ(-this._da);
+        this._rh[0].makeRotationX(-this._da);
+        this._rh[1] = new THREE.Matrix4();
+        this._rh[1].makeRotationX(this._da);
         this._rules = {
             "F": [
                 "F[+F]F[-F]F",
-                "[+F]F[-F]",
-                "F[-F]F"
+                "[+F][-F]",
+                "F[-F]F",
+                "F[+F]F",
+                "F[+F]F[-F]F",
+                "[+F][-F]",
+                "F[-F]F",
+                "F[+F]F",
+                "F[&F[+F]F]F",
+                "F[&F[-F]F]F",
+                "F[^F[+F]F]F",
+                "F[^F[-F]F]F",
             ]
         };
-        this._genStack = [{
-            str: "F",
-            index: 0,
-            currentVertex: [0, 0, 0],
-            heading: (new THREE.Vector3(1.0, 1.0, 0.0)).normalize(),
-            parent: -1
-        }, {
-            str: "F",
-            index: 0,
-            currentVertex: [0, 0, 0],
-            heading: (new THREE.Vector3(1.0, -1.0, 0.0)).normalize(),
-            parent: -1
-        }, {
-            str: "F",
-            index: 0,
-            currentVertex: [0, 0, 0],
-            heading: (new THREE.Vector3(-1.0, -1.0, 0.0)).normalize(),
-            parent: -1
-        }, {
-            str: "F",
-            index: 0,
-            currentVertex: [0, 0, 0],
-            heading: (new THREE.Vector3(-1.0, 1.0, 0.0)).normalize(),
-            parent: -1
-        }];
     }
     LSystem.prototype.setupVisualizerChain = function () {
         var _this = this;
@@ -1155,14 +1139,7 @@ var LSystem = (function (_super) {
             var line = new THREE.Line(_this._geometry, mat, THREE.LinePieces);
             _this._geometry.computeBoundingSphere();
             _this.onCreated();
-            var stepCount = 0;
-            while (stepCount < 10000) {
-                _this.lstep();
-                stepCount = 0;
-                for (var i = 0; i < _this._genStack.length; i++) {
-                    stepCount += _this._genStack[i].str.length;
-                }
-            }
+            _this.resetGen();
             _this._line = line;
             observer.onNext([line]);
         });
@@ -1181,10 +1158,25 @@ var LSystem = (function (_super) {
                 addedVertices += 2;
                 break;
             case '+':
-                gen.heading.transformDirection(this._ru[0]);
+                gen.heading.transformDirection(this._ru[0]).multiplyScalar(-1.0);
                 break;
             case '-':
-                gen.heading.transformDirection(this._ru[1]);
+                gen.heading.transformDirection(this._ru[1]).multiplyScalar(-1.0);
+                break;
+            case '&':
+                gen.heading.transformDirection(this._rl[0]).multiplyScalar(-1.0);
+                break;
+            case '^':
+                gen.heading.transformDirection(this._rl[1]).multiplyScalar(-1.0);
+                break;
+            case '\\':
+                gen.heading.transformDirection(this._rh[0]).multiplyScalar(-1.0);
+                break;
+            case '/':
+                gen.heading.transformDirection(this._rh[1]).multiplyScalar(-1.0);
+                break;
+            case '|':
+                gen.heading.multiplyScalar(-1.0);
                 break;
             default:
                 console.log("Unknown instruction: " + rule);
@@ -1206,6 +1198,53 @@ var LSystem = (function (_super) {
         this._geometry.computeBoundingSphere();
         return true;
     };
+    LSystem.prototype.resetGen = function () {
+        this._genStack = [{
+            str: "F",
+            index: 0,
+            currentVertex: [8.0, 0, 0],
+            heading: (new THREE.Vector3(1.0, 0.0, 0.0)).normalize(),
+            parent: -1
+        }, {
+            str: "F",
+            index: 0,
+            currentVertex: [0, -8.0, 0],
+            heading: (new THREE.Vector3(0.0, -1.0, 0.0)).normalize(),
+            parent: -1
+        }, {
+            str: "F",
+            index: 0,
+            currentVertex: [-8.0, 0, 0],
+            heading: (new THREE.Vector3(-1.0, 0.0, 0.0)).normalize(),
+            parent: -1
+        }, {
+            str: "F",
+            index: 0,
+            currentVertex: [0, 8.0, 0],
+            heading: (new THREE.Vector3(0.0, 1.0, 0.0)).normalize(),
+            parent: -1
+        }, {
+            str: "F",
+            index: 0,
+            currentVertex: [0.0, 0, 8.0],
+            heading: (new THREE.Vector3(0.0, 0.0, 1.0)).normalize(),
+            parent: -1
+        }, {
+            str: "F",
+            index: 0,
+            currentVertex: [0, 0, -8.0],
+            heading: (new THREE.Vector3(0.0, 0.0, -1.0)).normalize(),
+            parent: -1
+        }];
+        var stepCount = 0;
+        while (stepCount < 5000) {
+            this.lstep();
+            stepCount = 0;
+            for (var i = 0; i < this._genStack.length; i++) {
+                stepCount += this._genStack[i].str.length;
+            }
+        }
+    };
     LSystem.prototype.lstep = function () {
         for (var j = 0; j < this._genStack.length; j++) {
             var newGen = "";
@@ -1226,11 +1265,11 @@ var LSystem = (function (_super) {
     LSystem.prototype.animate = function () {
         _super.prototype.animate.call(this);
         var j = 0;
-        while (this._genStack[j]) {
+        while (this._genStack[j] && j < 10) {
             var gen = this._genStack[j];
             var i;
             if (gen.index >= gen.str.length) {
-                j++;
+                this._genStack.splice(j, 1);
                 continue;
             }
             for (i = gen.index; i < gen.str.length; i++) {
@@ -1257,16 +1296,23 @@ var LSystem = (function (_super) {
                     i = end;
                 }
                 else {
-                    if (this.addVertex(gen.str.charAt(i), gen)) {
-                        i++;
-                        break;
-                    }
+                    this.addVertex(gen.str.charAt(i), gen);
+                    i++;
+                    break;
                 }
             }
             this._genStack[j].index = i;
             j++;
         }
+        if (this._vertices.length >= 5000 || this._genStack.length == 0) {
+            this._vertices = [];
+            for (var i; i < this._vertexPositions.length; i++) {
+                this._vertexPositions[i] = 0.0;
+            }
+            this.resetGen();
+        }
         this._line.rotateY(0.5 * this._dt);
+        this._line.rotateZ(0.5 * this._dt);
     };
     LSystem.ID = "lsystem";
     return LSystem;
