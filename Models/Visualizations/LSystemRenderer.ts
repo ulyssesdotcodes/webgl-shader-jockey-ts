@@ -9,7 +9,7 @@ class LSystemRenderer extends ObjectRenderer {
   update(update: any, resolution: THREE.Vector2) {
     super.update(update, resolution);
 
-    this._line.rotateY(update.dt * 0.5);
-    this._line.rotateZ(update.dt * 0.5);
+    this._line.rotateY(update.rotation);
+    this._line.rotateZ(update.rotation);
   }
 }

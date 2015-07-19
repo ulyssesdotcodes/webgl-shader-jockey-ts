@@ -1076,8 +1076,10 @@ var FlockingVisualization = (function (_super) {
 /// <reference path="../TypedArrayAttribute.ts"/>
 var LSystem = (function (_super) {
     __extends(LSystem, _super);
-    function LSystem(timeSource, audioSource) {
+    function LSystem(timeSource, audioSource, controlsProvider) {
         _super.call(this);
+        this._growthFactorName = "volume";
+        this._rotationName = "rotation speed";
         this._da = 22.5;
         this._length = 2;
         this._ru = [];
@@ -1172,6 +1174,13 @@ var LSystem = (function (_super) {
                 "F[^F[-F]F]F",
             ]
         };
+        this._controlsProvider = controlsProvider;
+        if (this._controlsProvider) {
+            this._controlsProvider.newControls([
+                { name: this._growthFactorName, min: 1.0, max: 8.0, defVal: 5.0 },
+                { name: this._rotationName, min: 0.0, max: 4.0, defVal: 0.5 }
+            ]);
+        }
     }
     LSystem.prototype.setupVisualizerChain = function () {
         var _this = this;
@@ -1182,7 +1191,7 @@ var LSystem = (function (_super) {
             _this._time = time;
         }));
         this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateLoudness(e); }).subscribe(function (loudness) {
-            _this._growth = Math.pow(loudness, 0.5) * 5.0;
+            _this._growth = Math.pow(loudness, 0.5) * _this._controlsProvider.getValue(_this._growthFactorName);
         }));
         this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); }).subscribe(function (eqs) {
             _this._color.x = Math.pow(eqs[0], 1.5);
@@ -1367,11 +1376,11 @@ var LSystem = (function (_super) {
             }
             this.resetGen();
         }
-        this._line.rotateY(0.5 * this._dt);
-        this._line.rotateZ(0.5 * this._dt);
+        this._line.rotateY(this._controlsProvider.getValue(this._rotationName) * this._dt);
+        this._line.rotateZ(this._controlsProvider.getValue(this._rotationName) * this._dt);
         return {
             type: this.rendererId(),
-            dt: this._dt,
+            rotation: this._controlsProvider.getValue(this._rotationName) * this._dt,
             attributes: this._attributes
         };
     };
@@ -1418,7 +1427,7 @@ var VisualizationManager = (function () {
         this.addVisualization(optionObservable, SquareVisualization.ID, function (options) { return new SquareVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, EqPointCloud.ID, function (options) { return new EqPointCloud(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, FlockingVisualization.ID, function (options) { return new FlockingVisualization(_this._renderer, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
-        this.addVisualization(optionObservable, LSystem.ID, function (options) { return new LSystem(_this._timeSource, _this._audioSource); });
+        this.addVisualization(optionObservable, LSystem.ID, function (options) { return new LSystem(_this._timeSource, _this._audioSource, _this._controlsProvider); });
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.object3DObservable(); });
     };
     VisualizationManager.prototype.observableSubject = function () {
