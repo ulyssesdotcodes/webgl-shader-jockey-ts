@@ -278,8 +278,8 @@ var LSystemRenderer = (function (_super) {
     }
     LSystemRenderer.prototype.update = function (update, resolution) {
         _super.prototype.update.call(this, update, resolution);
-        this._line.rotateY(update.dt * 0.5);
-        this._line.rotateZ(update.dt * 0.5);
+        this._line.rotateY(update.rotation);
+        this._line.rotateZ(update.rotation);
     };
     return LSystemRenderer;
 })(ObjectRenderer);
