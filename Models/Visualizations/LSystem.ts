@@ -1,3 +1,5 @@
+/// <reference path="../TypedArrayAttribute.ts"/>
+
 class LSystem extends BaseVisualization {
   static ID = "lsystem";
 
@@ -28,6 +30,8 @@ class LSystem extends BaseVisualization {
   private _color = new THREE.Vector3(0.0, 0.0, 1.0);
 
   private _geometry: THREE.BufferGeometry;
+
+  private _attributes: Array<TypedArrayAttribute> = [];
 
   constructor(timeSource: TimeSource, audioSource: AudioSource) {
     super();
@@ -66,18 +70,80 @@ class LSystem extends BaseVisualization {
         "F[^F[-F]F]F",
       ]
     }
+
+    this._geometry = new THREE.BufferGeometry();
+
+    this._vertexPositions = new Float32Array(5000 * 3);
+    this._colors = new Float32Array(5000 * 3);
+
+    this._attributes.push({
+      name: 'position',
+      type: 'v3',
+      value: this._vertexPositions,
+      itemSize: 3
+    });
+
+    this._attributes.push({
+      name: 'color',
+      type: 'c',
+      value: this._colors,
+      itemSize: 3
+    });
+
+    this._geometry.addAttribute('position', new THREE.BufferAttribute(this._vertexPositions, 3));
+    this._geometry.addAttribute('color', new THREE.BufferAttribute(this._colors, 3));
+
+    var mat = new THREE.LineBasicMaterial({
+      vertexColors: THREE.VertexColors
+    });
+
+    this._line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
+
+    this.addSources([this._timeSource, this._audioSource]);
+
+    this._ru[0] = new THREE.Matrix4();
+    this._ru[0].makeRotationZ(-this._da);
+    this._ru[1] = new THREE.Matrix4();
+    this._ru[1].makeRotationZ(this._da);
+    this._rl[0] = new THREE.Matrix4();
+    this._rl[0].makeRotationY(-this._da);
+    this._rl[1] = new THREE.Matrix4();
+    this._rl[1].makeRotationY(this._da);
+    this._rh[0] = new THREE.Matrix4();
+    this._rh[0].makeRotationX(-this._da);
+    this._rh[1] = new THREE.Matrix4();
+    this._rh[1].makeRotationX(this._da);
+
+    this._rules = {
+      "F": [
+        "F[+F]F[-F]F",
+        "[+F][-F]",
+        "F[-F]F",
+        "F[+F]F",
+        "F[+F]F[-F]F",
+        "[+F][-F]",
+        "F[-F]F",
+        "F[+F]F",
+        "F[&F[+F]F]F",
+        "F[&F[-F]F]F",
+        "F[^F[+F]F]F",
+        "F[^F[-F]F]F",
+      ]
+    };
   }
 
   protected setupVisualizerChain(): void {
     this.addDisposable(this._timeSource.observable().subscribe((time) => {
-      this._dt = time - this._time;
+      if(time != this._time) {
+        this._dt = time - this._time;
+      }
       this._time = time;
     }));
 
     this.addDisposable(this._audioSource.observable()
       .map((e) => AudioUniformFunctions.calculateLoudness(e))
       .subscribe((loudness) => {
-        this._growth = loudness * 3.0;
+        this._growth = Math.pow(loudness, 0.5) * 5.0;
     }) );
 
     this.addDisposable(this._audioSource.observable()
@@ -93,30 +159,11 @@ class LSystem extends BaseVisualization {
     return Rx.Observable.create<Array<THREE.Object3D>>((observer) => {
       this.setupVisualizerChain();
 
-      var mat = new THREE.LineBasicMaterial({
-        vertexColors: THREE.VertexColors
-      });
-
-      this._geometry = new THREE.BufferGeometry();
-      this._vertexPositions = new Float32Array(5000 * 3);
-      this._colors = new Float32Array(5000 * 3);
-
-      this._geometry.addAttribute('position', new THREE.BufferAttribute(this._vertexPositions, 3));
-      this._geometry.addAttribute('color', new THREE.BufferAttribute(this._colors, 3));
-
-      /*this.addVertex("F");*/
-
-      var line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
-
-      this._geometry.computeBoundingSphere();
-
       this.onCreated();
 
       this.resetGen();
 
-      this._line = line;
-
-      observer.onNext([line]);
+      observer.onNext([this._line]);
     });
   }
 
@@ -175,7 +222,7 @@ class LSystem extends BaseVisualization {
 
     (<any>this._geometry.attributes).position.needsUpdate = true;
     (<any>this._geometry.attributes).color.needsUpdate = true;
-    this._geometry.computeBoundingSphere();
+    /*this._geometry.computeBoundingSphere();*/
     return true;
   }
 
@@ -253,7 +300,7 @@ class LSystem extends BaseVisualization {
     super.animate();
 
     var j = 0;
-    while (this._genStack[j] && j < 10) {
+    while (this._genStack[j] && j < 4) {
       var gen = this._genStack[j];
       var i;
       if (gen.index >= gen.str.length) {
@@ -307,6 +354,16 @@ class LSystem extends BaseVisualization {
 
     this._line.rotateY(0.5 * this._dt);
     this._line.rotateZ(0.5 * this._dt);
+
+    return {
+      type: this.rendererId(),
+      dt: this._dt,
+      attributes: this._attributes
+    }
+  }
+
+  rendererId(): string {
+    return IDs.lsystem;
   }
 
 

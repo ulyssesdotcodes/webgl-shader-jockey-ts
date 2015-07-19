@@ -6,4 +6,5 @@ class IDs {
   static eqPointCloud = "eqPointCloud";
   static gpgpuPointCloud = "gpgpuPointCloud";
   static videoDistortion = "videoDistortion";
+  static lsystem = "lsystem";
 }

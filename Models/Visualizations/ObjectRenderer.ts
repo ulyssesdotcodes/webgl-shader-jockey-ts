@@ -14,6 +14,8 @@ class ObjectRenderer implements VisualizationRenderer {
     this._object = object;
     this._buffers = {};
 
+    console.log(object);
+
     if ((<THREE.ShaderMaterial>this._object.material).uniforms) {
       var uniforms = (<THREE.ShaderMaterial>this._object.material).uniforms;
       for (var name in uniforms) {
@@ -39,7 +41,7 @@ class ObjectRenderer implements VisualizationRenderer {
             else {
               this._buffers[uniform.name] = new Float32Array(uniform.value.image.data.length);
             }
-            
+
             var dataTexture = new THREE.DataTexture(
               this._buffers[uniform.name],
               uniform.value.image.width,
@@ -105,6 +107,16 @@ class ObjectRenderer implements VisualizationRenderer {
         }
       }
     }
+    else if((<THREE.BufferGeometry>this._object.geometry).attributes) {
+      for (var name in (<THREE.BufferGeometry>this._object.geometry).attributes) {
+        var geoAttr = (<THREE.BufferGeometry>this._object.geometry).attributes[name];
+        this._buffers[name] = geoAttr.array;
+        (<THREE.BufferGeometry>this._object.geometry).addAttribute(name,
+          new THREE.BufferAttribute(this._buffers[name], geoAttr.itemSize));
+
+        this._object.geometry.attributes[name].needsUpdate = true;
+      }
+    }
   }
 
   update(updateData: any, resolution: THREE.Vector2): void {
@@ -143,7 +155,13 @@ class ObjectRenderer implements VisualizationRenderer {
       updateData.attributes.forEach((attr) => {
         RendererUtils.copyBuffer(attr.value, this._buffers[attr.name]);
 
-        (<THREE.ShaderMaterial>this._object.material).attributes[attr.name].needsUpdate = true;
+        var mat = <THREE.ShaderMaterial>this._object.material;
+        if(mat.attributes && mat.attributes[attr.name]) {
+          (<THREE.ShaderMaterial>this._object.material).attributes[attr.name].needsUpdate = true;
+        }
+        else {
+          this._object.geometry.attributes[attr.name].needsUpdate = true;
+        }
       })
     }
   }
