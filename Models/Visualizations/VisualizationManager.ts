@@ -72,7 +72,7 @@ class VisualizationManager {
       (options) => new FlockingVisualization(this._renderer, this._audioSource, this._resolutionProvider, this._timeSource, this._shaderLoader, this._controlsProvider));
 
     this.addVisualization(optionObservable, LSystem.ID,
-      (options) => new LSystem(this._timeSource)
+      (options) => new LSystem(this._timeSource, this._audioSource)
       );
 
     return this._visualizationSubject.asObservable().filter(vis => vis != null).flatMap((visualization) => visualization.object3DObservable());

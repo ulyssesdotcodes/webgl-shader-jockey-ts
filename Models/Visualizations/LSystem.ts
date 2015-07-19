@@ -23,14 +23,19 @@ class LSystem extends BaseVisualization {
   private _time = 0.0;
   private _dt = 0.0;
 
+  private _audioSource: AudioSource;
+  private _growth = 0.0;
+  private _color = new THREE.Vector3(0.0, 0.0, 1.0);
+
   private _geometry: THREE.BufferGeometry;
 
-  constructor(timeSource: TimeSource) {
+  constructor(timeSource: TimeSource, audioSource: AudioSource) {
     super();
 
     this._timeSource = timeSource;
+    this._audioSource = audioSource;
 
-    this.addSources([this._timeSource]);
+    this.addSources([this._timeSource, this._audioSource]);
 
     this._ru[0] = new THREE.Matrix4();
     this._ru[0].makeRotationZ(-this._da);
@@ -68,37 +73,51 @@ class LSystem extends BaseVisualization {
       this._dt = time - this._time;
       this._time = time;
     }));
+
+    this.addDisposable(this._audioSource.observable()
+      .map((e) => AudioUniformFunctions.calculateLoudness(e))
+      .subscribe((loudness) => {
+        this._growth = loudness * 3.0;
+    }) );
+
+    this.addDisposable(this._audioSource.observable()
+      .map((e) => AudioUniformFunctions.calculateEqs(e, 3))
+      .subscribe((eqs) => {
+        this._color.x = Math.pow(eqs[0], 1.5);
+        this._color.y = eqs[1];
+        this._color.z = Math.pow(eqs[2], 0.7);
+    }) );
   }
 
   object3DObservable(): Rx.Observable<Array<THREE.Object3D>> {
     return Rx.Observable.create<Array<THREE.Object3D>>((observer) => {
-        this.setupVisualizerChain();
+      this.setupVisualizerChain();
 
-        var mat = new THREE.LineBasicMaterial({
-          vertexColors: THREE.VertexColors
-        });
-
-        this._geometry = new THREE.BufferGeometry();
-        this._vertexPositions = new Float32Array(5000 * 3);
-        this._colors = new Float32Array(5000 * 3);
-
-        this._geometry.addAttribute('position', new THREE.BufferAttribute(this._vertexPositions, 3));
-        this._geometry.addAttribute('color', new THREE.BufferAttribute(this._colors, 3));
-
-        /*this.addVertex("F");*/
-
-        var line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
-
-        this._geometry.computeBoundingSphere();
-
-        this.onCreated();
-
-        this.resetGen();
-
-        this._line = line;
-
-        observer.onNext([line]);
+      var mat = new THREE.LineBasicMaterial({
+        vertexColors: THREE.VertexColors
       });
+
+      this._geometry = new THREE.BufferGeometry();
+      this._vertexPositions = new Float32Array(5000 * 3);
+      this._colors = new Float32Array(5000 * 3);
+
+      this._geometry.addAttribute('position', new THREE.BufferAttribute(this._vertexPositions, 3));
+      this._geometry.addAttribute('color', new THREE.BufferAttribute(this._colors, 3));
+
+      /*this.addVertex("F");*/
+
+      var line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
+
+      this._geometry.computeBoundingSphere();
+
+      this.onCreated();
+
+      this.resetGen();
+
+      this._line = line;
+
+      observer.onNext([line]);
+    });
   }
 
   private addVertex(rule: string, gen): boolean {
@@ -139,18 +158,18 @@ class LSystem extends BaseVisualization {
         console.log("Unknown instruction: " + rule)
     }
 
-    for(var i = 0; i < addedVertices; i++) {
+    for (var i = 0; i < addedVertices; i++) {
       var j = this._vertices.length - addedVertices + i;
       this._vertexPositions[j * 3] = this._vertices[j][0];
       this._vertexPositions[j * 3 + 1] = this._vertices[j][1];
       this._vertexPositions[j * 3 + 2] = this._vertices[j][2];
 
-      this._colors[j * 3] = 0;
-      this._colors[j * 3 + 1] = 0;
-      this._colors[j * 3 + 2] = 1;
+      this._colors[j * 3] = this._color.x;
+      this._colors[j * 3 + 1] = this._color.y;
+      this._colors[j * 3 + 2] = this._color.z;
     }
 
-    if(addedVertices == 0) {
+    if (addedVertices == 0) {
       return false;
     }
 
@@ -169,54 +188,55 @@ class LSystem extends BaseVisualization {
       parent: -1
 
     }, {
-      str: "F",
-      index: 0,
-      currentVertex: [0, -8.0, 0],
-      heading: (new THREE.Vector3(0.0, -1.0, 0.0)).normalize(),
-      parent: -1
-    }, {
-      str: "F",
-      index: 0,
-      currentVertex: [-8.0, 0, 0],
-      heading: (new THREE.Vector3(-1.0, 0.0, 0.0)).normalize(),
-      parent: -1
-    }, {
-      str: "F",
-      index: 0,
-      currentVertex: [0, 8.0, 0],
-      heading: (new THREE.Vector3(0.0, 1.0, 0.0)).normalize(),
-      parent: -1
-    }, {
-      str: "F",
-      index: 0,
-      currentVertex: [0.0, 0, 8.0],
-      heading: (new THREE.Vector3(0.0, 0.0, 1.0)).normalize(),
-      parent: -1
-    }, {
-      str: "F",
-      index: 0,
-      currentVertex: [0, 0, -8.0],
-      heading: (new THREE.Vector3(0.0, 0.0, -1.0)).normalize(),
-      parent: -1
-    }];
+        str: "F",
+        index: 0,
+        currentVertex: [0, -8.0, 0],
+        heading: (new THREE.Vector3(0.0, -1.0, 0.0)).normalize(),
+        parent: -1
+      }, {
+        str: "F",
+        index: 0,
+        currentVertex: [-8.0, 0, 0],
+        heading: (new THREE.Vector3(-1.0, 0.0, 0.0)).normalize(),
+        parent: -1
+      }, {
+        str: "F",
+        index: 0,
+        currentVertex: [0, 8.0, 0],
+        heading: (new THREE.Vector3(0.0, 1.0, 0.0)).normalize(),
+        parent: -1
+      }, {
+
+        str: "F",
+        index: 0,
+        currentVertex: [0.0, 0, 8.0],
+        heading: (new THREE.Vector3(0.0, 0.0, 1.0)).normalize(),
+        parent: -1
+      }, {
+        str: "F",
+        index: 0,
+        currentVertex: [0, 0, -8.0],
+        heading: (new THREE.Vector3(0.0, 0.0, -1.0)).normalize(),
+        parent: -1
+      }];
 
     var stepCount = 0;
-    while(stepCount < 5000) {
+    while (stepCount < 5000) {
       this.lstep();
       stepCount = 0;
-      for(var i = 0; i < this._genStack.length; i++) {
+      for (var i = 0; i < this._genStack.length; i++) {
         stepCount += this._genStack[i].str.length;
       }
     }
   }
 
-  private lstep():void {
+  private lstep(): void {
 
-    for(var j = 0; j < this._genStack.length; j++) {
+    for (var j = 0; j < this._genStack.length; j++) {
       var newGen = "";
       var gen: string = this._genStack[0].str;
-      for(var i = 0; i < gen.length; i++) {
-        if(this._rules[gen.charAt(i)]) {
+      for (var i = 0; i < gen.length; i++) {
+        if (this._rules[gen.charAt(i)]) {
           var choices = this._rules[gen.charAt(i)];
           var choice = Math.floor(Math.random() * choices.length);
           newGen += choices[choice];
@@ -233,26 +253,27 @@ class LSystem extends BaseVisualization {
     super.animate();
 
     var j = 0;
-    while(this._genStack[j] && j < 10 ) {
+    while (this._genStack[j] && j < 10) {
       var gen = this._genStack[j];
       var i;
-      if(gen.index >= gen.str.length) {
+      if (gen.index >= gen.str.length) {
         this._genStack.splice(j, 1);
         continue;
       }
 
-      for(i = gen.index; i < gen.str.length; i++) {
+      var max = Math.min(gen.str.length, gen.index + Math.floor(this._growth));
+      for (i = gen.index; i < max; i++) {
         var instruction = this._genStack[j].str.charAt(i);
-        if(instruction == '[') {
-          var end = i+1;
+        if (instruction == '[') {
+          var end = i + 1;
           var bracketCount = 0;
-          while(!(bracketCount == 0 && gen.str.charAt(end) == ']')) {
+          while (!(bracketCount == 0 && gen.str.charAt(end) == ']')) {
             bracketCount += gen.str.charAt(end) == '[' ? 1 : 0;
             bracketCount -= gen.str.charAt(end) == ']' ? 1 : 0;
             end++;
           }
           this._genStack.push({
-            str: gen.str.substring(i+1, end),
+            str: gen.str.substring(i + 1, end),
             index: 0,
             currentVertex: [
               gen.currentVertex[0],
@@ -262,12 +283,11 @@ class LSystem extends BaseVisualization {
             heading: gen.heading.clone(),
             parent: j
           });
+          max += end - i;
           i = end;
         }
         else {
           this.addVertex(gen.str.charAt(i), gen)
-          i++;
-          break;
         }
       }
 
@@ -275,10 +295,11 @@ class LSystem extends BaseVisualization {
       j++;
     }
 
-    if(this._vertices.length >= 5000 || this._genStack.length == 0) {
+    if (this._vertices.length >= 5000 || this._genStack.length == 0) {
       this._vertices = [];
-      for(var i; i < this._vertexPositions.length; i++) {
+      for (var i; i < this._vertexPositions.length; i++) {
         this._vertexPositions[i] = 0.0;
+        this._colors[i] = 0.0;
       }
 
       this.resetGen();

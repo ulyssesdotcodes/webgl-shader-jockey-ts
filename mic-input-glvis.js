@@ -1073,7 +1073,7 @@ var FlockingVisualization = (function (_super) {
 })(PointCloudVisualization);
 var LSystem = (function (_super) {
     __extends(LSystem, _super);
-    function LSystem(timeSource) {
+    function LSystem(timeSource, audioSource) {
         _super.call(this);
         this._da = 22.5;
         this._length = 2;
@@ -1085,8 +1085,11 @@ var LSystem = (function (_super) {
         this._vertices = [];
         this._time = 0.0;
         this._dt = 0.0;
+        this._growth = 0.0;
+        this._color = new THREE.Vector3(0.0, 0.0, 1.0);
         this._timeSource = timeSource;
-        this.addSources([this._timeSource]);
+        this._audioSource = audioSource;
+        this.addSources([this._timeSource, this._audioSource]);
         this._ru[0] = new THREE.Matrix4();
         this._ru[0].makeRotationZ(-this._da);
         this._ru[1] = new THREE.Matrix4();
@@ -1121,6 +1124,14 @@ var LSystem = (function (_super) {
         this.addDisposable(this._timeSource.observable().subscribe(function (time) {
             _this._dt = time - _this._time;
             _this._time = time;
+        }));
+        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateLoudness(e); }).subscribe(function (loudness) {
+            _this._growth = loudness * 3.0;
+        }));
+        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); }).subscribe(function (eqs) {
+            _this._color.x = Math.pow(eqs[0], 1.5);
+            _this._color.y = eqs[1];
+            _this._color.z = Math.pow(eqs[2], 0.7);
         }));
     };
     LSystem.prototype.object3DObservable = function () {
@@ -1186,9 +1197,9 @@ var LSystem = (function (_super) {
             this._vertexPositions[j * 3] = this._vertices[j][0];
             this._vertexPositions[j * 3 + 1] = this._vertices[j][1];
             this._vertexPositions[j * 3 + 2] = this._vertices[j][2];
-            this._colors[j * 3] = 0;
-            this._colors[j * 3 + 1] = 0;
-            this._colors[j * 3 + 2] = 1;
+            this._colors[j * 3] = this._color.x;
+            this._colors[j * 3 + 1] = this._color.y;
+            this._colors[j * 3 + 2] = this._color.z;
         }
         if (addedVertices == 0) {
             return false;
@@ -1272,7 +1283,8 @@ var LSystem = (function (_super) {
                 this._genStack.splice(j, 1);
                 continue;
             }
-            for (i = gen.index; i < gen.str.length; i++) {
+            var max = Math.min(gen.str.length, gen.index + Math.floor(this._growth));
+            for (i = gen.index; i < max; i++) {
                 var instruction = this._genStack[j].str.charAt(i);
                 if (instruction == '[') {
                     var end = i + 1;
@@ -1293,12 +1305,11 @@ var LSystem = (function (_super) {
                         heading: gen.heading.clone(),
                         parent: j
                     });
+                    max += end - i;
                     i = end;
                 }
                 else {
                     this.addVertex(gen.str.charAt(i), gen);
-                    i++;
-                    break;
                 }
             }
             this._genStack[j].index = i;
@@ -1308,6 +1319,7 @@ var LSystem = (function (_super) {
             this._vertices = [];
             for (var i; i < this._vertexPositions.length; i++) {
                 this._vertexPositions[i] = 0.0;
+                this._colors[i] = 0.0;
             }
             this.resetGen();
         }
@@ -1354,7 +1366,7 @@ var VisualizationManager = (function () {
         this.addVisualization(optionObservable, SquareVisualization.ID, function (options) { return new SquareVisualization(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, EqPointCloud.ID, function (options) { return new EqPointCloud(_this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
         this.addVisualization(optionObservable, FlockingVisualization.ID, function (options) { return new FlockingVisualization(_this._renderer, _this._audioSource, _this._resolutionProvider, _this._timeSource, _this._shaderLoader, _this._controlsProvider); });
-        this.addVisualization(optionObservable, LSystem.ID, function (options) { return new LSystem(_this._timeSource); });
+        this.addVisualization(optionObservable, LSystem.ID, function (options) { return new LSystem(_this._timeSource, _this._audioSource); });
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.object3DObservable(); });
     };
     VisualizationManager.prototype.observableSubject = function () {
