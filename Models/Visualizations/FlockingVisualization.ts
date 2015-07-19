@@ -186,8 +186,8 @@ class FlockingVisualization extends PointCloudVisualization {
     ]);
 
     this.addAttributes([
-      { name: "reference", type: "v2", value: [] },
-      { name: "pointVertex", type: "f", value: [] }
+      { name: "reference", type: "v2", value: [], itemSize: 2},
+      { name: "pointVertex", type: "f", value: [], itemSize: 1 }
     ]);
   }
 

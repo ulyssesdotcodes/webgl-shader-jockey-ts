@@ -427,6 +427,7 @@ var IDs = (function () {
     IDs.eqPointCloud = "eqPointCloud";
     IDs.gpgpuPointCloud = "gpgpuPointCloud";
     IDs.videoDistortion = "videoDistortion";
+    IDs.lsystem = "lsystem";
     return IDs;
 })();
 /// <reference path="./IDs"/>
@@ -706,7 +707,8 @@ var EqPointCloud = (function (_super) {
         var colorAttribute = {
             name: "color",
             type: "c",
-            value: this._colorBuffer
+            value: this._colorBuffer,
+            itemSize: 3
         };
         this.addAttributes([colorAttribute]);
         this._eqs = {
@@ -929,8 +931,8 @@ var FlockingVisualization = (function (_super) {
             this._deltaUniform
         ]);
         this.addAttributes([
-            { name: "reference", type: "v2", value: [] },
-            { name: "pointVertex", type: "f", value: [] }
+            { name: "reference", type: "v2", value: [], itemSize: 2 },
+            { name: "pointVertex", type: "f", value: [], itemSize: 1 }
         ]);
     }
     FlockingVisualization.prototype.setupVisualizerChain = function () {
@@ -1071,6 +1073,7 @@ var FlockingVisualization = (function (_super) {
     FlockingVisualization.CUBE_SIZE = 128;
     return FlockingVisualization;
 })(PointCloudVisualization);
+/// <reference path="../TypedArrayAttribute.ts"/>
 var LSystem = (function (_super) {
     __extends(LSystem, _super);
     function LSystem(timeSource, audioSource) {
@@ -1087,8 +1090,59 @@ var LSystem = (function (_super) {
         this._dt = 0.0;
         this._growth = 0.0;
         this._color = new THREE.Vector3(0.0, 0.0, 1.0);
+        this._attributes = [];
         this._timeSource = timeSource;
         this._audioSource = audioSource;
+        this.addSources([this._timeSource, this._audioSource]);
+        this._ru[0] = new THREE.Matrix4();
+        this._ru[0].makeRotationZ(-this._da);
+        this._ru[1] = new THREE.Matrix4();
+        this._ru[1].makeRotationZ(this._da);
+        this._rl[0] = new THREE.Matrix4();
+        this._rl[0].makeRotationY(-this._da);
+        this._rl[1] = new THREE.Matrix4();
+        this._rl[1].makeRotationY(this._da);
+        this._rh[0] = new THREE.Matrix4();
+        this._rh[0].makeRotationX(-this._da);
+        this._rh[1] = new THREE.Matrix4();
+        this._rh[1].makeRotationX(this._da);
+        this._rules = {
+            "F": [
+                "F[+F]F[-F]F",
+                "[+F][-F]",
+                "F[-F]F",
+                "F[+F]F",
+                "F[+F]F[-F]F",
+                "[+F][-F]",
+                "F[-F]F",
+                "F[+F]F",
+                "F[&F[+F]F]F",
+                "F[&F[-F]F]F",
+                "F[^F[+F]F]F",
+                "F[^F[-F]F]F",
+            ]
+        };
+        this._geometry = new THREE.BufferGeometry();
+        this._vertexPositions = new Float32Array(5000 * 3);
+        this._colors = new Float32Array(5000 * 3);
+        this._attributes.push({
+            name: 'position',
+            type: 'v3',
+            value: this._vertexPositions,
+            itemSize: 3
+        });
+        this._attributes.push({
+            name: 'color',
+            type: 'c',
+            value: this._colors,
+            itemSize: 3
+        });
+        this._geometry.addAttribute('position', new THREE.BufferAttribute(this._vertexPositions, 3));
+        this._geometry.addAttribute('color', new THREE.BufferAttribute(this._colors, 3));
+        var mat = new THREE.LineBasicMaterial({
+            vertexColors: THREE.VertexColors
+        });
+        this._line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
         this.addSources([this._timeSource, this._audioSource]);
         this._ru[0] = new THREE.Matrix4();
         this._ru[0].makeRotationZ(-this._da);
@@ -1122,11 +1176,13 @@ var LSystem = (function (_super) {
     LSystem.prototype.setupVisualizerChain = function () {
         var _this = this;
         this.addDisposable(this._timeSource.observable().subscribe(function (time) {
-            _this._dt = time - _this._time;
+            if (time != _this._time) {
+                _this._dt = time - _this._time;
+            }
             _this._time = time;
         }));
         this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateLoudness(e); }).subscribe(function (loudness) {
-            _this._growth = loudness * 3.0;
+            _this._growth = Math.pow(loudness, 0.5) * 5.0;
         }));
         this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); }).subscribe(function (eqs) {
             _this._color.x = Math.pow(eqs[0], 1.5);
@@ -1138,21 +1194,9 @@ var LSystem = (function (_super) {
         var _this = this;
         return Rx.Observable.create(function (observer) {
             _this.setupVisualizerChain();
-            var mat = new THREE.LineBasicMaterial({
-                vertexColors: THREE.VertexColors
-            });
-            _this._geometry = new THREE.BufferGeometry();
-            _this._vertexPositions = new Float32Array(5000 * 3);
-            _this._colors = new Float32Array(5000 * 3);
-            _this._geometry.addAttribute('position', new THREE.BufferAttribute(_this._vertexPositions, 3));
-            _this._geometry.addAttribute('color', new THREE.BufferAttribute(_this._colors, 3));
-            /*this.addVertex("F");*/
-            var line = new THREE.Line(_this._geometry, mat, THREE.LinePieces);
-            _this._geometry.computeBoundingSphere();
             _this.onCreated();
             _this.resetGen();
-            _this._line = line;
-            observer.onNext([line]);
+            observer.onNext([_this._line]);
         });
     };
     LSystem.prototype.addVertex = function (rule, gen) {
@@ -1206,7 +1250,7 @@ var LSystem = (function (_super) {
         }
         this._geometry.attributes.position.needsUpdate = true;
         this._geometry.attributes.color.needsUpdate = true;
-        this._geometry.computeBoundingSphere();
+        /*this._geometry.computeBoundingSphere();*/
         return true;
     };
     LSystem.prototype.resetGen = function () {
@@ -1276,7 +1320,7 @@ var LSystem = (function (_super) {
     LSystem.prototype.animate = function () {
         _super.prototype.animate.call(this);
         var j = 0;
-        while (this._genStack[j] && j < 10) {
+        while (this._genStack[j] && j < 4) {
             var gen = this._genStack[j];
             var i;
             if (gen.index >= gen.str.length) {
@@ -1325,6 +1369,14 @@ var LSystem = (function (_super) {
         }
         this._line.rotateY(0.5 * this._dt);
         this._line.rotateZ(0.5 * this._dt);
+        return {
+            type: this.rendererId(),
+            dt: this._dt,
+            attributes: this._attributes
+        };
+    };
+    LSystem.prototype.rendererId = function () {
+        return IDs.lsystem;
     };
     LSystem.ID = "lsystem";
     return LSystem;

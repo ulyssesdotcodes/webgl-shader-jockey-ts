@@ -8,6 +8,7 @@ var IDs = (function () {
     IDs.eqPointCloud = "eqPointCloud";
     IDs.gpgpuPointCloud = "gpgpuPointCloud";
     IDs.videoDistortion = "videoDistortion";
+    IDs.lsystem = "lsystem";
     return IDs;
 })();
 var AudioAnalyser = (function () {
@@ -121,6 +122,7 @@ var ObjectRenderer = (function () {
     function ObjectRenderer(object) {
         this._object = object;
         this._buffers = {};
+        console.log(object);
         if (this._object.material.uniforms) {
             var uniforms = this._object.material.uniforms;
             for (var name in uniforms) {
@@ -180,6 +182,14 @@ var ObjectRenderer = (function () {
                 };
             }
         }
+        else if (this._object.geometry.attributes) {
+            for (var name in this._object.geometry.attributes) {
+                var geoAttr = this._object.geometry.attributes[name];
+                this._buffers[name] = geoAttr.array;
+                this._object.geometry.addAttribute(name, new THREE.BufferAttribute(this._buffers[name], geoAttr.itemSize));
+                this._object.geometry.attributes[name].needsUpdate = true;
+            }
+        }
     }
     ObjectRenderer.prototype.update = function (updateData, resolution) {
         var _this = this;
@@ -211,7 +221,13 @@ var ObjectRenderer = (function () {
         if (updateData.attributes) {
             updateData.attributes.forEach(function (attr) {
                 RendererUtils.copyBuffer(attr.value, _this._buffers[attr.name]);
-                _this._object.material.attributes[attr.name].needsUpdate = true;
+                var mat = _this._object.material;
+                if (mat.attributes && mat.attributes[attr.name]) {
+                    _this._object.material.attributes[attr.name].needsUpdate = true;
+                }
+                else {
+                    _this._object.geometry.attributes[attr.name].needsUpdate = true;
+                }
             });
         }
     };
@@ -254,12 +270,26 @@ var VideoDistortionRenderer = (function (_super) {
     };
     return VideoDistortionRenderer;
 })(ObjectRenderer);
+var LSystemRenderer = (function (_super) {
+    __extends(LSystemRenderer, _super);
+    function LSystemRenderer(line) {
+        _super.call(this, line);
+        this._line = line;
+    }
+    LSystemRenderer.prototype.update = function (update, resolution) {
+        _super.prototype.update.call(this, update, resolution);
+        this._line.rotateY(update.dt * 0.5);
+        this._line.rotateZ(update.dt * 0.5);
+    };
+    return LSystemRenderer;
+})(ObjectRenderer);
 /// <reference path="../Models/Visualizations/IDs"/>
 /// <reference path="../Models/Visualizations/VisualizationRenderer"/>
 /// <reference path="../Models/Visualizations/ObjectRenderer"/>
 /// <reference path="../Models/Visualizations/EqPointCloudRenderer"/>
 /// <reference path="../Models/Visualizations/GPGPUPointCloudRenderer"/>
 /// <reference path="../Models/Visualizations/VideoDistortionRenderer"/>
+/// <reference path="../Models/Visualizations/LSystemRenderer.ts"/>
 /// <reference path="../typed/three.d.ts"/>
 /// <reference path="../Models/Window"/>
 /// <reference path="../typed/rx.d.ts"/>
@@ -327,6 +357,16 @@ var GLVis;
                 else {
                     this._visRenderer = new ObjectRenderer(pc);
                 }
+            }
+            else if (data.type == IDs.lsystem) {
+                /*console.log(meshes[0]);*/
+                var parsedLines = loader.parse(meshes[0].toJSON());
+                /*obj.add(line);*/
+                var lines = new THREE.Line(parsedLines.geometry, new THREE.LineBasicMaterial({
+                    vertexColors: THREE.VertexColors
+                }), THREE.LinePieces);
+                obj.add(lines);
+                this._visRenderer = new LSystemRenderer(lines);
             }
             else {
                 console.log("Couldn't find renderer type " + data.type);

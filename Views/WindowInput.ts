@@ -4,6 +4,7 @@
 /// <reference path="../Models/Visualizations/EqPointCloudRenderer"/>
 /// <reference path="../Models/Visualizations/GPGPUPointCloudRenderer"/>
 /// <reference path="../Models/Visualizations/VideoDistortionRenderer"/>
+/// <reference path="../Models/Visualizations/LSystemRenderer.ts"/>
 /// <reference path="../typed/three.d.ts"/>
 /// <reference path="../Models/Window"/>
 /// <reference path="../typed/rx.d.ts"/>
@@ -97,6 +98,17 @@ module GLVis {
         else {
           this._visRenderer =  new ObjectRenderer(pc);
         }
+      }
+      else if(data.type == IDs.lsystem) {
+        /*console.log(meshes[0]);*/
+        var parsedLines = <THREE.Line>loader.parse(meshes[0].toJSON());
+        /*obj.add(line);*/
+        var lines = new THREE.Line(parsedLines.geometry, new THREE.LineBasicMaterial({
+          vertexColors: THREE.VertexColors
+          }), THREE.LinePieces);
+
+        obj.add(lines);
+        this._visRenderer = new LSystemRenderer(lines);
       }
       else {
         console.log("Couldn't find renderer type " + data.type);
