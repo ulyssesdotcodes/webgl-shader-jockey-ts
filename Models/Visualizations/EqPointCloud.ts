@@ -43,7 +43,8 @@ class EqPointCloud extends PointCloudVisualization {
     var colorAttribute = {
       name: "color",
       type: "c",
-      value: this._colorBuffer
+      value: this._colorBuffer,
+      itemSize: 3
     };
 
     this.addAttributes([colorAttribute]);
