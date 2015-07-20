@@ -205,9 +205,17 @@ class FlockingVisualization extends PointCloudVisualization {
         .map(AudioUniformFunctions.calculateLoudness)
         .subscribe((loudness) => {
         this._loudnessUniform.value = loudness;
-        this._accumulatedLoudnessUniform.value += loudness;
       })
     );
+
+    this.addDisposable(
+      this._audioSource.observable()
+        .map(AudioUniformFunctions.calculateBeat)
+        .subscribe((beat) => {
+        this._accumulatedLoudnessUniform.value = beat;
+      })
+    );
+
     this.addDisposable(
       this._audioSource.observable()
         .map((e) => AudioUniformFunctions.calculateEqs(e, 3))

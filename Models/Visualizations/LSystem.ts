@@ -98,7 +98,8 @@ class LSystem extends BaseVisualization {
     this._geometry.addAttribute('color', new THREE.BufferAttribute(this._colors, 3));
 
     var mat = new THREE.LineBasicMaterial({
-      vertexColors: THREE.VertexColors
+      vertexColors: THREE.VertexColors,
+      lineSize: 5.0
     });
 
     this._line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
@@ -153,18 +154,20 @@ class LSystem extends BaseVisualization {
     }));
 
     this.addDisposable(this._audioSource.observable()
-      .map((e) => AudioUniformFunctions.calculateLoudness(e))
-      .subscribe((loudness) => {
-        this._growth = Math.pow(loudness, 0.5) *
+      .map((e) => AudioUniformFunctions.calculateBeat(e))
+      .subscribe((beat) => {
+        this._growth = Math.pow(beat, 0.5) *
           this._controlsProvider.getValue(this._growthFactorName);
     }));
 
     this.addDisposable(this._audioSource.observable()
       .map((e) => AudioUniformFunctions.calculateEqs(e, 3))
       .subscribe((eqs) => {
-        this._color.x = Math.pow(eqs[0], 1.5);
-        this._color.y = eqs[1];
-        this._color.z = Math.pow(eqs[2], 0.7);
+        var a = Math.sqrt(eqs[0] * eqs[0] + eqs[1] * eqs[1] + eqs[2] * eqs[2]);
+
+        this._color.x = eqs[0] / a;
+        this._color.y = eqs[1] / a;
+        this._color.z = eqs[2] / a;
     }) );
   }
 
