@@ -1,4 +1,8 @@
+/// <reference path="../BeatDetector.ts"/>
+
 module AudioUniformFunctions {
+  var beatDetector: BeatDetector;
+
   export function updateAudioBuffer(e: AudioEvent, buf: Uint8Array): void {
     for (var i = 0; i < e.frequencyBuffer.length; i++) {
       buf[i * 4] = e.frequencyBuffer[i];
@@ -39,12 +43,18 @@ module AudioUniformFunctions {
       sum += e.frequencyBuffer[i];
     }
 
-    var volume = this._volume === undefined ? 1.0 : this._volume.value;
-
     var average: number = sum / e.frequencyBuffer.length;
 
     average = average / 128.0;
 
     return average;
+  }
+
+  export function calculateBeat(e: AudioEvent) {
+    if(beatDetector === undefined) {
+      beatDetector = new BeatDetector();
+    }
+
+    return beatDetector.calculateBeat(e);
   }
 }

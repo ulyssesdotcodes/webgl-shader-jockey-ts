@@ -22,6 +22,7 @@
         "./Models/ArrayAttribute.ts",
         "./Models/Attribute.ts",
         "./Models/AudioAnalyser.ts",
+        "./Models/BeatDetector.ts",
         "./Models/Control.ts",
         "./Models/Controls.ts",
         "./Models/HueControl.ts",
