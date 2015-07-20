@@ -178,8 +178,48 @@ var BaseVisualization = (function () {
     };
     return BaseVisualization;
 })();
+var BeatDetector = (function () {
+    function BeatDetector() {
+        this._energyHistory = new Float32Array(BeatDetector.history);
+        this._energyIndex = 0;
+        this._averageEnergy = 0;
+        this._lastBeat = 0;
+        this._deterioration = 0;
+    }
+    BeatDetector.prototype.calculateBeat = function (e) {
+        var sum = 0;
+        for (var i = 0; i < e.frequencyBuffer.length; i++) {
+            sum += e.frequencyBuffer[i];
+        }
+        sum /= e.frequencyBuffer.length * 256.0;
+        var beat = sum - 1.3 * this._averageEnergy;
+        if (beat > 0) {
+            beat = beat / Math.abs(beat);
+        }
+        if (beat > this._lastBeat) {
+            this._lastBeat = beat;
+            this._deterioration = 4 * beat / BeatDetector.history;
+        }
+        else {
+            this._lastBeat -= this._deterioration;
+            this._lastBeat = Math.max(this._lastBeat, 0.0);
+        }
+        this._averageEnergy -= this._energyHistory[this._energyIndex] / BeatDetector.history;
+        this._energyHistory[this._energyIndex] = sum;
+        this._averageEnergy += this._energyHistory[this._energyIndex] / BeatDetector.history;
+        this._energyIndex++;
+        if (this._energyIndex >= BeatDetector.history) {
+            this._energyIndex = 0;
+        }
+        return this._lastBeat;
+    };
+    BeatDetector.history = 43.0;
+    return BeatDetector;
+})();
+/// <reference path="../BeatDetector.ts"/>
 var AudioUniformFunctions;
 (function (AudioUniformFunctions) {
+    var beatDetector;
     function updateAudioBuffer(e, buf) {
         for (var i = 0; i < e.frequencyBuffer.length; i++) {
             buf[i * 4] = e.frequencyBuffer[i];
@@ -213,12 +253,18 @@ var AudioUniformFunctions;
         for (var i = 0; i < e.frequencyBuffer.length; i++) {
             sum += e.frequencyBuffer[i];
         }
-        var volume = this._volume === undefined ? 1.0 : this._volume.value;
         var average = sum / e.frequencyBuffer.length;
         average = average / 128.0;
         return average;
     }
     AudioUniformFunctions.calculateLoudness = calculateLoudness;
+    function calculateBeat(e) {
+        if (beatDetector === undefined) {
+            beatDetector = new BeatDetector();
+        }
+        return beatDetector.calculateBeat(e);
+    }
+    AudioUniformFunctions.calculateBeat = calculateBeat;
 })(AudioUniformFunctions || (AudioUniformFunctions = {}));
 /// <reference path="./Attribute"/>
 var UniformUtils = (function () {
@@ -947,7 +993,9 @@ var FlockingVisualization = (function (_super) {
         _super.prototype.setupVisualizerChain.call(this);
         this.addDisposable(this._audioSource.observable().map(AudioUniformFunctions.calculateLoudness).subscribe(function (loudness) {
             _this._loudnessUniform.value = loudness;
-            _this._accumulatedLoudnessUniform.value += loudness;
+        }));
+        this.addDisposable(this._audioSource.observable().map(AudioUniformFunctions.calculateBeat).subscribe(function (beat) {
+            _this._accumulatedLoudnessUniform.value = beat;
         }));
         this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); }).subscribe(function (eqs) {
             _this._eqs.value = new THREE.Vector3(eqs[0], eqs[1], eqs[2]);
@@ -1142,7 +1190,8 @@ var LSystem = (function (_super) {
         this._geometry.addAttribute('position', new THREE.BufferAttribute(this._vertexPositions, 3));
         this._geometry.addAttribute('color', new THREE.BufferAttribute(this._colors, 3));
         var mat = new THREE.LineBasicMaterial({
-            vertexColors: THREE.VertexColors
+            vertexColors: THREE.VertexColors,
+            lineSize: 5.0
         });
         this._line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
         this.addSources([this._timeSource, this._audioSource]);
@@ -1190,13 +1239,14 @@ var LSystem = (function (_super) {
             }
             _this._time = time;
         }));
-        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateLoudness(e); }).subscribe(function (loudness) {
-            _this._growth = Math.pow(loudness, 0.5) * _this._controlsProvider.getValue(_this._growthFactorName);
+        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateBeat(e); }).subscribe(function (beat) {
+            _this._growth = Math.pow(beat, 0.5) * _this._controlsProvider.getValue(_this._growthFactorName);
         }));
         this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); }).subscribe(function (eqs) {
-            _this._color.x = Math.pow(eqs[0], 1.5);
-            _this._color.y = eqs[1];
-            _this._color.z = Math.pow(eqs[2], 0.7);
+            var a = Math.sqrt(eqs[0] * eqs[0] + eqs[1] * eqs[1] + eqs[2] * eqs[2]);
+            _this._color.x = eqs[0] / a;
+            _this._color.y = eqs[1] / a;
+            _this._color.z = eqs[2] / a;
         }));
     };
     LSystem.prototype.object3DObservable = function () {
