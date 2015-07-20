@@ -75,7 +75,7 @@ class FlockingVisualization extends PointCloudVisualization {
     };
 
     this._accumulatedLoudnessUniform = {
-      name: "accumulatedLoudness",
+      name: "beat",
       type: "f",
       value: 0.0
     };
