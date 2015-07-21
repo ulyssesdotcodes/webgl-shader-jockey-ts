@@ -387,7 +387,7 @@ var ShaderPlane = (function () {
 })();
 /// <reference path="./AudioUniformFunctions" />
 /// <reference path="../ShaderPlane"/>
-var __extends = this.__extends || function (d, b) {
+var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     __.prototype = b.prototype;
@@ -746,9 +746,6 @@ var PointCloudVisualization = (function (_super) {
         };
         this._uniforms = [this._timeUniform].concat(resolutionProvider.uniforms());
         this._attributes = [];
-        if (controlsProvider) {
-            this.addUniforms(controlsProvider.uniforms());
-        }
     }
     PointCloudVisualization.prototype.addUniforms = function (uniforms) {
         this._uniforms = this._uniforms.concat(uniforms);
@@ -1636,16 +1633,11 @@ var ControlsProvider = (function () {
         this._controls = {};
         this._controlUniforms = [];
         controls.forEach(function (control) {
-            if (oldControls[control.name]) {
-                _this._controls[control.name] = oldControls[control.name];
-            }
-            else {
-                _this._controls[control.name] = {
-                    name: control.name,
-                    type: "f",
-                    value: control.defVal
-                };
-            }
+            _this._controls[control.name] = {
+                name: control.name,
+                type: "f",
+                value: control.defVal
+            };
             _this._controlUniforms.push(_this._controls[control.name]);
         });
         this._controlSubject.onNext(controls);

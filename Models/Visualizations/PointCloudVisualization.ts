@@ -31,10 +31,6 @@ class PointCloudVisualization extends BaseVisualization {
 
     this._uniforms = [<IUniform<any>> this._timeUniform].concat(resolutionProvider.uniforms());
     this._attributes = [];
-
-    if(controlsProvider) {
-      this.addUniforms(controlsProvider.uniforms());
-    }
   }
 
   protected addUniforms(uniforms: Array<IUniform<any>>) {

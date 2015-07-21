@@ -39,17 +39,11 @@ class ControlsProvider implements UniformProvider<any> {
     this._controlUniforms = [];
 
     controls.forEach((control) => {
-      if(oldControls[control.name]) {
-        this._controls[control.name] = oldControls[control.name];
-      }
-      else {
-        this._controls[control.name] = {
-          name: control.name,
-          type: "f",
-          value: control.defVal
-        };
-      }
-
+      this._controls[control.name] = {
+        name: control.name,
+        type: "f",
+        value: control.defVal
+      };
       this._controlUniforms.push(this._controls[control.name]);
     });
 
