@@ -222,7 +222,8 @@ var BeatDetector = (function () {
                     beat = 1.0;
                 }
             }
-            this._averageEnergy[i] -= this._energyHistory[i][this._energyIndex] / BeatDetector.history;
+            this._averageEnergy[i] -=
+                this._energyHistory[i][this._energyIndex] / BeatDetector.history;
             this._energyHistory[i][this._energyIndex] = sum[i];
             this._averageEnergy[i] += this._energyHistory[i][this._energyIndex] / BeatDetector.history;
             this._energyIndex++;
