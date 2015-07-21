@@ -104,7 +104,8 @@ module GLVis {
         var parsedLines = <THREE.Line>loader.parse(meshes[0].toJSON());
         /*obj.add(line);*/
         var lines = new THREE.Line(parsedLines.geometry, new THREE.LineBasicMaterial({
-          vertexColors: THREE.VertexColors
+          vertexColors: THREE.VertexColors,
+          linewidth: 5.0
           }), THREE.LinePieces);
 
         obj.add(lines);
