@@ -180,21 +180,45 @@ var BaseVisualization = (function () {
 })();
 var BeatDetector = (function () {
     function BeatDetector() {
-        this._energyHistory = new Float32Array(BeatDetector.history);
+        this._energyHistory = new Array();
         this._energyIndex = 0;
-        this._averageEnergy = 0;
+        this._averageEnergy = new Float32Array(BeatDetector.buckets);
         this._lastBeat = 0;
         this._deterioration = 0;
+        for (var i = 0; i < BeatDetector.buckets; i++) {
+            this._energyHistory.push(new Float32Array(BeatDetector.history));
+        }
     }
     BeatDetector.prototype.calculateBeat = function (e) {
-        var sum = 0;
+        var sum = new Float32Array(BeatDetector.buckets);
+        var j;
         for (var i = 0; i < e.frequencyBuffer.length; i++) {
-            sum += e.frequencyBuffer[i];
+            j = Math.log(i + 1) / Math.log(2);
+            if (j % 1 == 0) {
+                sum[j] = 0;
+            }
+            else {
+                j = Math.floor(j);
+            }
+            sum[j] += e.frequencyBuffer[i];
         }
-        sum /= e.frequencyBuffer.length * 256.0;
-        var beat = sum - 1.3 * this._averageEnergy;
-        if (beat > 0) {
-            beat = beat / Math.abs(beat);
+        var beat = -1.0;
+        for (var i = 0; i < BeatDetector.buckets; i++) {
+            sum[i] /= Math.pow(i + 1, 2) * 256.0;
+            if (beat < 0) {
+                beat = sum[i] - 1.4 * this._averageEnergy[i];
+                if (beat > 0) {
+                    console.log("beat\n");
+                    beat = 1.0;
+                }
+            }
+            this._averageEnergy[i] -= this._energyHistory[i][this._energyIndex] / BeatDetector.history;
+            this._energyHistory[i][this._energyIndex] = sum[i];
+            this._averageEnergy[i] += this._energyHistory[i][this._energyIndex] / BeatDetector.history;
+            this._energyIndex++;
+            if (this._energyIndex >= BeatDetector.history) {
+                this._energyIndex = 0;
+            }
         }
         if (beat > this._lastBeat) {
             this._lastBeat = beat;
@@ -204,16 +228,10 @@ var BeatDetector = (function () {
             this._lastBeat -= this._deterioration;
             this._lastBeat = Math.max(this._lastBeat, 0.0);
         }
-        this._averageEnergy -= this._energyHistory[this._energyIndex] / BeatDetector.history;
-        this._energyHistory[this._energyIndex] = sum;
-        this._averageEnergy += this._energyHistory[this._energyIndex] / BeatDetector.history;
-        this._energyIndex++;
-        if (this._energyIndex >= BeatDetector.history) {
-            this._energyIndex = 0;
-        }
         return this._lastBeat;
     };
     BeatDetector.history = 43.0;
+    BeatDetector.buckets = 10; // Don't change
     return BeatDetector;
 })();
 /// <reference path="../BeatDetector.ts"/>
@@ -1128,7 +1146,7 @@ var LSystem = (function (_super) {
         _super.call(this);
         this._growthFactorName = "volume";
         this._rotationName = "rotation speed";
-        this._da = 22.5;
+        this._da = 180 - 22.5;
         this._length = 2;
         this._ru = [];
         this._rl = [];
@@ -1144,14 +1162,22 @@ var LSystem = (function (_super) {
         this._timeSource = timeSource;
         this._audioSource = audioSource;
         this.addSources([this._timeSource, this._audioSource]);
-        this._ru[0] = new THREE.Matrix4();
-        this._ru[0].makeRotationZ(-this._da);
-        this._ru[1] = new THREE.Matrix4();
-        this._ru[1].makeRotationZ(this._da);
-        this._rl[0] = new THREE.Matrix4();
-        this._rl[0].makeRotationY(-this._da);
-        this._rl[1] = new THREE.Matrix4();
-        this._rl[1].makeRotationY(this._da);
+        var cos = Math.cos(this._da);
+        var sin = Math.sin(this._da);
+        var cosn = Math.cos(-this._da);
+        var sinn = Math.sin(-this._da);
+        /*this._ru[0] = new THREE.Matrix3();
+        this._ru[0].set(cos, sin, 0, -sin, cos, 0, 0, 0, 1);
+        this._ru[1] = new THREE.Matrix3();
+        this._ru[1].set(cosn, sinn, 0, -sinn, cosn, 0, 0, 0, 1);*/
+        this._ru[0] = new THREE.Quaternion();
+        this._ru[0].setFromAxisAngle(new THREE.Vector3(0, 1, 0), this._da);
+        this._ru[1] = new THREE.Quaternion();
+        this._ru[1].setFromAxisAngle(new THREE.Vector3(0, 1, 0), -this._da);
+        this._rl[0] = new THREE.Quaternion();
+        this._rl[0].setFromAxisAngle(new THREE.Vector3(1, 0, 0), this._da);
+        this._rl[1] = new THREE.Quaternion();
+        this._rl[1].setFromAxisAngle(new THREE.Vector3(1, 0, 0), -this._da);
         this._rh[0] = new THREE.Matrix4();
         this._rh[0].makeRotationX(-this._da);
         this._rh[1] = new THREE.Matrix4();
@@ -1191,22 +1217,10 @@ var LSystem = (function (_super) {
         this._geometry.addAttribute('color', new THREE.BufferAttribute(this._colors, 3));
         var mat = new THREE.LineBasicMaterial({
             vertexColors: THREE.VertexColors,
-            lineSize: 5.0
+            linewidth: 5.0
         });
         this._line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
         this.addSources([this._timeSource, this._audioSource]);
-        this._ru[0] = new THREE.Matrix4();
-        this._ru[0].makeRotationZ(-this._da);
-        this._ru[1] = new THREE.Matrix4();
-        this._ru[1].makeRotationZ(this._da);
-        this._rl[0] = new THREE.Matrix4();
-        this._rl[0].makeRotationY(-this._da);
-        this._rl[1] = new THREE.Matrix4();
-        this._rl[1].makeRotationY(this._da);
-        this._rh[0] = new THREE.Matrix4();
-        this._rh[0].makeRotationX(-this._da);
-        this._rh[1] = new THREE.Matrix4();
-        this._rh[1].makeRotationX(this._da);
         this._rules = {
             "F": [
                 "F[+F]F[-F]F",
@@ -1220,7 +1234,7 @@ var LSystem = (function (_super) {
                 "F[&F[+F]F]F",
                 "F[&F[-F]F]F",
                 "F[^F[+F]F]F",
-                "F[^F[-F]F]F",
+                "F[^F[-F]F]F"
             ]
         };
         this._controlsProvider = controlsProvider;
@@ -1259,35 +1273,51 @@ var LSystem = (function (_super) {
         });
     };
     LSystem.prototype.addVertex = function (rule, gen) {
-        var addedVertices = 0;
+        if (rule == 'F') {
+            this._vertices.push(gen.currentVertex.slice(0));
+            gen.currentVertex = [
+                gen.currentVertex[0] + gen.heading.getComponent(0) * this._length,
+                gen.currentVertex[1] + gen.heading.getComponent(1) * this._length,
+                gen.currentVertex[2] + gen.heading.getComponent(2) * this._length
+            ];
+            this._vertices.push(gen.currentVertex.slice(0));
+            for (var i = 0; i < 2; i++) {
+                var j = this._vertices.length - 2 + i;
+                this._vertexPositions[j * 3] = this._vertices[j][0];
+                this._vertexPositions[j * 3 + 1] = this._vertices[j][1];
+                this._vertexPositions[j * 3 + 2] = this._vertices[j][2];
+                this._colors[j * 3] = this._color.x;
+                this._colors[j * 3 + 1] = this._color.y;
+                this._colors[j * 3 + 2] = this._color.z;
+            }
+            this._geometry.attributes.position.needsUpdate = true;
+            this._geometry.attributes.color.needsUpdate = true;
+            /*this._geometry.computeBoundingSphere();*/
+            return true;
+        }
+        var z = new THREE.Vector3(0, 0, 1);
+        var quat = new THREE.Quaternion();
+        quat.setFromUnitVectors(gen.heading, z);
         switch (rule) {
             case 'F':
-                this._vertices.push(gen.currentVertex.slice(0));
-                gen.currentVertex = [
-                    gen.currentVertex[0] + gen.heading.getComponent(0) * this._length,
-                    gen.currentVertex[1] + gen.heading.getComponent(1) * this._length,
-                    gen.currentVertex[2] + gen.heading.getComponent(2) * this._length
-                ];
-                this._vertices.push(gen.currentVertex.slice(0));
-                addedVertices += 2;
                 break;
             case '+':
-                gen.heading.transformDirection(this._ru[0]).multiplyScalar(-1.0);
+                gen.heading = z.applyQuaternion(this._ru[0]).applyQuaternion(quat.inverse());
                 break;
             case '-':
-                gen.heading.transformDirection(this._ru[1]).multiplyScalar(-1.0);
+                gen.heading = z.applyQuaternion(this._ru[1]).applyQuaternion(quat.inverse());
                 break;
             case '&':
-                gen.heading.transformDirection(this._rl[0]).multiplyScalar(-1.0);
+                gen.heading = z.applyQuaternion(this._rl[0]).applyQuaternion(quat.inverse());
                 break;
             case '^':
-                gen.heading.transformDirection(this._rl[1]).multiplyScalar(-1.0);
+                gen.heading = z.applyQuaternion(this._rl[1]).applyQuaternion(quat.inverse());
                 break;
             case '\\':
-                gen.heading.transformDirection(this._rh[0]).multiplyScalar(-1.0);
+                gen.heading.applyMatrix4(this._rh[0]).multiplyScalar(-1.0);
                 break;
             case '/':
-                gen.heading.transformDirection(this._rh[1]).multiplyScalar(-1.0);
+                gen.heading.applyMatrix4(this._rh[1]).multiplyScalar(-1.0);
                 break;
             case '|':
                 gen.heading.multiplyScalar(-1.0);
@@ -1295,22 +1325,6 @@ var LSystem = (function (_super) {
             default:
                 console.log("Unknown instruction: " + rule);
         }
-        for (var i = 0; i < addedVertices; i++) {
-            var j = this._vertices.length - addedVertices + i;
-            this._vertexPositions[j * 3] = this._vertices[j][0];
-            this._vertexPositions[j * 3 + 1] = this._vertices[j][1];
-            this._vertexPositions[j * 3 + 2] = this._vertices[j][2];
-            this._colors[j * 3] = this._color.x;
-            this._colors[j * 3 + 1] = this._color.y;
-            this._colors[j * 3 + 2] = this._color.z;
-        }
-        if (addedVertices == 0) {
-            return false;
-        }
-        this._geometry.attributes.position.needsUpdate = true;
-        this._geometry.attributes.color.needsUpdate = true;
-        /*this._geometry.computeBoundingSphere();*/
-        return true;
     };
     LSystem.prototype.resetGen = function () {
         this._genStack = [{
@@ -1412,7 +1426,9 @@ var LSystem = (function (_super) {
                     i = end;
                 }
                 else {
-                    this.addVertex(gen.str.charAt(i), gen);
+                    if (i < gen.str.length) {
+                        this.addVertex(gen.str.charAt(i), gen);
+                    }
                 }
             }
             this._genStack[j].index = i;

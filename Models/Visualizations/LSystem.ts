@@ -6,10 +6,10 @@ class LSystem extends BaseVisualization {
   private _growthFactorName = "volume";
   private _rotationName = "rotation speed";
 
-  private _da = 22.5;
+  private _da = 180 - 22.5;
   private _length = 2;
-  private _ru: Array<THREE.Matrix4> = [];
-  private _rl: Array<THREE.Matrix4> = [];
+  private _ru: Array<THREE.Quaternion> = [];
+  private _rl: Array<THREE.Quaternion> = [];
   private _rh: Array<THREE.Matrix4> = [];
 
   private _genIndex: number = 0.0;
@@ -45,14 +45,22 @@ class LSystem extends BaseVisualization {
 
     this.addSources([this._timeSource, this._audioSource]);
 
-    this._ru[0] = new THREE.Matrix4();
-    this._ru[0].makeRotationZ(-this._da);
-    this._ru[1] = new THREE.Matrix4();
-    this._ru[1].makeRotationZ(this._da);
-    this._rl[0] = new THREE.Matrix4();
-    this._rl[0].makeRotationY(-this._da);
-    this._rl[1] = new THREE.Matrix4();
-    this._rl[1].makeRotationY(this._da);
+    var cos = Math.cos(this._da);
+    var sin = Math.sin(this._da);
+    var cosn = Math.cos(-this._da);
+    var sinn = Math.sin(-this._da);
+    /*this._ru[0] = new THREE.Matrix3();
+    this._ru[0].set(cos, sin, 0, -sin, cos, 0, 0, 0, 1);
+    this._ru[1] = new THREE.Matrix3();
+    this._ru[1].set(cosn, sinn, 0, -sinn, cosn, 0, 0, 0, 1);*/
+    this._ru[0] = new THREE.Quaternion();
+    this._ru[0].setFromAxisAngle(new THREE.Vector3(0, 1, 0), this._da);
+    this._ru[1] = new THREE.Quaternion();
+    this._ru[1].setFromAxisAngle(new THREE.Vector3(0, 1, 0), -this._da);
+    this._rl[0] = new THREE.Quaternion();
+    this._rl[0].setFromAxisAngle(new THREE.Vector3(1, 0, 0), this._da);
+    this._rl[1] = new THREE.Quaternion();
+    this._rl[1].setFromAxisAngle(new THREE.Vector3(1, 0, 0), -this._da);
     this._rh[0] = new THREE.Matrix4();
     this._rh[0].makeRotationX(-this._da);
     this._rh[1] = new THREE.Matrix4();
@@ -99,25 +107,12 @@ class LSystem extends BaseVisualization {
 
     var mat = new THREE.LineBasicMaterial({
       vertexColors: THREE.VertexColors,
-      lineSize: 5.0
+      linewidth: 5.0
     });
 
     this._line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
 
     this.addSources([this._timeSource, this._audioSource]);
-
-    this._ru[0] = new THREE.Matrix4();
-    this._ru[0].makeRotationZ(-this._da);
-    this._ru[1] = new THREE.Matrix4();
-    this._ru[1].makeRotationZ(this._da);
-    this._rl[0] = new THREE.Matrix4();
-    this._rl[0].makeRotationY(-this._da);
-    this._rl[1] = new THREE.Matrix4();
-    this._rl[1].makeRotationY(this._da);
-    this._rh[0] = new THREE.Matrix4();
-    this._rh[0].makeRotationX(-this._da);
-    this._rh[1] = new THREE.Matrix4();
-    this._rh[1].makeRotationX(this._da);
 
     this._rules = {
       "F": [
@@ -132,7 +127,7 @@ class LSystem extends BaseVisualization {
         "F[&F[+F]F]F",
         "F[&F[-F]F]F",
         "F[^F[+F]F]F",
-        "F[^F[-F]F]F",
+        "F[^F[-F]F]F"
       ]
     };
 
@@ -184,35 +179,56 @@ class LSystem extends BaseVisualization {
   }
 
   private addVertex(rule: string, gen): boolean {
-    var addedVertices = 0;
+    if(rule == 'F') {
+      this._vertices.push(gen.currentVertex.slice(0));
+      gen.currentVertex = [
+        gen.currentVertex[0] + gen.heading.getComponent(0) * this._length,
+        gen.currentVertex[1] + gen.heading.getComponent(1) * this._length,
+        gen.currentVertex[2] + gen.heading.getComponent(2) * this._length
+      ];
+      this._vertices.push(gen.currentVertex.slice(0));
+
+      for (var i = 0; i < 2; i++) {
+        var j = this._vertices.length - 2 + i;
+        this._vertexPositions[j * 3] = this._vertices[j][0];
+        this._vertexPositions[j * 3 + 1] = this._vertices[j][1];
+        this._vertexPositions[j * 3 + 2] = this._vertices[j][2];
+
+        this._colors[j * 3] = this._color.x;
+        this._colors[j * 3 + 1] = this._color.y;
+        this._colors[j * 3 + 2] = this._color.z;
+      }
+
+      (<any>this._geometry.attributes).position.needsUpdate = true;
+      (<any>this._geometry.attributes).color.needsUpdate = true;
+      /*this._geometry.computeBoundingSphere();*/
+      return true;
+    }
+
+    var z = new THREE.Vector3(0, 0, 1);
+    var quat = new THREE.Quaternion();
+    quat.setFromUnitVectors(gen.heading, z);
+
     switch (rule) {
       case 'F':
-        this._vertices.push(gen.currentVertex.slice(0));
-        gen.currentVertex = [
-          gen.currentVertex[0] + gen.heading.getComponent(0) * this._length,
-          gen.currentVertex[1] + gen.heading.getComponent(1) * this._length,
-          gen.currentVertex[2] + gen.heading.getComponent(2) * this._length
-        ];
-        this._vertices.push(gen.currentVertex.slice(0));
-        addedVertices += 2;
         break;
       case '+':
-        gen.heading.transformDirection(this._ru[0]).multiplyScalar(-1.0);
+        gen.heading = z.applyQuaternion(this._ru[0]).applyQuaternion(quat.inverse());
         break;
       case '-':
-        gen.heading.transformDirection(this._ru[1]).multiplyScalar(-1.0);
+        gen.heading = z.applyQuaternion(this._ru[1]).applyQuaternion(quat.inverse());
         break;
       case '&':
-        gen.heading.transformDirection(this._rl[0]).multiplyScalar(-1.0);
+        gen.heading = z.applyQuaternion(this._rl[0]).applyQuaternion(quat.inverse());
         break;
       case '^':
-        gen.heading.transformDirection(this._rl[1]).multiplyScalar(-1.0);
+        gen.heading = z.applyQuaternion(this._rl[1]).applyQuaternion(quat.inverse());
         break;
       case '\\':
-        gen.heading.transformDirection(this._rh[0]).multiplyScalar(-1.0);
+        gen.heading.applyMatrix4(this._rh[0]).multiplyScalar(-1.0);
         break;
       case '/':
-        gen.heading.transformDirection(this._rh[1]).multiplyScalar(-1.0);
+        gen.heading.applyMatrix4(this._rh[1]).multiplyScalar(-1.0);
         break;
       case '|':
         gen.heading.multiplyScalar(-1.0);
@@ -220,26 +236,6 @@ class LSystem extends BaseVisualization {
       default:
         console.log("Unknown instruction: " + rule)
     }
-
-    for (var i = 0; i < addedVertices; i++) {
-      var j = this._vertices.length - addedVertices + i;
-      this._vertexPositions[j * 3] = this._vertices[j][0];
-      this._vertexPositions[j * 3 + 1] = this._vertices[j][1];
-      this._vertexPositions[j * 3 + 2] = this._vertices[j][2];
-
-      this._colors[j * 3] = this._color.x;
-      this._colors[j * 3 + 1] = this._color.y;
-      this._colors[j * 3 + 2] = this._color.z;
-    }
-
-    if (addedVertices == 0) {
-      return false;
-    }
-
-    (<any>this._geometry.attributes).position.needsUpdate = true;
-    (<any>this._geometry.attributes).color.needsUpdate = true;
-    /*this._geometry.computeBoundingSphere();*/
-    return true;
   }
 
   private resetGen(): void {
@@ -249,7 +245,6 @@ class LSystem extends BaseVisualization {
       currentVertex: [8.0, 0, 0],
       heading: (new THREE.Vector3(1.0, 0.0, 0.0)).normalize(),
       parent: -1
-
     }, {
         str: "F",
         index: 0,
@@ -350,7 +345,9 @@ class LSystem extends BaseVisualization {
           i = end;
         }
         else {
-          this.addVertex(gen.str.charAt(i), gen)
+          if(i < gen.str.length) {
+            this.addVertex(gen.str.charAt(i), gen)
+          }
         }
       }
 
