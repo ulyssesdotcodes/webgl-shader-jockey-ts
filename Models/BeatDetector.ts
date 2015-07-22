@@ -1,6 +1,6 @@
 class BeatDetector {
   static history = 43.0;
-  static buckets = 10; // Don't change
+  static buckets = 8; // Don't change
   private _energyHistory: Array<Float32Array> = new Array();
   private _energyIndex = 0;
   private _averageEnergy = new Float32Array(BeatDetector.buckets);
@@ -16,7 +16,7 @@ class BeatDetector {
   calculateBeat(e: AudioEvent): number {
     var sum = new Float32Array(BeatDetector.buckets);
     var j;
-    for (var i = 0; i < e.frequencyBuffer.length; i++) {
+    for (var i = 0; i < e.frequencyBuffer.length * 0.25; i++) {
       j = Math.log(i + 1) / Math.log(2);
       if(j % 1 == 0) {
         sum[j] = 0;

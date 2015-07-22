@@ -202,7 +202,7 @@ var BeatDetector = (function () {
     BeatDetector.prototype.calculateBeat = function (e) {
         var sum = new Float32Array(BeatDetector.buckets);
         var j;
-        for (var i = 0; i < e.frequencyBuffer.length; i++) {
+        for (var i = 0; i < e.frequencyBuffer.length * 0.25; i++) {
             j = Math.log(i + 1) / Math.log(2);
             if (j % 1 == 0) {
                 sum[j] = 0;
@@ -242,7 +242,7 @@ var BeatDetector = (function () {
         return this._lastBeat;
     };
     BeatDetector.history = 43.0;
-    BeatDetector.buckets = 10; // Don't change
+    BeatDetector.buckets = 8; // Don't change
     return BeatDetector;
 })();
 /// <reference path="../BeatDetector.ts"/>
@@ -1043,10 +1043,8 @@ var FlockingVisualization = (function (_super) {
         var _this = this;
         this.addDisposable(this._timeSource.observable().subscribe(function (time) {
             var diff = time - _this._lastTime;
-            if (diff > 0) {
-                _this._deltaUniform.value = diff;
-                _this._lastTime = time;
-            }
+            _this._deltaUniform.value = diff;
+            _this._lastTime = time;
         }));
         _super.prototype.setupVisualizerChain.call(this);
         this.addDisposable(this._audioSource.observable()
@@ -1268,7 +1266,6 @@ var LSystem = (function (_super) {
             linewidth: 5.0
         });
         this._line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
-        this.addSources([this._timeSource, this._audioSource]);
         this._rules = {
             "F": [
                 "F[+F]F[-F]F",
@@ -1296,9 +1293,7 @@ var LSystem = (function (_super) {
     LSystem.prototype.setupVisualizerChain = function () {
         var _this = this;
         this.addDisposable(this._timeSource.observable().subscribe(function (time) {
-            if (time != _this._time) {
-                _this._dt = time - _this._time;
-            }
+            _this._dt = time - _this._time;
             _this._time = time;
         }));
         this.addDisposable(this._audioSource.observable()
@@ -1311,9 +1306,7 @@ var LSystem = (function (_super) {
             .map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); })
             .subscribe(function (eqs) {
             var a = Math.sqrt(eqs[0] * eqs[0] + eqs[1] * eqs[1] + eqs[2] * eqs[2]);
-            _this._color.x = eqs[0] / a;
-            _this._color.y = eqs[1] / a;
-            _this._color.z = eqs[2] / a;
+            _this._color.set(eqs[0], eqs[1], eqs[2]).divideScalar(a);
         }));
     };
     LSystem.prototype.object3DObservable = function () {
@@ -1445,6 +1438,15 @@ var LSystem = (function (_super) {
     };
     LSystem.prototype.animate = function () {
         _super.prototype.animate.call(this);
+        this._line.rotateY(this._controlsProvider.getValue(this._rotationName) * this._dt);
+        this._line.rotateZ(this._controlsProvider.getValue(this._rotationName) * this._dt);
+        if (this._color.length() == 0.0) {
+            return {
+                type: this.rendererId(),
+                rotation: this._controlsProvider.getValue(this._rotationName) * this._dt,
+                attributes: this._attributes
+            };
+        }
         var j = 0;
         while (this._genStack[j] && j < 4) {
             var gen = this._genStack[j];
@@ -1495,8 +1497,6 @@ var LSystem = (function (_super) {
             }
             this.resetGen();
         }
-        this._line.rotateY(this._controlsProvider.getValue(this._rotationName) * this._dt);
-        this._line.rotateZ(this._controlsProvider.getValue(this._rotationName) * this._dt);
         return {
             type: this.rendererId(),
             rotation: this._controlsProvider.getValue(this._rotationName) * this._dt,

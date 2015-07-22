@@ -194,10 +194,8 @@ class FlockingVisualization extends PointCloudVisualization {
   protected setupVisualizerChain(): void {
     this.addDisposable(this._timeSource.observable().subscribe((time) => {
       var diff = time - this._lastTime;
-      if(diff > 0) {
         this._deltaUniform.value = diff;
         this._lastTime = time;
-      }
     }));
     super.setupVisualizerChain();
     this.addDisposable(
