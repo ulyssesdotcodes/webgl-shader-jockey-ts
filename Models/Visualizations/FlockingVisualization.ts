@@ -188,7 +188,7 @@ class FlockingVisualization extends PointCloudVisualization {
     var velocityTexture = this.generateDataTexture(() => 0, this._velocityBuffer);
     this.addUniforms([
       { name: "texturePosition", type: "t", value: positionTexture },
-      { name: "textureVelocity", type: "t", value: velocityTexture },
+      /*{ name: "textureVelocity", type: "t", value: velocityTexture },*/
       this._timeUniform,
       this._deltaUniform
     ]);
@@ -260,8 +260,6 @@ class FlockingVisualization extends PointCloudVisualization {
     if (this._flipflop) {
       this.renderVelocity(this._rtPosition1, this._rtVelocity1, this._rtVelocity2);
       var gl = this._renderer.getContext();
-      gl.readPixels(0, 0, this._rtVelocity2.width,
-        this._rtVelocity2.height, gl.RGBA, gl.FLOAT, this._velocityBuffer);
 
       this.renderPosition(this._rtPosition1, this._rtVelocity2, this._rtPosition2);
       gl = this._renderer.getContext();
@@ -269,13 +267,10 @@ class FlockingVisualization extends PointCloudVisualization {
         this._rtPosition2.height, gl.RGBA, gl.FLOAT, this._positionBuffer);
 
       (<THREE.ShaderMaterial>this._pc.material).uniforms.texturePosition.value.needsUpdate = true;
-      (<THREE.ShaderMaterial>this._pc.material).uniforms.textureVelocity.value.needsUpdate = true;
     }
     else {
       this.renderVelocity(this._rtPosition2, this._rtVelocity2, this._rtVelocity1);
       var gl = this._renderer.getContext();
-      gl.readPixels(0, 0, this._rtVelocity1.width,
-        this._rtVelocity1.height, gl.RGBA, this._gl.FLOAT, this._velocityBuffer);
 
       this.renderPosition(this._rtPosition2, this._rtVelocity1, this._rtPosition1);
       gl = this._renderer.getContext();
@@ -283,7 +278,6 @@ class FlockingVisualization extends PointCloudVisualization {
         this._rtPosition1.height, gl.RGBA, this._gl.FLOAT, this._positionBuffer);
 
       (<THREE.ShaderMaterial>this._pc.material).uniforms.texturePosition.value.needsUpdate = true;
-      (<THREE.ShaderMaterial>this._pc.material).uniforms.textureVelocity.value.needsUpdate = true;
     }
 
     this._flipflop = !this._flipflop;
