@@ -1043,8 +1043,10 @@ var FlockingVisualization = (function (_super) {
         var _this = this;
         this.addDisposable(this._timeSource.observable().subscribe(function (time) {
             var diff = time - _this._lastTime;
-            _this._deltaUniform.value = diff;
-            _this._lastTime = time;
+            if (diff > 0) {
+                _this._deltaUniform.value = diff;
+                _this._lastTime = time;
+            }
         }));
         _super.prototype.setupVisualizerChain.call(this);
         this.addDisposable(this._audioSource.observable()

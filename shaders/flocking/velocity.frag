@@ -15,8 +15,8 @@ float rand(vec2 co) {
 
 void main() {
   float delt = min(1.0, delta);
-  float cd = cohesionDistance * (0.6 + 0.2 * (1.0 - beat * 2.0) + eqs.z);
-  float sd = separationDistance * (0.4 + beat * 2.0 + eqs.x);
+  float cd = cohesionDistance * (0.6 + 0.2 * (1.0 - accumulatedLoudness * 2.0) + eqs.z);
+  float sd = separationDistance * (0.4 + accumulatedLoudness * 2.0 + eqs.x);
   float ad = alignmentDistance * (0.6 + eqs.y);
 
   float zoneRadius = sd + ad + cd;
