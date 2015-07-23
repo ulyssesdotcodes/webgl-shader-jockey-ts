@@ -15,8 +15,8 @@ float rand(vec2 co) {
 
 void main() {
   float delt = min(1.0, delta);
-  float cd = cohesionDistance * (0.6 + 0.2 * (1.0 - accumulatedLoudness * 2.0) + eqs.z);
-  float sd = separationDistance * (0.4 + accumulatedLoudness * 2.0 + eqs.x);
+  float cd = cohesionDistance * (0.6 + 0.2 * sin(accumulatedLoudness * 0.25) + eqs.z);
+  float sd = separationDistance * (0.4 + cos(accumulatedLoudness * 0.25) + eqs.x);
   float ad = alignmentDistance * (0.6 + eqs.y);
 
   float zoneRadius = sd + ad + cd;
@@ -87,7 +87,7 @@ void main() {
       dist = length(dir);
       distSquared = dist * dist;
 
-      float f = loudness * 0.25;
+      float f = (0.2 + beat) * loudness * 0.25;
 
       if(dist > 0.0 && distSquared < zoneRadiusSquared) {
         percent = distSquared / zoneRadiusSquared;
@@ -146,5 +146,5 @@ void main() {
     velocity = normalize(velocity) * speed;
   }
 
-  gl_FragColor = vec4(velocity * (0.99 + pow(loudness, 1.5)), selfHueVelocity);
+  gl_FragColor = vec4(velocity * (0.9999 + beat * loudness), selfHueVelocity);
 }

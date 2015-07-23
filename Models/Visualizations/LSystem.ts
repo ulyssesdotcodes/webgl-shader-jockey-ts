@@ -305,7 +305,7 @@ class LSystem extends BaseVisualization {
     super.animate();
 
     this._line.rotateY(this._controlsProvider.getValue(this._rotationName) * this._dt);
-    this._line.rotateZ(this._controlsProvider.getValue(this._rotationName) * this._dt);
+    this._line.rotateZ(this._controlsProvider.getValue(this._rotationName) * this._dt * 0.5);
 
     if(this._color.length() == 0.0) {
       return {
@@ -380,6 +380,4 @@ class LSystem extends BaseVisualization {
   rendererId(): string {
     return IDs.lsystem;
   }
-
-
 }

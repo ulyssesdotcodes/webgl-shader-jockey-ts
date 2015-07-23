@@ -20,6 +20,7 @@ class FlockingVisualization extends PointCloudVisualization {
   private _lastTime: number = 0.0;
   private _loudnessUniform: IUniform<number>;
   private _accumulatedLoudnessUniform: IUniform<number>;
+  private _beatUniform: IUniform<number>;
   private _resolutionUniform: IUniform<THREE.Vector2>;
   private _eqs: IUniform<THREE.Vector3>;
 
@@ -75,6 +76,12 @@ class FlockingVisualization extends PointCloudVisualization {
     };
 
     this._accumulatedLoudnessUniform = {
+      name: "accumulatedLoudness",
+      type: "f",
+      value: 0.0
+    };
+
+    this._beatUniform = {
       name: "beat",
       type: "f",
       value: 0.0
@@ -142,6 +149,7 @@ class FlockingVisualization extends PointCloudVisualization {
         controlsProvider.uniformObject().speed,
         this._loudnessUniform,
         this._accumulatedLoudnessUniform,
+        this._beatUniform,
         this._eqs,
         { name: "freedomFactor", type: "f", value: 5.0 }
       ];
@@ -205,6 +213,7 @@ class FlockingVisualization extends PointCloudVisualization {
         .map(AudioUniformFunctions.calculateLoudness)
         .subscribe((loudness) => {
         this._loudnessUniform.value = loudness;
+        this._accumulatedLoudnessUniform.value += loudness;
       })
     );
 
@@ -212,7 +221,7 @@ class FlockingVisualization extends PointCloudVisualization {
       this._audioSource.observable()
         .map(AudioUniformFunctions.calculateBeat)
         .subscribe((beat) => {
-        this._accumulatedLoudnessUniform.value = beat;
+        this._beatUniform.value = beat;
       })
     );
 
