@@ -112,8 +112,6 @@ class LSystem extends BaseVisualization {
 
     this._line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
 
-    this.addSources([this._timeSource, this._audioSource]);
-
     this._rules = {
       "F": [
         "F[+F]F[-F]F",
@@ -142,9 +140,7 @@ class LSystem extends BaseVisualization {
 
   protected setupVisualizerChain(): void {
     this.addDisposable(this._timeSource.observable().subscribe((time) => {
-      if(time != this._time) {
-        this._dt = time - this._time;
-      }
+      this._dt = time - this._time;
       this._time = time;
     }));
 
@@ -160,9 +156,7 @@ class LSystem extends BaseVisualization {
       .subscribe((eqs) => {
         var a = Math.sqrt(eqs[0] * eqs[0] + eqs[1] * eqs[1] + eqs[2] * eqs[2]);
 
-        this._color.x = eqs[0] / a;
-        this._color.y = eqs[1] / a;
-        this._color.z = eqs[2] / a;
+        this._color.set(eqs[0], eqs[1], eqs[2]).divideScalar(a);
     }) );
   }
 
@@ -310,6 +304,17 @@ class LSystem extends BaseVisualization {
   animate() {
     super.animate();
 
+    this._line.rotateY(this._controlsProvider.getValue(this._rotationName) * this._dt);
+    this._line.rotateZ(this._controlsProvider.getValue(this._rotationName) * this._dt * 0.5);
+
+    if(this._color.length() == 0.0) {
+      return {
+        type: this.rendererId(),
+        rotation: this._controlsProvider.getValue(this._rotationName) * this._dt,
+        attributes: this._attributes
+      }
+    }
+
     var j = 0;
     while (this._genStack[j] && j < 4) {
       var gen = this._genStack[j];
@@ -365,9 +370,6 @@ class LSystem extends BaseVisualization {
       this.resetGen();
     }
 
-    this._line.rotateY(this._controlsProvider.getValue(this._rotationName) * this._dt);
-    this._line.rotateZ(this._controlsProvider.getValue(this._rotationName) * this._dt);
-
     return {
       type: this.rendererId(),
       rotation: this._controlsProvider.getValue(this._rotationName) * this._dt,
@@ -378,6 +380,4 @@ class LSystem extends BaseVisualization {
   rendererId(): string {
     return IDs.lsystem;
   }
-
-
 }

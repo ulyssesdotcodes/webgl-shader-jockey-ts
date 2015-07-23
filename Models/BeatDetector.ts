@@ -1,6 +1,6 @@
 class BeatDetector {
   static history = 43.0;
-  static buckets = 10; // Don't change
+  static buckets = 20; // Don't change
   private _energyHistory: Array<Float32Array> = new Array();
   private _energyIndex = 0;
   private _averageEnergy = new Float32Array(BeatDetector.buckets);
@@ -15,26 +15,25 @@ class BeatDetector {
 
   calculateBeat(e: AudioEvent): number {
     var sum = new Float32Array(BeatDetector.buckets);
-    var j;
-    for (var i = 0; i < e.frequencyBuffer.length; i++) {
-      j = Math.log(i + 1) / Math.log(2);
-      if(j % 1 == 0) {
-        sum[j] = 0;
-      }
-      else {
-        j = Math.floor(j);
+    var j = 0;
+    var finalBucketIndex = 1;
+    var i = 0;
+    while(j < BeatDetector.buckets){
+      if(i >= finalBucketIndex) {
+        j++;
+        finalBucketIndex = j * (j + 1) * 0.5;
       }
 
       sum[j] += e.frequencyBuffer[i];
+      i++;
     }
 
     var beat = -1.0;
     for (var i = 0; i < BeatDetector.buckets; i++) {
-      sum[i] /= Math.pow(i + 1, 2) * 256.0;
+      sum[i] /= Math.pow(2, i + 1) * 256.0;
       if (beat < 0) {
         beat = sum[i] - 1.4 * this._averageEnergy[i];
         if (beat > 0) {
-          console.log("beat\n");
           beat = 1.0;
         }
       }
@@ -50,7 +49,7 @@ class BeatDetector {
 
     if (beat > this._lastBeat) {
       this._lastBeat = beat;
-      this._deterioration = 4 * beat / BeatDetector.history;
+      this._deterioration = 8 * beat / BeatDetector.history;
     }
     else {
       this._lastBeat -= this._deterioration;

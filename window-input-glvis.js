@@ -128,8 +128,7 @@ var ObjectRenderer = (function () {
             for (var name in uniforms) {
                 var uniform = uniforms[name];
                 if (uniform.type == "t") {
-                    if (uniform.value && uniform.value.image && uniform.value.image.nodeName &&
-                        uniform.value.image.nodeName.toLowerCase() === "canvas") {
+                    if (uniform.value && uniform.value.image && uniform.value.image.nodeName && uniform.value.image.nodeName.toLowerCase() === "canvas") {
                         var canvas = document.createElement("canvas");
                         canvas.width = 1024;
                         canvas.height = 1024;
@@ -154,8 +153,7 @@ var ObjectRenderer = (function () {
                             value: dataTexture
                         };
                         RendererUtils.copyBuffer(uniform.value.image.data, this._buffers[uniform.name]);
-                        this._object.material.uniforms[uniform.name].value
-                            .needsUpdate = true;
+                        this._object.material.uniforms[uniform.name].value.needsUpdate = true;
                     }
                     else {
                         this._buffers[uniform.name] = new Float32Array(uniform.value.width * uniform.value.height * 4);
@@ -201,16 +199,13 @@ var ObjectRenderer = (function () {
                     _this._object.material.uniforms[uniform.name].value = resolution;
                 }
                 else if (uniform.type == "t") {
-                    if (uniform.value.image && uniform.value.image.nodeName &&
-                        uniform.value.image.nodeName.toLowerCase() === "canvas") {
+                    if (uniform.value.image && uniform.value.image.nodeName && uniform.value.image.nodeName.toLowerCase() === "canvas") {
                         _this._buffers[uniform.name].drawImage(uniform.value.image, 0, 0);
-                        _this._object.material.uniforms[uniform.name].value
-                            .needsUpdate = true;
+                        _this._object.material.uniforms[uniform.name].value.needsUpdate = true;
                     }
                     else if (uniform.value.image && uniform.value.image.data) {
                         RendererUtils.copyBuffer(uniform.value.image.data, _this._buffers[uniform.name]);
-                        _this._object.material.uniforms[uniform.name].value
-                            .needsUpdate = true;
+                        _this._object.material.uniforms[uniform.name].value.needsUpdate = true;
                     }
                     else {
                         console.log(uniform);
@@ -219,8 +214,7 @@ var ObjectRenderer = (function () {
                 else if (uniform.type.startsWith("v")) {
                     var arr = [];
                     uniform.value.toArray(arr);
-                    _this._object.material.uniforms[uniform.name].value
-                        .fromArray(arr);
+                    _this._object.material.uniforms[uniform.name].value.fromArray(arr);
                 }
             });
         }
@@ -351,8 +345,7 @@ var GLVis;
                 });
                 this._visRenderer = new VideoDistortionRenderer(obj.children[0]);
             }
-            else if (data.type == IDs.pointCloud || data.type == IDs.eqPointCloud ||
-                data.type == IDs.gpgpuPointCloud) {
+            else if (data.type == IDs.pointCloud || data.type == IDs.eqPointCloud || data.type == IDs.gpgpuPointCloud) {
                 var pc = new THREE.PointCloud(meshes[0].geometry, meshes[0].material);
                 obj.add(pc);
                 if (data.type == IDs.eqPointCloud) {

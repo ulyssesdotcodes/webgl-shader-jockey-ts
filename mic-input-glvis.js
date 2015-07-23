@@ -14,14 +14,12 @@ var GLView = (function () {
         this._camera.position.z = 100;
         var sceneContainer = new THREE.Object3D();
         this._scene.add(sceneContainer);
-        this._glController.MeshObservable
-            .scan(function (obj, meshes) {
+        this._glController.MeshObservable.scan(function (obj, meshes) {
             obj = new THREE.Object3D();
             meshes.forEach(function (mesh) { return obj.add(mesh); });
             obj.position = new THREE.Vector3(0, 0, 0);
             return obj;
-        }, new THREE.Object3D())
-            .subscribe(function (obj) {
+        }, new THREE.Object3D()).subscribe(function (obj) {
             _this._scene.remove(sceneContainer);
             sceneContainer = obj;
             _this._scene.add(sceneContainer);
@@ -61,32 +59,24 @@ var ShaderLoader = (function () {
         return Rx.Observable.zip(this.getFragment(url), this.getVertex(url), function (frag, vert) { return new ShaderText(frag, vert); });
     };
     ShaderLoader.prototype.getVertex = function (url) {
-        return $.getAsObservable(this._shadersUrl + url + ".vert")
-            .map(function (shader) { return shader.data; })
-            .onErrorResumeNext(this.getPlane());
+        return $.getAsObservable(this._shadersUrl + url + ".vert").map(function (shader) { return shader.data; }).onErrorResumeNext(this.getPlane());
     };
     ShaderLoader.prototype.getFragment = function (url) {
-        return $.getAsObservable(this._shadersUrl + url + '.frag')
-            .map(function (shader) { return shader.data; })
-            .combineLatest(this.utilFrag(), function (frag, util) { return util.concat(frag); });
+        return $.getAsObservable(this._shadersUrl + url + '.frag').map(function (shader) { return shader.data; }).combineLatest(this.utilFrag(), function (frag, util) { return util.concat(frag); });
     };
     ShaderLoader.prototype.getPlane = function () {
         var _this = this;
         if (this._regularVert) {
             return Rx.Observable.just(this._regularVert);
         }
-        return $.getAsObservable(this._shadersUrl + "plane.vert")
-            .map(function (shader) { return shader.data; })
-            .doOnNext(function (vert) {
+        return $.getAsObservable(this._shadersUrl + "plane.vert").map(function (shader) { return shader.data; }).doOnNext(function (vert) {
             _this._regularVert = vert;
         });
     };
     ShaderLoader.prototype.utilFrag = function () {
         var _this = this;
         if (this._utilFrag === undefined) {
-            return $.getAsObservable(this._utilsUrl)
-                .map(function (shader) { return shader.data; })
-                .doOnNext(function (util) { return _this._utilFrag = util; });
+            return $.getAsObservable(this._utilsUrl).map(function (shader) { return shader.data; }).doOnNext(function (util) { return _this._utilFrag = util; });
         }
         return Rx.Observable.just(this._utilFrag);
     };
@@ -201,29 +191,27 @@ var BeatDetector = (function () {
     }
     BeatDetector.prototype.calculateBeat = function (e) {
         var sum = new Float32Array(BeatDetector.buckets);
-        var j;
-        for (var i = 0; i < e.frequencyBuffer.length; i++) {
-            j = Math.log(i + 1) / Math.log(2);
-            if (j % 1 == 0) {
-                sum[j] = 0;
-            }
-            else {
-                j = Math.floor(j);
+        var j = 0;
+        var finalBucketIndex = 1;
+        var i = 0;
+        while (j < BeatDetector.buckets) {
+            if (i >= finalBucketIndex) {
+                j++;
+                finalBucketIndex = j * (j + 1) * 0.5;
             }
             sum[j] += e.frequencyBuffer[i];
+            i++;
         }
         var beat = -1.0;
         for (var i = 0; i < BeatDetector.buckets; i++) {
-            sum[i] /= Math.pow(i + 1, 2) * 256.0;
+            sum[i] /= Math.pow(2, i + 1) * 256.0;
             if (beat < 0) {
                 beat = sum[i] - 1.4 * this._averageEnergy[i];
                 if (beat > 0) {
-                    console.log("beat\n");
                     beat = 1.0;
                 }
             }
-            this._averageEnergy[i] -=
-                this._energyHistory[i][this._energyIndex] / BeatDetector.history;
+            this._averageEnergy[i] -= this._energyHistory[i][this._energyIndex] / BeatDetector.history;
             this._energyHistory[i][this._energyIndex] = sum[i];
             this._averageEnergy[i] += this._energyHistory[i][this._energyIndex] / BeatDetector.history;
             this._energyIndex++;
@@ -233,7 +221,7 @@ var BeatDetector = (function () {
         }
         if (beat > this._lastBeat) {
             this._lastBeat = beat;
-            this._deterioration = 4 * beat / BeatDetector.history;
+            this._deterioration = 8 * beat / BeatDetector.history;
         }
         else {
             this._lastBeat -= this._deterioration;
@@ -242,7 +230,7 @@ var BeatDetector = (function () {
         return this._lastBeat;
     };
     BeatDetector.history = 43.0;
-    BeatDetector.buckets = 10; // Don't change
+    BeatDetector.buckets = 20; // Don't change
     return BeatDetector;
 })();
 /// <reference path="../BeatDetector.ts"/>
@@ -428,11 +416,7 @@ var ShaderVisualization = (function (_super) {
         var _this = this;
         return Rx.Observable.create(function (observer) {
             _this.setupVisualizerChain();
-            _this._shaderLoader.getShaderFromServer(_this._shaderUrl)
-                .map(function (shader) { return new ShaderPlane(shader, _this._uniforms); })
-                .doOnNext(function (__) { return _this.onCreated(); })
-                .map(function (shaderplane) { return [shaderplane.mesh]; })
-                .subscribe(observer);
+            _this._shaderLoader.getShaderFromServer(_this._shaderUrl).map(function (shader) { return new ShaderPlane(shader, _this._uniforms); }).doOnNext(function (__) { return _this.onCreated(); }).map(function (shaderplane) { return [shaderplane.mesh]; }).subscribe(observer);
         });
     };
     ShaderVisualization.prototype.rendererId = function () {
@@ -459,8 +443,7 @@ var AudioTextureShaderVisualization = (function (_super) {
     AudioTextureShaderVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
         _super.prototype.setupVisualizerChain.call(this);
-        this.addDisposable(this._audioSource.observable()
-            .subscribe(function (e) {
+        this.addDisposable(this._audioSource.observable().subscribe(function (e) {
             AudioUniformFunctions.updateAudioBuffer(e, _this._audioTextureBuffer);
             _this._audioTextureUniform.value.needsUpdate = true;
         }));
@@ -541,13 +524,8 @@ var DotsVisualization = (function (_super) {
     DotsVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
         _super.prototype.setupVisualizerChain.call(this);
-        this.addDisposable(this._audioSource.observable()
-            .map(function (e) { return AudioUniformFunctions.calculateEqs(e, 4); })
-            .map(function (eqs) { return new THREE.Vector4(eqs[0], eqs[1], eqs[2], eqs[3]); })
-            .subscribe(function (eqs) { return _this._eqSegments.value = eqs; }));
-        this.addDisposable(this._audioSource.observable()
-            .map(AudioUniformFunctions.calculateLoudness)
-            .subscribe(function (loudness) {
+        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateEqs(e, 4); }).map(function (eqs) { return new THREE.Vector4(eqs[0], eqs[1], eqs[2], eqs[3]); }).subscribe(function (eqs) { return _this._eqSegments.value = eqs; }));
+        this.addDisposable(this._audioSource.observable().map(AudioUniformFunctions.calculateLoudness).subscribe(function (loudness) {
             _this._loudness.value = loudness;
             _this._accumulatedLoudness.value += loudness;
         }));
@@ -578,9 +556,7 @@ var CirclesVisualization = (function (_super) {
     CirclesVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
         _super.prototype.setupVisualizerChain.call(this);
-        this.addDisposable(this._audioSource.observable()
-            .map(AudioUniformFunctions.calculateLoudness)
-            .subscribe(function (loudness) {
+        this.addDisposable(this._audioSource.observable().map(AudioUniformFunctions.calculateLoudness).subscribe(function (loudness) {
             _this._accumulatedLoudness.value += loudness;
         }));
     };
@@ -615,9 +591,7 @@ var VideoSource = (function () {
             type: "v2",
             value: new THREE.Vector2(0, 0)
         };
-        navigator["getUserMedia"] = navigator["getUserMedia"] ||
-            navigator["webkitGetUserMedia"] ||
-            navigator["mozGetUserMedia"];
+        navigator["getUserMedia"] = navigator["getUserMedia"] || navigator["webkitGetUserMedia"] || navigator["mozGetUserMedia"];
         window["URL"] = window["URL"] || window["webkitURL"];
     }
     VideoSource.prototype.createVideoSource = function () {
@@ -632,7 +606,9 @@ var VideoSource = (function () {
             else {
                 _this._videoElement.src = stream;
             }
-            _this._videoElement.onerror = function (e) { stream.stop(); };
+            _this._videoElement.onerror = function (e) {
+                stream.stop();
+            };
         };
         navigator["getUserMedia"]({ audio: false, video: true }, gotStream, console.log);
     };
@@ -708,9 +684,7 @@ var VideoAudioSpiralVisualization = (function (_super) {
     VideoAudioSpiralVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
         _super.prototype.setupVisualizerChain.call(this);
-        this.addDisposable(this._audioSource.observable()
-            .map(AudioUniformFunctions.calculateLoudness)
-            .subscribe(function (loudness) {
+        this.addDisposable(this._audioSource.observable().map(AudioUniformFunctions.calculateLoudness).subscribe(function (loudness) {
             _this._loudness.value = loudness;
         }));
     };
@@ -746,9 +720,6 @@ var PointCloudVisualization = (function (_super) {
         };
         this._uniforms = [this._timeUniform].concat(resolutionProvider.uniforms());
         this._attributes = [];
-        if (controlsProvider) {
-            this.addUniforms(controlsProvider.uniforms());
-        }
     }
     PointCloudVisualization.prototype.addUniforms = function (uniforms) {
         this._uniforms = this._uniforms.concat(uniforms);
@@ -777,11 +748,7 @@ var PointCloudVisualization = (function (_super) {
         var _this = this;
         return Rx.Observable.create(function (observer) {
             _this.setupVisualizerChain();
-            _this._shaderLoader.getShaderFromServer(_this._shaderUrl)
-                .map(function (shaderText) { return UniformUtils.createShaderMaterialUniformsAttributes(shaderText, _this._uniforms, _this._attributes); })
-                .map(function (material) { return _this.createPointCloudVisualization(material); })
-                .doOnNext(function (__) { return _this.onCreated(); })
-                .subscribe(observer);
+            _this._shaderLoader.getShaderFromServer(_this._shaderUrl).map(function (shaderText) { return UniformUtils.createShaderMaterialUniformsAttributes(shaderText, _this._uniforms, _this._attributes); }).map(function (material) { return _this.createPointCloudVisualization(material); }).doOnNext(function (__) { return _this.onCreated(); }).subscribe(observer);
         });
     };
     return PointCloudVisualization;
@@ -853,20 +820,14 @@ var EqPointCloud = (function (_super) {
     EqPointCloud.prototype.setupVisualizerChain = function () {
         var _this = this;
         _super.prototype.setupVisualizerChain.call(this);
-        this.addDisposable(this._audioSource.observable()
-            .map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); })
-            .subscribe(function (eqs) {
+        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); }).subscribe(function (eqs) {
             _this._eqs.value = new THREE.Vector3(eqs[0], eqs[1], eqs[2]);
         }));
-        this.addDisposable(this._audioSource.observable()
-            .map(function (e) { return AudioUniformFunctions.calculateLoudness(e); })
-            .subscribe(function (l) { return _this._loudness = l; }));
+        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateLoudness(e); }).subscribe(function (l) { return _this._loudness = l; }));
     };
     EqPointCloud.prototype.createPointCloudVisualization = function (shaderMaterial) {
         this._material = shaderMaterial;
-        this._pc = this.createPointCloud(EqPointCloud.POINT_COUNT, shaderMaterial, function (i) {
-            return new THREE.Vector3(Math.random() * EqPointCloud.CUBE_SIZE - EqPointCloud.CUBE_SIZE * 0.5, Math.random() * EqPointCloud.CUBE_SIZE - EqPointCloud.CUBE_SIZE * 0.5, Math.random() * EqPointCloud.CUBE_SIZE - EqPointCloud.CUBE_SIZE * 0.5);
-        });
+        this._pc = this.createPointCloud(EqPointCloud.POINT_COUNT, shaderMaterial, function (i) { return new THREE.Vector3(Math.random() * EqPointCloud.CUBE_SIZE - EqPointCloud.CUBE_SIZE * 0.5, Math.random() * EqPointCloud.CUBE_SIZE - EqPointCloud.CUBE_SIZE * 0.5, Math.random() * EqPointCloud.CUBE_SIZE - EqPointCloud.CUBE_SIZE * 0.5); });
         this._vertices = this._pc.geometry.vertices;
         this._eq1.value = this._vertices[0];
         this._eq2.value = this._vertices[1];
@@ -933,8 +894,7 @@ var FlockingVisualization = (function (_super) {
         this._gl = this._renderer.getContext();
         this._audioSource = audioSource;
         this.addSources([audioSource]);
-        this._resolutionUniform =
-            { name: "resolution", type: "v2", value: new THREE.Vector2(FlockingVisualization.POINT_TEX_WIDTH, FlockingVisualization.POINT_TEX_WIDTH) };
+        this._resolutionUniform = { name: "resolution", type: "v2", value: new THREE.Vector2(FlockingVisualization.POINT_TEX_WIDTH, FlockingVisualization.POINT_TEX_WIDTH) };
         this._deltaUniform = {
             name: "delta",
             type: "f",
@@ -946,6 +906,11 @@ var FlockingVisualization = (function (_super) {
             value: 0.0
         };
         this._accumulatedLoudnessUniform = {
+            name: "accumulatedLoudness",
+            type: "f",
+            value: 0.0
+        };
+        this._beatUniform = {
             name: "beat",
             type: "f",
             value: 0.0
@@ -964,22 +929,19 @@ var FlockingVisualization = (function (_super) {
                 { name: "speed", min: 1.0, max: 10.0, defVal: 3.0 }
             ]);
         }
-        var textureShaderObs = shaderLoader.getShaderFromServer("flocking/texture")
-            .map(function (shaderText) {
+        var textureShaderObs = shaderLoader.getShaderFromServer("flocking/texture").map(function (shaderText) {
             var timeUniforms = [
                 _this._timeUniform,
                 _this._resolutionUniform,
                 { name: "texture", type: "t", value: null }
             ];
             return (new ShaderPlane(shaderText, timeUniforms)).mesh;
-        })
-            .doOnNext(function (mesh) {
+        }).doOnNext(function (mesh) {
             _this._textureMesh = mesh;
             _this._textureShader = _this._textureMesh.material;
             _this._scene.add(_this._textureMesh);
         });
-        var positionShaderObs = shaderLoader.getVariedShaderFromServer("flocking/position", "flocking/texture")
-            .map(function (shaderText) {
+        var positionShaderObs = shaderLoader.getVariedShaderFromServer("flocking/position", "flocking/texture").map(function (shaderText) {
             var positionUniforms = [
                 _this._timeUniform,
                 _this._deltaUniform,
@@ -988,10 +950,8 @@ var FlockingVisualization = (function (_super) {
                 { name: "textureVelocity", type: "t", value: null }
             ];
             return UniformUtils.createShaderMaterialUniforms(shaderText, positionUniforms);
-        })
-            .doOnNext(function (pos) { return _this._positionShader = pos; });
-        var velocityShaderObs = shaderLoader.getVariedShaderFromServer("flocking/velocity", "flocking/texture")
-            .map(function (shaderText) {
+        }).doOnNext(function (pos) { return _this._positionShader = pos; });
+        var velocityShaderObs = shaderLoader.getVariedShaderFromServer("flocking/velocity", "flocking/texture").map(function (shaderText) {
             var velocityUniforms = [
                 _this._timeUniform,
                 _this._deltaUniform,
@@ -1005,19 +965,18 @@ var FlockingVisualization = (function (_super) {
                 controlsProvider.uniformObject().speed,
                 _this._loudnessUniform,
                 _this._accumulatedLoudnessUniform,
+                _this._beatUniform,
                 _this._eqs,
                 { name: "freedomFactor", type: "f", value: 5.0 }
             ];
             return UniformUtils.createShaderMaterialUniforms(shaderText, velocityUniforms);
-        })
-            .doOnNext(function (vel) { return _this._velocityShader = vel; });
+        }).doOnNext(function (vel) { return _this._velocityShader = vel; });
         Rx.Observable.zip(textureShaderObs, positionShaderObs, velocityShaderObs, function (tex, pos, vel) {
             return {
                 pos: _this.generateTexture(),
                 vel: _this.generateVelocityTexture()
             };
-        })
-            .subscribe(function (startTex) {
+        }).subscribe(function (startTex) {
             _this.renderTexture(startTex.pos, _this._rtPosition1);
             _this.renderTexture(_this._rtPosition1, _this._rtPosition2);
             _this.renderTexture(startTex.vel, _this._rtVelocity1);
@@ -1052,19 +1011,14 @@ var FlockingVisualization = (function (_super) {
             }
         }));
         _super.prototype.setupVisualizerChain.call(this);
-        this.addDisposable(this._audioSource.observable()
-            .map(AudioUniformFunctions.calculateLoudness)
-            .subscribe(function (loudness) {
+        this.addDisposable(this._audioSource.observable().map(AudioUniformFunctions.calculateLoudness).subscribe(function (loudness) {
             _this._loudnessUniform.value = loudness;
+            _this._accumulatedLoudnessUniform.value += loudness;
         }));
-        this.addDisposable(this._audioSource.observable()
-            .map(AudioUniformFunctions.calculateBeat)
-            .subscribe(function (beat) {
-            _this._accumulatedLoudnessUniform.value = beat;
+        this.addDisposable(this._audioSource.observable().map(AudioUniformFunctions.calculateBeat).subscribe(function (beat) {
+            _this._beatUniform.value = beat;
         }));
-        this.addDisposable(this._audioSource.observable()
-            .map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); })
-            .subscribe(function (eqs) {
+        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); }).subscribe(function (eqs) {
             _this._eqs.value = new THREE.Vector3(eqs[0], eqs[1], eqs[2]);
         }));
     };
@@ -1150,8 +1104,7 @@ var FlockingVisualization = (function (_super) {
         this._renderer.render(this._scene, this._camera, output);
     };
     FlockingVisualization.prototype.generateTexture = function () {
-        return this.generateDataTexture(function () { return Math.random() * FlockingVisualization.CUBE_SIZE -
-            FlockingVisualization.CUBE_SIZE * 0.5; });
+        return this.generateDataTexture(function () { return Math.random() * FlockingVisualization.CUBE_SIZE - FlockingVisualization.CUBE_SIZE * 0.5; });
     };
     FlockingVisualization.prototype.generateVelocityTexture = function () {
         return this.generateDataTexture(function () { return Math.random() - 0.5; });
@@ -1185,8 +1138,7 @@ var FlockingVisualization = (function (_super) {
     };
     FlockingVisualization.ID = "flocking";
     FlockingVisualization.POINT_TEX_WIDTH = 64;
-    FlockingVisualization.POINT_COUNT = FlockingVisualization.POINT_TEX_WIDTH *
-        FlockingVisualization.POINT_TEX_WIDTH;
+    FlockingVisualization.POINT_COUNT = FlockingVisualization.POINT_TEX_WIDTH * FlockingVisualization.POINT_TEX_WIDTH;
     FlockingVisualization.CUBE_SIZE = 128;
     return FlockingVisualization;
 })(PointCloudVisualization);
@@ -1271,7 +1223,6 @@ var LSystem = (function (_super) {
             linewidth: 5.0
         });
         this._line = new THREE.Line(this._geometry, mat, THREE.LinePieces);
-        this.addSources([this._timeSource, this._audioSource]);
         this._rules = {
             "F": [
                 "F[+F]F[-F]F",
@@ -1299,24 +1250,15 @@ var LSystem = (function (_super) {
     LSystem.prototype.setupVisualizerChain = function () {
         var _this = this;
         this.addDisposable(this._timeSource.observable().subscribe(function (time) {
-            if (time != _this._time) {
-                _this._dt = time - _this._time;
-            }
+            _this._dt = time - _this._time;
             _this._time = time;
         }));
-        this.addDisposable(this._audioSource.observable()
-            .map(function (e) { return AudioUniformFunctions.calculateBeat(e); })
-            .subscribe(function (beat) {
-            _this._growth = Math.pow(beat, 0.5) *
-                _this._controlsProvider.getValue(_this._growthFactorName);
+        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateBeat(e); }).subscribe(function (beat) {
+            _this._growth = Math.pow(beat, 0.5) * _this._controlsProvider.getValue(_this._growthFactorName);
         }));
-        this.addDisposable(this._audioSource.observable()
-            .map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); })
-            .subscribe(function (eqs) {
+        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); }).subscribe(function (eqs) {
             var a = Math.sqrt(eqs[0] * eqs[0] + eqs[1] * eqs[1] + eqs[2] * eqs[2]);
-            _this._color.x = eqs[0] / a;
-            _this._color.y = eqs[1] / a;
-            _this._color.z = eqs[2] / a;
+            _this._color.set(eqs[0], eqs[1], eqs[2]).divideScalar(a);
         }));
     };
     LSystem.prototype.object3DObservable = function () {
@@ -1384,42 +1326,42 @@ var LSystem = (function (_super) {
     };
     LSystem.prototype.resetGen = function () {
         this._genStack = [{
-                str: "F",
-                index: 0,
-                currentVertex: [8.0, 0, 0],
-                heading: (new THREE.Vector3(1.0, 0.0, 0.0)).normalize(),
-                parent: -1
-            }, {
-                str: "F",
-                index: 0,
-                currentVertex: [0, -8.0, 0],
-                heading: (new THREE.Vector3(0.0, -1.0, 0.0)).normalize(),
-                parent: -1
-            }, {
-                str: "F",
-                index: 0,
-                currentVertex: [-8.0, 0, 0],
-                heading: (new THREE.Vector3(-1.0, 0.0, 0.0)).normalize(),
-                parent: -1
-            }, {
-                str: "F",
-                index: 0,
-                currentVertex: [0, 8.0, 0],
-                heading: (new THREE.Vector3(0.0, 1.0, 0.0)).normalize(),
-                parent: -1
-            }, {
-                str: "F",
-                index: 0,
-                currentVertex: [0.0, 0, 8.0],
-                heading: (new THREE.Vector3(0.0, 0.0, 1.0)).normalize(),
-                parent: -1
-            }, {
-                str: "F",
-                index: 0,
-                currentVertex: [0, 0, -8.0],
-                heading: (new THREE.Vector3(0.0, 0.0, -1.0)).normalize(),
-                parent: -1
-            }];
+            str: "F",
+            index: 0,
+            currentVertex: [8.0, 0, 0],
+            heading: (new THREE.Vector3(1.0, 0.0, 0.0)).normalize(),
+            parent: -1
+        }, {
+            str: "F",
+            index: 0,
+            currentVertex: [0, -8.0, 0],
+            heading: (new THREE.Vector3(0.0, -1.0, 0.0)).normalize(),
+            parent: -1
+        }, {
+            str: "F",
+            index: 0,
+            currentVertex: [-8.0, 0, 0],
+            heading: (new THREE.Vector3(-1.0, 0.0, 0.0)).normalize(),
+            parent: -1
+        }, {
+            str: "F",
+            index: 0,
+            currentVertex: [0, 8.0, 0],
+            heading: (new THREE.Vector3(0.0, 1.0, 0.0)).normalize(),
+            parent: -1
+        }, {
+            str: "F",
+            index: 0,
+            currentVertex: [0.0, 0, 8.0],
+            heading: (new THREE.Vector3(0.0, 0.0, 1.0)).normalize(),
+            parent: -1
+        }, {
+            str: "F",
+            index: 0,
+            currentVertex: [0, 0, -8.0],
+            heading: (new THREE.Vector3(0.0, 0.0, -1.0)).normalize(),
+            parent: -1
+        }];
         var stepCount = 0;
         while (stepCount < 5000) {
             this.lstep();
@@ -1448,6 +1390,15 @@ var LSystem = (function (_super) {
     };
     LSystem.prototype.animate = function () {
         _super.prototype.animate.call(this);
+        this._line.rotateY(this._controlsProvider.getValue(this._rotationName) * this._dt);
+        this._line.rotateZ(this._controlsProvider.getValue(this._rotationName) * this._dt * 0.5);
+        if (this._color.length() == 0.0) {
+            return {
+                type: this.rendererId(),
+                rotation: this._controlsProvider.getValue(this._rotationName) * this._dt,
+                attributes: this._attributes
+            };
+        }
         var j = 0;
         while (this._genStack[j] && j < 4) {
             var gen = this._genStack[j];
@@ -1498,8 +1449,6 @@ var LSystem = (function (_super) {
             }
             this.resetGen();
         }
-        this._line.rotateY(this._controlsProvider.getValue(this._rotationName) * this._dt);
-        this._line.rotateZ(this._controlsProvider.getValue(this._rotationName) * this._dt);
         return {
             type: this.rendererId(),
             rotation: this._controlsProvider.getValue(this._rotationName) * this._dt,
@@ -1553,25 +1502,18 @@ var VisualizationManager = (function () {
         return this._visualizationSubject.asObservable().filter(function (vis) { return vis != null; }).flatMap(function (visualization) { return visualization.object3DObservable(); });
     };
     VisualizationManager.prototype.observableSubject = function () {
-        return this._visualizationSubject.asObservable()
-            .flatMap(function (vis) { return vis.object3DObservable()
-            .map(function (newVis) {
+        return this._visualizationSubject.asObservable().flatMap(function (vis) { return vis.object3DObservable().map(function (newVis) {
             return { type: vis.rendererId(), objects: newVis };
         }); });
     };
     VisualizationManager.prototype.addVisualization = function (optionObservable, id, f) {
         var _this = this;
-        optionObservable
-            .filter(function (visualization) { return visualization.id == id; })
-            .map(function (visOpt) {
+        optionObservable.filter(function (visualization) { return visualization.id == id; }).map(function (visOpt) {
             if (!_this._visualizations[visOpt.id]) {
                 _this._visualizations[visOpt.id] = f(visOpt.options);
             }
             return _this._visualizations[visOpt.id];
-        })
-            .map(function (visualizationOption) { return visualizationOption.options; })
-            .map(function (options) { return f.call(_this, options); })
-            .subscribe(this._visualizationSubject);
+        }).map(function (visualizationOption) { return visualizationOption.options; }).map(function (options) { return f.call(_this, options); }).subscribe(this._visualizationSubject);
     };
     VisualizationManager.prototype.animate = function () {
         return this._visualizationSubject.getValue().animate();
@@ -1598,8 +1540,7 @@ var GLController = (function () {
     GLController.prototype.setVisualizationManager = function (visMan) {
         var _this = this;
         this._visualizationManager = visMan;
-        this._visualizationManager.meshObservable(this._visOptionObservable)
-            .subscribe(function (meshes) {
+        this._visualizationManager.meshObservable(this._visOptionObservable).subscribe(function (meshes) {
             _this._meshSubject.onNext(meshes);
         });
     };
@@ -1636,16 +1577,11 @@ var ControlsProvider = (function () {
         this._controls = {};
         this._controlUniforms = [];
         controls.forEach(function (control) {
-            if (oldControls[control.name]) {
-                _this._controls[control.name] = oldControls[control.name];
-            }
-            else {
-                _this._controls[control.name] = {
-                    name: control.name,
-                    type: "f",
-                    value: control.defVal
-                };
-            }
+            _this._controls[control.name] = {
+                name: control.name,
+                type: "f",
+                value: control.defVal
+            };
             _this._controlUniforms.push(_this._controls[control.name]);
         });
         this._controlSubject.onNext(controls);
@@ -1670,8 +1606,7 @@ var ControlsView = (function () {
         var _this = this;
         this._container = $("<div>", { class: "controls shader-controls" });
         this._controlsController = controller;
-        this._controlsController.controlsObservable()
-            .subscribe(function (controls) {
+        this._controlsController.controlsObservable().subscribe(function (controls) {
             _this._container.empty();
             controls.forEach(function (control) { return _this.renderControl(control); });
         });
@@ -1757,12 +1692,8 @@ var VisualizationOptionsView = (function () {
         var container = $("<div>", { class: "shaders" });
         // Select for all of the shaders
         var select = $("<select />");
-        select.change(function (__) {
-            return _this._shadersController.onOptionName(select.find('option:selected').val());
-        });
-        this._shadersController.shaderNames().forEach(function (shaderName) {
-            return select.append("<option value=\"" + shaderName + "\">" + shaderName + "</option>");
-        });
+        select.change(function (__) { return _this._shadersController.onOptionName(select.find('option:selected').val()); });
+        this._shadersController.shaderNames().forEach(function (shaderName) { return select.append("<option value=\"" + shaderName + "\">" + shaderName + "</option>"); });
         container.append(select);
         if (this._autoplay) {
             // Autoplay to enable autoplay
@@ -1811,19 +1742,13 @@ var Microphone = (function () {
             _this.nodeSubject.onNext(_this.node);
         };
         if (navigator.getUserMedia) {
-            navigator.getUserMedia({ audio: true, video: false }, gotStream, function (err) {
-                return console.log(err);
-            });
+            navigator.getUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
         }
         else if (navigator.webkitGetUserMedia) {
-            navigator.webkitGetUserMedia({ audio: true, video: false }, gotStream, function (err) {
-                return console.log(err);
-            });
+            navigator.webkitGetUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
         }
         else if (navigator.mozGetUserMedia) {
-            navigator.mozGetUserMedia({ audio: true, video: false }, gotStream, function (err) {
-                return console.log(err);
-            });
+            navigator.mozGetUserMedia({ audio: true, video: false }, gotStream, function (err) { return console.log(err); });
         }
         else {
             this._creating = false;
@@ -1964,8 +1889,7 @@ var GLVis;
                 if (e.keyCode == 102) {
                     _this._otherWindow = window.open("window.html", "_new", undefined, true);
                     _this._otherWindow.onload = function () {
-                        _this._visualizationManager.observableSubject()
-                            .subscribe(function (objs) { return _this._otherWindow.newVis(objs); });
+                        _this._visualizationManager.observableSubject().subscribe(function (objs) { return _this._otherWindow.newVis(objs); });
                     };
                 }
             });
