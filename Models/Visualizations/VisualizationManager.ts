@@ -101,7 +101,7 @@ class VisualizationManager {
       .subscribe(this._visualizationSubject);
   }
 
-  animate(): any {
-    return this._visualizationSubject.getValue().animate();
+  animate(animate): any {
+    return this._visualizationSubject.getValue().animate(animate);
   }
 }

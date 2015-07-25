@@ -63,12 +63,12 @@ module GLVis {
       // this._videoView.render(this.content[0]);
       $(el).append(this.content);
 
-      requestAnimationFrame(() => this.animate());
+      requestAnimationFrame(this.animate.bind(this));
     }
 
-    animate(): void {
-      requestAnimationFrame(() => this.animate());
-      var update = this._visualizationManager.animate();
+    animate(time): void {
+      requestAnimationFrame(this.animate.bind(this));
+      var update = this._visualizationManager.animate(time);
       if(this._otherWindow) {
         this._otherWindow.update(update);
       }

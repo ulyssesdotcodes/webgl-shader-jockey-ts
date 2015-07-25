@@ -14,8 +14,6 @@ class ShaderVisualization extends BaseVisualization {
   constructor(resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, shaderUrl: string) {
     super();
 
-    this.addSources([timeSource]);
-
     this._shaderUrl = shaderUrl;
 
     this._timeSource = timeSource;
@@ -41,8 +39,10 @@ class ShaderVisualization extends BaseVisualization {
     this._uniforms = this._uniforms.concat(uniforms);
   }
 
-  animate(): any {
-    super.animate();
+  animate(time): any {
+    super.animate(time);
+
+    this._timeUniform.value = time * 0.001;
 
     return {
       type: this.rendererId(),

@@ -145,8 +145,8 @@ class EqPointCloud extends PointCloudVisualization {
     return [this._pc];
   }
 
-  animate(): any {
-    super.animate();
+  animate(time): any {
+    super.animate(time);
     if (this._material) {
       this._material.attributes.color.needsUpdate = true;
     }

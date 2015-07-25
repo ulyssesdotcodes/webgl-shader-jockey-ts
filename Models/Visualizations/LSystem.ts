@@ -44,7 +44,7 @@ class LSystem extends BaseVisualization {
     this._timeSource = timeSource;
     this._audioSource = audioSource;
 
-    this.addSources([this._timeSource, this._audioSource]);
+    this.addSources([this._audioSource]);
 
     var cos = Math.cos(this._da);
     var sin = Math.sin(this._da);
@@ -141,11 +141,6 @@ class LSystem extends BaseVisualization {
   }
 
   protected setupVisualizerChain(): void {
-    this.addDisposable(this._timeSource.observable().subscribe((time) => {
-      this._dt = time - this._time;
-      this._time = time;
-    }));
-
     this.addDisposable(this._audioSource.observable()
       .map((e) => AudioUniformFunctions.calculateBeat(e, this._controlsProvider.getValue(this._beatConstantName)))
       .subscribe((beat) => {
@@ -303,8 +298,11 @@ class LSystem extends BaseVisualization {
     }
   }
 
-  animate() {
-    super.animate();
+  animate(time) {
+    super.animate(time);
+
+    this._dt = time * 0.001 - this._time;
+    this._time = time * 0.001;
 
     this._line.rotateY(this._controlsProvider.getValue(this._rotationName) * this._dt);
     this._line.rotateZ(this._controlsProvider.getValue(this._rotationName) * this._dt * 0.5);

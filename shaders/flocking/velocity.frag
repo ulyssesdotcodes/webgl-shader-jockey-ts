@@ -87,7 +87,7 @@ void main() {
       dist = length(dir);
       distSquared = dist * dist;
 
-      float f = (0.2 + beat) * loudness * 0.25;
+      float f = loudness * 0.25;
 
       if(dist > 0.0 && distSquared < zoneRadiusSquared) {
         percent = distSquared / zoneRadiusSquared;
@@ -146,5 +146,5 @@ void main() {
     velocity = normalize(velocity) * speed;
   }
 
-  gl_FragColor = vec4(velocity * (0.9999 + beat * loudness), selfHueVelocity);
+  gl_FragColor = vec4(velocity, selfHueVelocity);
 }
