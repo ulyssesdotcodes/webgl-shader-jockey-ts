@@ -19,7 +19,6 @@ class PointCloudVisualization extends BaseVisualization {
     this._shaderUrl = shaderurl;
 
     this._timeSource = timeSource;
-    this.addSources([this._timeSource]);
 
     this._resolutionProvider = resolutionProvider;
 

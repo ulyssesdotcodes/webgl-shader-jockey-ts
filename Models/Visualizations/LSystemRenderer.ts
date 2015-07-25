@@ -10,6 +10,6 @@ class LSystemRenderer extends ObjectRenderer {
     super.update(update, resolution);
 
     this._line.rotateY(update.rotation);
-    this._line.rotateZ(update.rotation);
+    this._line.rotateZ(update.rotation * 0.5);
   }
 }

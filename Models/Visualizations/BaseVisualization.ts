@@ -21,7 +21,11 @@ class BaseVisualization {
     this._created = true;
   }
 
-  animate(): any {
+  animate(time): any {
+    if(time > Date.now()) {
+      return;
+    }
+    
     if(this._created) {
       this._sources.forEach(source => source.animate());
     }

@@ -200,13 +200,6 @@ class FlockingVisualization extends PointCloudVisualization {
   }
 
   protected setupVisualizerChain(): void {
-    this.addDisposable(this._timeSource.observable().subscribe((time) => {
-      var diff = time - this._lastTime;
-      if(diff > 0) {
-        this._deltaUniform.value = diff;
-        this._lastTime = time;
-      }
-    }));
     super.setupVisualizerChain();
     this.addDisposable(
       this._audioSource.observable()
@@ -251,8 +244,12 @@ class FlockingVisualization extends PointCloudVisualization {
     return [this._pc];
   }
 
-  animate(): any {
-    super.animate();
+  animate(time): any {
+    super.animate(time);
+
+    this._deltaUniform.value = time * 0.001 - this._lastTime;
+    this._lastTime = time * 0.001;
+
     if (!this._pc) {
       return;
     }

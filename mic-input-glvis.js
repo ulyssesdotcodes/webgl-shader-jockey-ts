@@ -171,7 +171,10 @@ var BaseVisualization = (function () {
     BaseVisualization.prototype.onCreated = function () {
         this._created = true;
     };
-    BaseVisualization.prototype.animate = function () {
+    BaseVisualization.prototype.animate = function (time) {
+        if (time > Date.now()) {
+            return;
+        }
         if (this._created) {
             this._sources.forEach(function (source) { return source.animate(); });
         }
@@ -396,7 +399,6 @@ var ShaderVisualization = (function (_super) {
     __extends(ShaderVisualization, _super);
     function ShaderVisualization(resolutionProvider, timeSource, shaderLoader, shaderUrl) {
         _super.call(this);
-        this.addSources([timeSource]);
         this._shaderUrl = shaderUrl;
         this._timeSource = timeSource;
         this._shaderLoader = shaderLoader;
@@ -416,8 +418,9 @@ var ShaderVisualization = (function (_super) {
     ShaderVisualization.prototype.addUniforms = function (uniforms) {
         this._uniforms = this._uniforms.concat(uniforms);
     };
-    ShaderVisualization.prototype.animate = function () {
-        _super.prototype.animate.call(this);
+    ShaderVisualization.prototype.animate = function (time) {
+        _super.prototype.animate.call(this, time);
+        this._timeUniform.value = time * 0.001;
         return {
             type: this.rendererId(),
             uniforms: this._uniforms
@@ -736,7 +739,6 @@ var PointCloudVisualization = (function (_super) {
         this._shaderLoader = shaderLoader;
         this._shaderUrl = shaderurl;
         this._timeSource = timeSource;
-        this.addSources([this._timeSource]);
         this._resolutionProvider = resolutionProvider;
         this._timeUniform = {
             name: "time",
@@ -875,8 +877,8 @@ var EqPointCloud = (function (_super) {
         this._colorBuffer[2].b = 1.0;
         return [this._pc];
     };
-    EqPointCloud.prototype.animate = function () {
-        _super.prototype.animate.call(this);
+    EqPointCloud.prototype.animate = function (time) {
+        _super.prototype.animate.call(this, time);
         if (this._material) {
             this._material.attributes.color.needsUpdate = true;
         }
@@ -1046,13 +1048,6 @@ var FlockingVisualization = (function (_super) {
     }
     FlockingVisualization.prototype.setupVisualizerChain = function () {
         var _this = this;
-        this.addDisposable(this._timeSource.observable().subscribe(function (time) {
-            var diff = time - _this._lastTime;
-            if (diff > 0) {
-                _this._deltaUniform.value = diff;
-                _this._lastTime = time;
-            }
-        }));
         _super.prototype.setupVisualizerChain.call(this);
         this.addDisposable(this._audioSource.observable()
             .map(AudioUniformFunctions.calculateLoudness)
@@ -1083,8 +1078,10 @@ var FlockingVisualization = (function (_super) {
         }
         return [this._pc];
     };
-    FlockingVisualization.prototype.animate = function () {
-        _super.prototype.animate.call(this);
+    FlockingVisualization.prototype.animate = function (time) {
+        _super.prototype.animate.call(this, time);
+        this._deltaUniform.value = time * 0.001 - this._lastTime;
+        this._lastTime = time * 0.001;
         if (!this._pc) {
             return;
         }
@@ -1211,7 +1208,7 @@ var LSystem = (function (_super) {
         this._attributes = [];
         this._timeSource = timeSource;
         this._audioSource = audioSource;
-        this.addSources([this._timeSource, this._audioSource]);
+        this.addSources([this._audioSource]);
         var cos = Math.cos(this._da);
         var sin = Math.sin(this._da);
         var cosn = Math.cos(-this._da);
@@ -1296,10 +1293,6 @@ var LSystem = (function (_super) {
     }
     LSystem.prototype.setupVisualizerChain = function () {
         var _this = this;
-        this.addDisposable(this._timeSource.observable().subscribe(function (time) {
-            _this._dt = time - _this._time;
-            _this._time = time;
-        }));
         this.addDisposable(this._audioSource.observable()
             .map(function (e) { return AudioUniformFunctions.calculateBeat(e); })
             .subscribe(function (beat) {
@@ -1440,8 +1433,10 @@ var LSystem = (function (_super) {
             this._genStack[j].str = newGen;
         }
     };
-    LSystem.prototype.animate = function () {
-        _super.prototype.animate.call(this);
+    LSystem.prototype.animate = function (time) {
+        _super.prototype.animate.call(this, time);
+        this._dt = time * 0.001 - this._time;
+        this._time = time * 0.001;
         this._line.rotateY(this._controlsProvider.getValue(this._rotationName) * this._dt);
         this._line.rotateZ(this._controlsProvider.getValue(this._rotationName) * this._dt * 0.5);
         if (this._color.length() == 0.0) {
@@ -1574,8 +1569,8 @@ var VisualizationManager = (function () {
             .map(function (options) { return f.call(_this, options); })
             .subscribe(this._visualizationSubject);
     };
-    VisualizationManager.prototype.animate = function () {
-        return this._visualizationSubject.getValue().animate();
+    VisualizationManager.prototype.animate = function (animate) {
+        return this._visualizationSubject.getValue().animate(animate);
     };
     return VisualizationManager;
 })();
@@ -1967,18 +1962,16 @@ var GLVis;
             });
         }
         MicInput.prototype.render = function (el) {
-            var _this = this;
             this._glView.render(this.content[0]);
             this._shadersView.render(this.content[0]);
             this._controlsView.render(this.content[0]);
             // this._videoView.render(this.content[0]);
             $(el).append(this.content);
-            requestAnimationFrame(function () { return _this.animate(); });
+            requestAnimationFrame(this.animate.bind(this));
         };
-        MicInput.prototype.animate = function () {
-            var _this = this;
-            requestAnimationFrame(function () { return _this.animate(); });
-            var update = this._visualizationManager.animate();
+        MicInput.prototype.animate = function (time) {
+            requestAnimationFrame(this.animate.bind(this));
+            var update = this._visualizationManager.animate(time);
             if (this._otherWindow) {
                 this._otherWindow.update(update);
             }
