@@ -13,7 +13,7 @@ class BeatDetector {
     }
   }
 
-  calculateBeat(e: AudioEvent): number {
+  calculateBeat(e: AudioEvent, c: number): number {
     var sum = new Float32Array(BeatDetector.buckets);
     var j = 0;
     var finalBucketIndex = 1;
@@ -32,7 +32,7 @@ class BeatDetector {
     for (var i = 0; i < BeatDetector.buckets; i++) {
       sum[i] /= Math.pow(2, i + 1) * 256.0;
       if (beat < 0) {
-        beat = sum[i] - 1.4 * this._averageEnergy[i];
+        beat = sum[i] - c * this._averageEnergy[i];
         if (beat > 0) {
           beat = 1.0;
         }

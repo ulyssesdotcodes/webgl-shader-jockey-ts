@@ -45,6 +45,9 @@ class FlockingVisualization extends PointCloudVisualization {
 
   private _pc: THREE.PointCloud;
 
+  private _controlsProvider: ControlsProvider;
+  private _beatControlName = "beatConstant";
+
   constructor(renderer: THREE.WebGLRenderer, audioSource: AudioSource, resolutionProvider: ResolutionProvider, timeSource: TimeSource, shaderLoader: ShaderLoader, controlsProvider?: ControlsProvider) {
     super(resolutionProvider, timeSource, shaderLoader, "flocking/point", controlsProvider);
 
@@ -94,12 +97,14 @@ class FlockingVisualization extends PointCloudVisualization {
     }
 
     if(controlsProvider) {
-      controlsProvider.newControls([
+      this._controlsProvider = controlsProvider;
+      this._controlsProvider.newControls([
         { name: "separationDistance", min: 0.0, max: 20.0,defVal: 12.0 },
         { name: "alignmentDistance", min: 0.0, max: 20.0,defVal: 12.0 },
         { name: "cohesionDistance", min: 0.0, max: 20.0,defVal: 12.0 },
         { name: "roamingDistance", min: 20.0, max: 192.0,defVal: 96.0 },
-        { name: "speed", min: 1.0, max: 10.0,defVal: 3.0 }
+        { name: "speed", min: 1.0, max: 10.0,defVal: 3.0 },
+        { name: this._beatControlName, min: 1.1, max: 2.0,defVal: 1.4 }
         ]);
     }
 
@@ -142,11 +147,11 @@ class FlockingVisualization extends PointCloudVisualization {
         this._resolutionUniform,
         { name: "texturePosition", type: "t", value: null },
         { name: "textureVelocity", type: "t", value: null },
-        controlsProvider.uniformObject().separationDistance,
-        controlsProvider.uniformObject().alignmentDistance,
-        controlsProvider.uniformObject().cohesionDistance,
-        controlsProvider.uniformObject().roamingDistance,
-        controlsProvider.uniformObject().speed,
+        this._controlsProvider.uniformObject().separationDistance,
+        this._controlsProvider.uniformObject().alignmentDistance,
+        this._controlsProvider.uniformObject().cohesionDistance,
+        this._controlsProvider.uniformObject().roamingDistance,
+        this._controlsProvider.uniformObject().speed,
         this._loudnessUniform,
         this._accumulatedLoudnessUniform,
         this._beatUniform,
@@ -212,7 +217,7 @@ class FlockingVisualization extends PointCloudVisualization {
 
     this.addDisposable(
       this._audioSource.observable()
-        .map(AudioUniformFunctions.calculateBeat)
+        .map((e) => AudioUniformFunctions.calculateBeat(e, this._controlsProvider.getValue(this._beatControlName)))
         .subscribe((beat) => {
         this._beatUniform.value = beat;
       })
