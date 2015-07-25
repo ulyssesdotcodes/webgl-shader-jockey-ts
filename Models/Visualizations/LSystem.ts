@@ -3,9 +3,6 @@
 class LSystem extends BaseVisualization {
   static ID = "lsystem";
 
-  private _growthFactorName = "volume";
-  private _rotationName = "rotation speed";
-
   private _da = 180 - 22.5;
   private _length = 2;
   private _ru: Array<THREE.Quaternion> = [];
@@ -28,10 +25,14 @@ class LSystem extends BaseVisualization {
   private _time = 0.0;
   private _dt = 0.0;
 
+  private _controlsProvider: ControlsProvider;
+  private _growthFactorName = "volume";
+  private _rotationName = "rotation speed";
+  private _beatConstantName = "beat constant";
+
   private _audioSource: AudioSource;
   private _growth = 0.0;
   private _color = new THREE.Vector3(0.0, 0.0, 1.0);
-  private _controlsProvider: ControlsProvider;
 
   private _geometry: THREE.BufferGeometry;
 
@@ -133,7 +134,8 @@ class LSystem extends BaseVisualization {
     if(this._controlsProvider) {
       this._controlsProvider.newControls([
         { name: this._growthFactorName, min: 1.0, max: 8.0, defVal: 5.0 },
-        { name: this._rotationName, min: 0.0, max: 4.0, defVal: 0.5 }
+        { name: this._rotationName, min: 0.0, max: 4.0, defVal: 0.5 },
+        { name: this._beatConstantName, min: 1.1, max: 2.0, defVal: 1.4 }
       ]);
     }
   }
@@ -145,7 +147,7 @@ class LSystem extends BaseVisualization {
     }));
 
     this.addDisposable(this._audioSource.observable()
-      .map((e) => AudioUniformFunctions.calculateBeat(e))
+      .map((e) => AudioUniformFunctions.calculateBeat(e, this._controlsProvider.getValue(this._beatConstantName)))
       .subscribe((beat) => {
         this._growth = Math.pow(beat, 0.5) *
           this._controlsProvider.getValue(this._growthFactorName);

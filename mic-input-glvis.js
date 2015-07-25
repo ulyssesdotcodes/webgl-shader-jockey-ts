@@ -189,7 +189,7 @@ var BeatDetector = (function () {
             this._energyHistory.push(new Float32Array(BeatDetector.history));
         }
     }
-    BeatDetector.prototype.calculateBeat = function (e) {
+    BeatDetector.prototype.calculateBeat = function (e, c) {
         var sum = new Float32Array(BeatDetector.buckets);
         var j = 0;
         var finalBucketIndex = 1;
@@ -206,7 +206,7 @@ var BeatDetector = (function () {
         for (var i = 0; i < BeatDetector.buckets; i++) {
             sum[i] /= Math.pow(2, i + 1) * 256.0;
             if (beat < 0) {
-                beat = sum[i] - 1.4 * this._averageEnergy[i];
+                beat = sum[i] - c * this._averageEnergy[i];
                 if (beat > 0) {
                     beat = 1.0;
                 }
@@ -275,11 +275,11 @@ var AudioUniformFunctions;
         return average;
     }
     AudioUniformFunctions.calculateLoudness = calculateLoudness;
-    function calculateBeat(e) {
+    function calculateBeat(e, c) {
         if (beatDetector === undefined) {
             beatDetector = new BeatDetector();
         }
-        return beatDetector.calculateBeat(e);
+        return beatDetector.calculateBeat(e, c);
     }
     AudioUniformFunctions.calculateBeat = calculateBeat;
 })(AudioUniformFunctions || (AudioUniformFunctions = {}));
@@ -886,6 +886,7 @@ var FlockingVisualization = (function (_super) {
         _super.call(this, resolutionProvider, timeSource, shaderLoader, "flocking/point", controlsProvider);
         this._lastTime = 0.0;
         this._flipflop = true;
+        this._beatControlName = "beatConstant";
         this._renderer = renderer;
         this._scene = new THREE.Scene();
         this._camera = new THREE.Camera();
@@ -921,12 +922,14 @@ var FlockingVisualization = (function (_super) {
             value: new THREE.Vector3()
         };
         if (controlsProvider) {
-            controlsProvider.newControls([
+            this._controlsProvider = controlsProvider;
+            this._controlsProvider.newControls([
                 { name: "separationDistance", min: 0.0, max: 20.0, defVal: 12.0 },
                 { name: "alignmentDistance", min: 0.0, max: 20.0, defVal: 12.0 },
                 { name: "cohesionDistance", min: 0.0, max: 20.0, defVal: 12.0 },
                 { name: "roamingDistance", min: 20.0, max: 192.0, defVal: 96.0 },
-                { name: "speed", min: 1.0, max: 10.0, defVal: 3.0 }
+                { name: "speed", min: 1.0, max: 10.0, defVal: 3.0 },
+                { name: this._beatControlName, min: 1.1, max: 2.0, defVal: 1.4 }
             ]);
         }
         var textureShaderObs = shaderLoader.getShaderFromServer("flocking/texture").map(function (shaderText) {
@@ -958,11 +961,11 @@ var FlockingVisualization = (function (_super) {
                 _this._resolutionUniform,
                 { name: "texturePosition", type: "t", value: null },
                 { name: "textureVelocity", type: "t", value: null },
-                controlsProvider.uniformObject().separationDistance,
-                controlsProvider.uniformObject().alignmentDistance,
-                controlsProvider.uniformObject().cohesionDistance,
-                controlsProvider.uniformObject().roamingDistance,
-                controlsProvider.uniformObject().speed,
+                _this._controlsProvider.uniformObject().separationDistance,
+                _this._controlsProvider.uniformObject().alignmentDistance,
+                _this._controlsProvider.uniformObject().cohesionDistance,
+                _this._controlsProvider.uniformObject().roamingDistance,
+                _this._controlsProvider.uniformObject().speed,
                 _this._loudnessUniform,
                 _this._accumulatedLoudnessUniform,
                 _this._beatUniform,
@@ -1015,7 +1018,7 @@ var FlockingVisualization = (function (_super) {
             _this._loudnessUniform.value = loudness;
             _this._accumulatedLoudnessUniform.value += loudness;
         }));
-        this.addDisposable(this._audioSource.observable().map(AudioUniformFunctions.calculateBeat).subscribe(function (beat) {
+        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateBeat(e, _this._controlsProvider.getValue(_this._beatControlName)); }).subscribe(function (beat) {
             _this._beatUniform.value = beat;
         }));
         this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); }).subscribe(function (eqs) {
@@ -1147,8 +1150,6 @@ var LSystem = (function (_super) {
     __extends(LSystem, _super);
     function LSystem(timeSource, audioSource, controlsProvider) {
         _super.call(this);
-        this._growthFactorName = "volume";
-        this._rotationName = "rotation speed";
         this._da = 180 - 22.5;
         this._length = 2;
         this._ru = [];
@@ -1159,6 +1160,9 @@ var LSystem = (function (_super) {
         this._vertices = [];
         this._time = 0.0;
         this._dt = 0.0;
+        this._growthFactorName = "volume";
+        this._rotationName = "rotation speed";
+        this._beatConstantName = "beat constant";
         this._growth = 0.0;
         this._color = new THREE.Vector3(0.0, 0.0, 1.0);
         this._attributes = [];
@@ -1243,7 +1247,8 @@ var LSystem = (function (_super) {
         if (this._controlsProvider) {
             this._controlsProvider.newControls([
                 { name: this._growthFactorName, min: 1.0, max: 8.0, defVal: 5.0 },
-                { name: this._rotationName, min: 0.0, max: 4.0, defVal: 0.5 }
+                { name: this._rotationName, min: 0.0, max: 4.0, defVal: 0.5 },
+                { name: this._beatConstantName, min: 1.1, max: 2.0, defVal: 1.4 }
             ]);
         }
     }
@@ -1253,7 +1258,7 @@ var LSystem = (function (_super) {
             _this._dt = time - _this._time;
             _this._time = time;
         }));
-        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateBeat(e); }).subscribe(function (beat) {
+        this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateBeat(e, _this._controlsProvider.getValue(_this._beatConstantName)); }).subscribe(function (beat) {
             _this._growth = Math.pow(beat, 0.5) * _this._controlsProvider.getValue(_this._growthFactorName);
         }));
         this.addDisposable(this._audioSource.observable().map(function (e) { return AudioUniformFunctions.calculateEqs(e, 3); }).subscribe(function (eqs) {
@@ -1618,7 +1623,7 @@ var ControlsView = (function () {
         var _this = this;
         var controlContainer = $("<div>");
         controlContainer.append(control.name + ": ");
-        var controlSlider = $("<input>", { type: "range", min: control.min, max: control.max, step: 0.0000001 });
+        var controlSlider = $("<input>", { type: "range", min: control.min, max: control.max, step: 0.0000001, value: control.defVal });
         controlSlider.on('input', function (__) {
             _this._controlsController.onControlChange(control.name, controlSlider.val());
         });

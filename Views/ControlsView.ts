@@ -24,7 +24,7 @@ class ControlsView {
     var controlContainer: JQuery = $("<div>");
     controlContainer.append(control.name + ": ");
     var controlSlider: JQuery = $("<input>",
-    { type: "range", min: control.min, max: control.max, step: 0.0000001});
+    { type: "range", min: control.min, max: control.max, step: 0.0000001, value: control.defVal});
 
     controlSlider.on('input', (__) => {
       this._controlsController.onControlChange(control.name, controlSlider.val());
