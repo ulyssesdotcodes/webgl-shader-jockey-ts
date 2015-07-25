@@ -50,11 +50,11 @@ module AudioUniformFunctions {
     return average;
   }
 
-  export function calculateBeat(e: AudioEvent) {
+  export function calculateBeat(e: AudioEvent, c: number) {
     if(beatDetector === undefined) {
       beatDetector = new BeatDetector();
     }
 
-    return beatDetector.calculateBeat(e);
+    return beatDetector.calculateBeat(e, c);
   }
 }
